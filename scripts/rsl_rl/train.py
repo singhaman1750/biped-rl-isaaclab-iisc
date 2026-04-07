@@ -79,6 +79,7 @@ import os
 import torch
 from datetime import datetime
 
+from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -96,7 +97,6 @@ from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import RandomDesignGenerator
 from himloco.runners import HIMOnPolicyRunner
-from lowest_terrain_camera_wrapper import LowestTerrainCameraWrapper
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -161,7 +161,7 @@ def main():
     # wrap for video recording
     if args_cli.video:
         # track lowest-difficulty terrain env before each captured frame
-        env = LowestTerrainCameraWrapper(env)
+        env = HighestTerrainCameraWrapper(env)
 
         video_kwargs = {
             "video_folder": os.path.join(log_dir, "videos", "train"),
@@ -187,16 +187,16 @@ def main():
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
         )
-        _num_individuals = 16
+        _num_individuals = 64
         design_generator = RandomDesignGenerator(
             base_urdf_path=_base_urdf,
             num_individuals=_num_individuals,
         )
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
-            "ea_update_interval": 100,
+            "ea_update_interval": 1000,
             "num_individuals": _num_individuals,
         }
         runner = CoptOnPolicyRunner(

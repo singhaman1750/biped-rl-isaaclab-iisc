@@ -227,7 +227,7 @@ gym.register(
 # SF Co-Optimisation Environment
 #############################
 gym.register(
-    id="Isaac-Limx-SF-Copt-v0",
+    id="Isaac-Limx-SF-Copt-Flat-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={

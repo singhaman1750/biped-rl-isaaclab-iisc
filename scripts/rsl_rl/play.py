@@ -64,6 +64,7 @@ import os
 import torch
 
 import pandas as pd
+from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper
 from isaaclab.envs import (
     DirectMARLEnv,
     ManagerBasedRLEnv,
@@ -247,6 +248,7 @@ def main():
         env = multi_agent_to_single_agent(env)
 
     if args_cli.video:
+        env = HighestTerrainCameraWrapper(env)
         video_kwargs = {
             "video_folder": os.path.join(
                 log_dir, "videos", "play", f"{agent_cfg.seed}"

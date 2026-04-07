@@ -81,11 +81,10 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             self._num_individuals, dtype=torch.long, device=device
         )
 
+        super().__init__(env, train_cfg, log_dir=log_dir, device=device)
         # Maps env_idx → individual_idx (round-robin)
         # The round robin is setup in co_optimisation.utils.respawn.respawn_robots
         self._env_to_individual: list[int] = self._assign_individuals_to_envs()
-
-        super().__init__(env, train_cfg, log_dir=log_dir, device=device)
 
     def learn(
         self, num_learning_iterations: int, init_at_random_ep_len: bool = False
@@ -100,7 +99,9 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             )
 
         # Generate initial population before the first rollout and start learning
-        self._reload_morphology()
+        self.respawn_robots = respawn_robots()
+        with torch.inference_mode():
+            self._reload_morphology()
 
         obs = self.env.get_observations().to(self.device)
         self.train_mode()
@@ -234,7 +235,8 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
             # ---- COPT: EA generation update ---------------------------------
             if (it + 1 - start_iter) % self._ea_update_interval == 0:
-                self._reload_morphology()
+                with torch.inference_mode():
+                    self._reload_morphology()
                 # Refresh observations after respawn
                 obs = self.env.get_observations().to(self.device)
             # ---- end COPT injection -----------------------------------------
@@ -254,9 +256,10 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         """Run one EA cycle: evaluate fitness, generate new population, respawn."""
         if self.current_population is not None:
             fitness = self._compute_individual_fitness()
+            print("Updating Design Population")
             self._design_generator.update_with_fitness(self.current_population, fitness)
-
         # Generate new population
+        print("Sampling New Population")
         self.current_population = self._design_generator.generate_population(
             self.generation
         )
@@ -264,14 +267,17 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
         # Respawn robots with new USD files
         unwrapped_env = self.env.unwrapped  # ManagerBasedRLEnv
-        respawn_robots(unwrapped_env, self.current_population.get_usd_files())
+        print("Spawning sampled population")
+        self.respawn_robots(unwrapped_env, self.current_population.get_usd_files())
 
         # Patch actuator params
+        print("Applying Sampled Actuator Parameters")
         apply_actuator_params(
             unwrapped_env, self.current_population.get_actuator_params()
         )
 
         # Reset fitness accumulators
+        print("Resetting Accumulators")
         self._individual_fitness.zero_()
         self._individual_episode_counts.zero_()
 

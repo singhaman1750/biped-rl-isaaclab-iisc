@@ -130,7 +130,7 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SFCoptPPORunnerCfg(SF_TRON1AFlatPPORunnerCfg):
     experiment_name: str = "sf_copt"
-    max_iterations: int = 50000
+    max_iterations: int = 15000
 
 
 # -----------------------------------------------------------------

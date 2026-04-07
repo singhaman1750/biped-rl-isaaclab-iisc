@@ -314,7 +314,7 @@ class RandomDesignGenerator(DesignGeneratorBase):
 
         # ---- G: Convert URDF → USD --------------------------------------
         usd_out_dir = os.path.join(gen_dir, f"individual_{idx:04d}_usd")
-        usd_path = self._convert_urdf_to_usd(urdf_path, usd_out_dir)
+        usd_path = self._convert_urdf_to_usd(urdf_path, usd_out_dir, idx)
 
         # ---- H: Build actuator params dict (Python-side attrs) ----------
         s_fs = scales["friction_static_scale"]
@@ -353,12 +353,13 @@ class RandomDesignGenerator(DesignGeneratorBase):
                 origin.set("xyz", f"{x} {y} {z * scale}")
 
     @staticmethod
-    def _convert_urdf_to_usd(urdf_path: str, usd_out_dir: str) -> str:
+    def _convert_urdf_to_usd(urdf_path: str, usd_out_dir: str, idx: int) -> str:
         """Converts a URDF file to USD using IsaacLab's UrdfConverter."""
-
+        usd_file_name = f"biped_{idx}.usd"
         cfg = UrdfConverterCfg(
             asset_path=urdf_path,
-            usd_path=usd_out_dir,
+            usd_dir=usd_out_dir,
+            usd_file_name=usd_file_name,
             link_density=0.0,
             merge_fixed_joints=False,
             fix_base=False,
