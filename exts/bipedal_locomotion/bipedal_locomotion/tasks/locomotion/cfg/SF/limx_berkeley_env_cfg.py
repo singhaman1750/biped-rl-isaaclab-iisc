@@ -202,8 +202,9 @@ class EventBerkeleyCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base_Link"),
-            "mass_distribution_params": (-1.0, 1.0),
-            "operation": "add",
+            # Converted from add(-1.0, 1.0) on baseline 9.585 kg → ±10.4% symmetric scale
+            "mass_distribution_params": (0.896, 1.104),
+            "operation": "scale",
         },
     )
 
@@ -213,7 +214,9 @@ class EventBerkeleyCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "armature_distribution_params": (1.0, 1.05),
+            # Corrected from (1.0, 1.05): original had no downward perturbation.
+            # Symmetric ±5% applied in both directions.
+            "armature_distribution_params": (0.95, 1.05),
             "operation": "scale",
         },
     )

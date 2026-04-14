@@ -14,7 +14,7 @@ usd_path_wf = os.path.join(current_dir, "../usd/WF_TRON1A/WF_TRON1A.usd")
 # Hip adduction/abduction (maps to Berkeley HXX: HR + HAA)
 TRON1_ABAD_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=["abad_L_Joint", "abad_R_Joint"],
-    effort_limit=50.0,
+    effort_limit=60.0,
     velocity_limit=23,
     saturation_effort=402,
     stiffness={".*": 55.0},

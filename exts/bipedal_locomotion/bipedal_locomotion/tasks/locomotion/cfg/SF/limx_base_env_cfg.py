@@ -21,6 +21,7 @@ from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import CommandsCfg as BaseCommandsCfg
 
 from bipedal_locomotion.tasks.locomotion import mdp
+from bipedal_locomotion.tasks.locomotion.mdp.curriculums import reduce_tracking_rewards_std
 
 from .terrains_cfg import BERKELEY_MIMIC_TERRAINS_CFG
 
@@ -116,11 +117,11 @@ class CommandsCfg:
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         debug_vis=True,
-        resampling_time_range=(12.0, 18.0),
+        resampling_time_range=(7.5, 12.5),
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-1.0, 1.0),
-            lin_vel_y=(-1.0, 1.0),
-            ang_vel_z=(-1.0, 1.0),
+            lin_vel_y=(-0.5, 0.5),
+            ang_vel_z=(-0.75, 0.75),
             heading=(-math.pi, math.pi),
         ),
     )
@@ -590,8 +591,9 @@ class EventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base_Link"),
-            "mass_distribution_params": (-5.0, 5.0),
-            "operation": "add",
+            # Converted from add(-5.0, 5.0) on baseline 9.585 kg → ±52.2% symmetric scale
+            "mass_distribution_params": (0.478, 1.522),
+            "operation": "scale",
         },
     )
     add_link_mass = EventTerm(
@@ -619,9 +621,10 @@ class EventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["knee_[LR]_Joint"]),
-            "stiffness_distribution_params": (50, 70),
-            "damping_distribution_params": (3.0, 5.0),
-            "operation": "abs",
+            # Converted from abs(50,70)/(3,5) on baselines 60/4 → ±16.7%/±25% symmetric
+            "stiffness_distribution_params": (0.833, 1.167),
+            "damping_distribution_params": (0.750, 1.250),
+            "operation": "scale",
             "distribution": "uniform",
         },
     )
@@ -630,9 +633,11 @@ class EventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["hip_[LR]_Joint"]),
-            "stiffness_distribution_params": (70, 90),
-            "damping_distribution_params": (10.0, 15.0),
-            "operation": "abs",
+            # Converted from abs(70,90)/(10,15) on baselines 80/13
+            # Stiffness: ±12.5% symmetric; Damping: 23.1%/15.4% asymmetric → take 15.4%
+            "stiffness_distribution_params": (0.875, 1.125),
+            "damping_distribution_params": (0.846, 1.154),
+            "operation": "scale",
             "distribution": "uniform",
         },
     )
@@ -641,9 +646,11 @@ class EventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["abad_[LR]_Joint"]),
-            "stiffness_distribution_params": (45, 65),
-            "damping_distribution_params": (12.0, 15.0),
-            "operation": "abs",
+            # Converted from abs(50,70)/(12,15) on baselines 55/13.5
+            # Stiffness: 9.1%/27.3% asymmetric → take 9.1%; Damping: ±11.1% symmetric
+            "stiffness_distribution_params": (0.909, 1.091),
+            "damping_distribution_params": (0.889, 1.111),
+            "operation": "scale",
             "distribution": "uniform",
         },
     )
@@ -652,9 +659,10 @@ class EventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["ankle_[LR]_Joint"]),
-            "stiffness_distribution_params": (8, 12),
-            "damping_distribution_params": (0.4, 0.6),
-            "operation": "abs",
+            # Converted from abs(8,12)/(0.4,0.6) on baselines 10/0.5 → ±20% symmetric
+            "stiffness_distribution_params": (0.800, 1.200),
+            "damping_distribution_params": (0.800, 1.200),
+            "operation": "scale",
             "distribution": "uniform",
         },
     )
@@ -751,7 +759,9 @@ class EventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "armature_distribution_params": (1.0, 1.05),
+            # Corrected from (1.0, 1.05): original had no downward perturbation.
+            # Symmetric ±5% applied in both directions.
+            "armature_distribution_params": (0.95, 1.05),
             "operation": "scale",
         },
     )
@@ -766,13 +776,13 @@ class RewardsCfg:
     # tracking rewards
     rew_lin_vel_xy = RewTerm(
         func=mdp.track_lin_vel_xy_exp,
-        weight=15,
-        params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
+        weight=25,
+        params={"command_name": "base_velocity", "std": math.sqrt(0.16)},
     )
     rew_ang_vel_z = RewTerm(
         func=mdp.track_ang_vel_z_exp,
-        weight=5,
-        params={"command_name": "base_velocity", "std": math.sqrt(0.0625)},
+        weight=7.5,
+        params={"command_name": "base_velocity", "std": math.sqrt(0.09)},
     )
     rew_keep_ankle_pitch_zero_in_air = RewTerm(
         func=mdp.keep_ankle_pitch_zero_in_air,
@@ -786,7 +796,7 @@ class RewardsCfg:
     )
     rew_no_fly = RewTerm(
         func=mdp.no_fly,
-        weight=0.5,
+        weight=1.5,
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names="ankle_[RL]_Link"
@@ -909,7 +919,7 @@ class CurriculumCfg:
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 1000*24
+            "starting_step": 200*24
         }
     )
 
@@ -923,13 +933,62 @@ class CurriculumCfg:
         },
     )
 
-    modify_command_velocity = CurrTerm(
+    modify_command_velocity_lin_x = CurrTerm(
         func=mdp.modify_command_velocity_x,
         params={
             "term_name": "rew_lin_vel_xy",
+            "max_velocity": (-1.5, 1.5),
+            "interval": 200 * 24,
+            "starting_step": 2500 * 24,
+            "update_rate": 0.04,
+            "update_threshold": 0.6,
+        }
+    )
+
+    modify_command_velocity_lin_y = CurrTerm(
+        func=mdp.modify_command_velocity_y,
+        params={
+            "term_name": "rew_lin_vel_xy",
+            "max_velocity": (-1, 1),
+            "interval": 200 * 24,
+            "starting_step": 2500 * 24,
+            "update_rate": 0.04,
+            "update_threshold": 0.25,
+        }
+    )
+    
+    modify_command_velocity_ang_z = CurrTerm(
+        func=mdp.modify_command_velocity_angular,
+        params={
+            "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
             "interval": 200 * 24,
-            "starting_step": 3000 * 24,
+            "starting_step": 2500 * 24,
+            "update_rate": 0.04,
+            "update_threshold": 0.25,
+        }
+    )
+
+    modify_linear_tracking_reward_std = CurrTerm(
+        func=mdp.reduce_tracking_rewards_std,
+        params={
+            "term_name": "rew_lin_vel_xy",
+            "interval": 300 * 24,
+            "starting_step": 900 * 24,
+            "update_rate": 0.95,
+            "update_threshold": 0.67,
+            "minimum_std": 0.09
+        }
+    )
+    modify_angular_tracking_reward_std = CurrTerm(
+        func=mdp.reduce_tracking_rewards_std,
+        params={
+            "term_name": "rew_ang_vel_z",
+            "interval": 300 * 24,
+            "starting_step": 0,
+            "update_rate": 0.975,
+            "update_threshold": 0.5,
+            "minimum_std": 0.09
         }
     )
 
