@@ -27,6 +27,35 @@ used in evolutionary algorithm-based design and policy co-optimisation.
                                 applied post-respawn. Range: (0.70, 1.30)
 - ``"armature_scale"``        – scale factor for IdentifiedActuator.armature,
                                 applied post-respawn. Range: (0.70, 1.30)
+
+Per-group stiffness/damping scales (applied post-respawn via ``apply_actuator_params``).
+Ranges are symmetric equivalents of the runtime domain-randomisation abs ranges;
+asymmetric abs ranges are resolved by taking the smaller half (tightest constraint):
+
+- ``"abad_stiffness_scale"``  – IdentifiedActuator.stiffness for abad joints.
+                                Derived from abs(50,70) on baseline 55 → ±9.1%.
+                                Range: (0.909, 1.091)
+- ``"abad_damping_scale"``    – IdentifiedActuator.damping for abad joints.
+                                Derived from abs(12,15) on baseline 13.5 → ±11.1%.
+                                Range: (0.889, 1.111)
+- ``"hip_stiffness_scale"``   – IdentifiedActuator.stiffness for hip joints.
+                                Derived from abs(70,90) on baseline 80 → ±12.5%.
+                                Range: (0.875, 1.125)
+- ``"hip_damping_scale"``     – IdentifiedActuator.damping for hip joints.
+                                Derived from abs(10,15) on baseline 13; upper half
+                                15.4% is smaller → Range: (0.846, 1.154)
+- ``"knee_stiffness_scale"``  – IdentifiedActuator.stiffness for knee joints.
+                                Derived from abs(50,70) on baseline 60 → ±16.7%.
+                                Range: (0.833, 1.167)
+- ``"knee_damping_scale"``    – IdentifiedActuator.damping for knee joints.
+                                Derived from abs(3,5) on baseline 4 → ±25%.
+                                Range: (0.750, 1.250)
+- ``"ankle_stiffness_scale"`` – IdentifiedActuator.stiffness for ankle joints.
+                                Derived from abs(8,12) on baseline 10 → ±20%.
+                                Range: (0.800, 1.200)
+- ``"ankle_damping_scale"``   – IdentifiedActuator.damping for ankle joints.
+                                Derived from abs(0.4,0.6) on baseline 0.5 → ±20%.
+                                Range: (0.800, 1.200)
 """
 
 from __future__ import annotations
@@ -60,6 +89,8 @@ def _actuator_baseline(cfg) -> dict:
         "velocity_limit": cfg.velocity_limit,
         "friction_static": cfg.friction_static,
         "friction_dynamic": cfg.friction_dynamic,
+        "stiffness": next(iter(cfg.stiffness.values())),
+        "damping": next(iter(cfg.damping.values())),
     }
 
 
@@ -104,6 +135,17 @@ DEFAULT_PARAM_RANGES: dict[str, tuple[float, float]] = {
     "friction_dynamic_scale": (0.70, 1.40),
     "saturation_effort_scale": (0.70, 1.30),
     "armature_scale": (0.70, 1.30),
+    # Per-group stiffness/damping scales derived from symmetric equivalents of the
+    # per-group abs ranges in the runtime domain-randomisation configs.
+    # Asymmetric abs ranges are resolved by taking the smaller half (tightest constraint).
+    "abad_stiffness_scale":  (0.909, 1.091),  # abs(50,70) on baseline 55 → ±9.1%
+    "abad_damping_scale":    (0.889, 1.111),  # abs(12,15) on baseline 13.5 → ±11.1%
+    "hip_stiffness_scale":   (0.875, 1.125),  # abs(70,90) on baseline 80 → ±12.5%
+    "hip_damping_scale":     (0.846, 1.154),  # abs(10,15) on baseline 13 → upper 15.4% (smallest)
+    "knee_stiffness_scale":  (0.833, 1.167),  # abs(50,70) on baseline 60 → ±16.7%
+    "knee_damping_scale":    (0.750, 1.250),  # abs(3,5) on baseline 4 → ±25%
+    "ankle_stiffness_scale": (0.800, 1.200),  # abs(8,12) on baseline 10 → ±20%
+    "ankle_damping_scale":   (0.800, 1.200),  # abs(0.4,0.6) on baseline 0.5 → ±20%
 }
 
 
@@ -324,6 +366,8 @@ class RandomDesignGenerator(DesignGeneratorBase):
 
         act_params: dict[str, dict] = {}
         for group, baseline in ACTUATOR_BASELINES.items():
+            s_stiff = scales[f"{group}_stiffness_scale"]
+            s_damp = scales[f"{group}_damping_scale"]
             act_params[group] = {
                 "effort_limit": baseline["effort_limit"] * s_eff,
                 "velocity_limit": baseline["velocity_limit"] * s_vel,
@@ -331,6 +375,8 @@ class RandomDesignGenerator(DesignGeneratorBase):
                 "armature": baseline["armature"] * s_arm,
                 "friction_static": baseline["friction_static"] * s_fs,
                 "friction_dynamic": baseline["friction_dynamic"] * s_fd,
+                "stiffness": baseline["stiffness"] * s_stiff,
+                "damping": baseline["damping"] * s_damp,
             }
 
         return usd_path, act_params

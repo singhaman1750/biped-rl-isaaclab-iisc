@@ -195,13 +195,31 @@ class respawn_robots:
         if event_manager is not None:
             for mode_terms in event_manager._mode_term_cfgs.values():
                 for term_cfg in mode_terms:
-                    if inspect.isclass(term_cfg.func) and hasattr(
-                        term_cfg.func, "asset"
-                    ):
-                        term_cfg.func.asset = new_articulation
+                    # Note: term_cfg.func is already an instance if initialized
+                    term_instance = term_cfg.func
+                    if not inspect.isclass(term_instance):
+                        if hasattr(term_instance, "asset"):
+                            term_instance.asset = new_articulation
+                        if hasattr(term_instance, "robot"):
+                            term_instance.robot = new_articulation
 
         # ------------------------------------------------------------------
-        # Step 10: Reset all environments
+        # Step 10: Re-bind CommandManager term asset references
+        # ------------------------------------------------------------------
+        # Command terms (e.g. UniformVelocityCommand) cache self.robot/asset
+        # references at construction. Stale references cause debug visualization
+        # markers to stay at the origin or stop updating.
+        print("Re-binding command managers")
+        command_manager = getattr(env, "command_manager", None)
+        if command_manager is not None:
+            for term in command_manager._terms.values():
+                if hasattr(term, "robot"):
+                    term.robot = new_articulation
+                if hasattr(term, "asset"):
+                    term.asset = new_articulation
+
+        # ------------------------------------------------------------------
+        # Step 11: Reset all environments
         # ------------------------------------------------------------------
         print("Resetting Environment")
         env.reset()

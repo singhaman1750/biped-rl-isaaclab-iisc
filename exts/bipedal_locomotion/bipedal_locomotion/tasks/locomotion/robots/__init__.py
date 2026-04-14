@@ -183,6 +183,27 @@ gym.register(
         "rsl_rl_cfg_entry_point": limx_sf_blind_flat_runner_cfg,
     },
 )
+
+gym.register(
+    id="Isaac-Limx-SF-Identified-Blind-Flat-Urdf-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindFlatEnvUrdfCfg,
+        "rsl_rl_cfg_entry_point": limx_sf_blind_flat_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Identified-Blind-Flat-Play-Urdf-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindFlatEnvUrdfCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_sf_blind_flat_runner_cfg,
+    },
+)
+
 gym.register(
     id="Isaac-Limx-SF-Identified-Blind-Rough-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
@@ -199,6 +220,26 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_sf_blind_flat_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Identified-Blind-Rough-Urdf-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindRoughEnvUrdfCfg,
+        "rsl_rl_cfg_entry_point": limx_sf_blind_flat_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Identified-Blind-Rough-Play-Urdf-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindRoughEnvUrdfCfg_PLAY,
         "rsl_rl_cfg_entry_point": limx_sf_blind_flat_runner_cfg,
     },
 )
@@ -231,7 +272,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindFlatEnvCfg,
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFIdentifiedBlindRoughEnvCfg,
         "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
     },
 )
