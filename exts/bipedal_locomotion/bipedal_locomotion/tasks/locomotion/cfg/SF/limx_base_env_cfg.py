@@ -466,7 +466,7 @@ class HIMObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
-            self.history_length = 25
+            self.history_length = 10
             # Required by HIMActorCritic
             self.flatten_history_dim = False
 
@@ -514,10 +514,10 @@ class HIMObservationsCfg:
         )
 
         # heights scan
-        heights = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        )
+        # heights = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        # )
 
         # Privileged observation
         robot_joint_torque = ObsTerm(func=mdp.robot_joint_torque)
@@ -544,7 +544,7 @@ class HIMObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-            self.history_length = 25
+            self.history_length = 10
             self.flatten_history_dim = True
 
     @configclass
@@ -592,7 +592,7 @@ class EventsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base_Link"),
             # Converted from add(-5.0, 5.0) on baseline 9.585 kg → ±52.2% symmetric scale
-            "mass_distribution_params": (0.478, 1.522),
+            "mass_distribution_params": (0.85, 1.25),
             "operation": "scale",
         },
     )
@@ -782,7 +782,7 @@ class RewardsCfg:
     rew_ang_vel_z = RewTerm(
         func=mdp.track_ang_vel_z_exp,
         weight=7.5,
-        params={"command_name": "base_velocity", "std": math.sqrt(0.09)},
+        params={"command_name": "base_velocity", "std": math.sqrt(0.16)},
     )
     rew_keep_ankle_pitch_zero_in_air = RewTerm(
         func=mdp.keep_ankle_pitch_zero_in_air,
@@ -930,6 +930,8 @@ class CurriculumCfg:
             "max_velocity": (3.0, 3.0),
             "interval": 200 * 24,
             "starting_step": 1500 * 24,
+            "increment_rate": 1.2,
+            "decrement_rate" : 0.25
         },
     )
 
@@ -939,7 +941,7 @@ class CurriculumCfg:
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
             "interval": 200 * 24,
-            "starting_step": 2500 * 24,
+            "starting_step": 6500 * 24,
             "update_rate": 0.04,
             "update_threshold": 0.6,
         }
@@ -951,19 +953,19 @@ class CurriculumCfg:
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1, 1),
             "interval": 200 * 24,
-            "starting_step": 2500 * 24,
+            "starting_step": 6500 * 24,
             "update_rate": 0.04,
             "update_threshold": 0.25,
         }
     )
-    
+
     modify_command_velocity_ang_z = CurrTerm(
         func=mdp.modify_command_velocity_angular,
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
             "interval": 200 * 24,
-            "starting_step": 2500 * 24,
+            "starting_step": 6500 * 24,
             "update_rate": 0.04,
             "update_threshold": 0.25,
         }
