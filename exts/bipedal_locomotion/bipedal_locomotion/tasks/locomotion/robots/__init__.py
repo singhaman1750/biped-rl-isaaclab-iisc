@@ -9,6 +9,7 @@ from bipedal_locomotion.tasks.locomotion.agents.limx_rsl_rl_ppo_cfg import (
 )
 
 from ..cfg.SF import limx_berkeley_env_cfg
+from ..envs.him_env import HIMManagerBasedRLEnv
 from . import limx_pointfoot_env_cfg, limx_solefoot_env_cfg, limx_wheelfoot_env_cfg
 
 ##
@@ -130,7 +131,7 @@ gym.register(
 #############################
 gym.register(
     id="Isaac-Limx-SF-HIM-Blind-Flat-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMBlindFlatEnvCfg,
@@ -140,7 +141,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Blind-Flat-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMBlindFlatEnvCfg_PLAY,
@@ -150,7 +151,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Blind-Rough-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMBlindRoughEnvCfg,
@@ -160,7 +161,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Blind-Rough-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMBlindRoughEnvCfg_PLAY,
@@ -216,7 +217,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Identified-Blind-Flat-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMIdentifiedBlindFlatEnvCfg,
@@ -226,7 +227,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Identified-Blind-Flat-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMIdentifiedBlindFlatEnvCfg_PLAY,
@@ -276,7 +277,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Identified-Blind-Rough-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMIdentifiedBlindRoughEnvCfg,
@@ -286,7 +287,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Identified-Blind-Rough-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMIdentifiedBlindRoughEnvCfg_PLAY,
@@ -316,7 +317,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Identified-Blind-Rough-Urdf-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMIdentifiedBlindRoughEnvUrdfCfg,
@@ -326,7 +327,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Limx-SF-HIM-Identified-Blind-Rough-Play-Urdf-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=HIMManagerBasedRLEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFHIMIdentifiedBlindRoughEnvUrdfCfg_PLAY,
