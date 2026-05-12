@@ -114,7 +114,11 @@ class HIMPPO(PPO):
         dones: torch.Tensor,
         extras: dict[str, torch.Tensor],
     ) -> None:
-        self.transition.next_observations = obs
+        if "terminal_obs" in extras:
+            self.transition.next_observations = extras["terminal_obs"]
+        else:
+            self.transition.next_observations = obs
+
         super().process_env_step(obs, rewards, dones, extras)
 
     def update(self) -> dict[str, float]:
@@ -279,7 +283,7 @@ class HIMPPO(PPO):
                     num_aug = int(obs_batch.shape[0] / original_batch_size)
 
                 # Actions predicted by the actor for symmetrically-augmented observations
-                mean_actions_batch = self.policy.act_inference(
+                mean_actions_batch, _ = self.policy.act_inference(
                     obs_batch.detach().clone()
                 )
 
@@ -374,7 +378,7 @@ class HIMPPO(PPO):
             "surrogate": mean_surrogate_loss,
             "entropy": mean_entropy,
             "estimattion_loss": mean_estimation_loss,
-            "swap_loss": mean_swap_loss
+            "swap_loss": mean_swap_loss,
         }
         if self.rnd:
             loss_dict["rnd"] = mean_rnd_loss
