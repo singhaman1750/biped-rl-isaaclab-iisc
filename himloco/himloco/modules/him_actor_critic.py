@@ -155,7 +155,8 @@ class HIMActorCritic(ActorCritic):
             vel, latent = self.estimator(obs_history)
         actor_input = torch.cat((actor_obs, vel, latent), dim=-1)
         mean = self.actor(actor_input)
-        self.distribution = Normal(mean, mean * 0.0 + torch.exp(self.log_std))
+        std = torch.exp(self.log_std)
+        self.distribution = Normal(mean, std)
 
     def act(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
         self._update_distribution(obs)

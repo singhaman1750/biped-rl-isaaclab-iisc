@@ -979,7 +979,7 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 200 * 24,
+            "interval": 400 * 24,
             "starting_step": 2000 * 24,
             "increment_rate": 1.225,
             "decrement_rate" : 0.2
@@ -991,7 +991,7 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 250 * 24,
+            "interval": 300 * 24,
             "starting_step": 6000 * 24,
             "update_rate": 0.03,
             "update_threshold": 0.6,
@@ -1003,7 +1003,7 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1, 1),
-            "interval": 250 * 24,
+            "interval": 300 * 24,
             "starting_step": 6000 * 24,
             "update_rate": 0.03,
             "update_threshold": 0.4,

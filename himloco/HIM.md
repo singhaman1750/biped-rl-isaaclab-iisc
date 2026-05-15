@@ -269,7 +269,7 @@ An MLP that processes the flattened observation history:
 
 A separate, smaller MLP that processes only the current (next) single-step observation:
 - Input: `D_obs` (single step)
-- Hidden layers: configurable (default `[128, 64]`)
+- Hidden layers: configurable (default `[128, 64, 16]`)
 - Output: `D_latent`
 - Output `z_t` is L2-normalized before use
 - This network is **trained jointly** with the encoder (not an EMA target — both receive gradients)
