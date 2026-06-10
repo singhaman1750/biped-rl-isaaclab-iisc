@@ -86,26 +86,28 @@
       => fixed_xyz = (0.11006, -0.10500, -0.26020)
   -->
   <joint name="abad_R_fixed_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.08865 -0.0817 -0.1875" />
+    <!-- The offset here is arbitrary -->
+    <origin rpy="0 0 0" xyz="0.06 -0.0817 -0.1875" />
     <parent link="base_Link" />
     <child link="abad_R_actuator_Link" />
   </joint>
 
   <link name="abad_R_actuator_Link">
     <visual>
-      <origin rpy="0 1.57079632679 0" xyz="-0.02725 0 0" />
+        <!-- Note that the x = l/2 => x = 0.02725 = 0.0545 / 2 -->
+      <origin rpy="0 1.57079632679 0" xyz="0.02725 0 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 1.57079632679 0" xyz="-0.02725 0 0" />
+      <origin rpy="0 1.57079632679 0" xyz="0.02725 0 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.02725 0 0" />
+      <origin rpy="0 0 0" xyz="0.02725 0 0" />
       <mass value="0.95" />
       <inertia ixx="0.001108" ixy="0" ixz="0" iyy="0.000789" iyz="0" izz="0.000789" />
     </inertial>
@@ -113,23 +115,25 @@
 
   <!-- Revolute joint at (-0.0545,0,0) relative to actuator; effective position from base_Link = (0.05556,-0.105,-0.2602) -->
   <joint name="abad_R_Joint" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.0545 0 0" />
+    <!-- the origin x = -(0.2 + R_{abad_R_actuator_Link}) -->
+    <origin rpy="0 0 0" xyz="-0.0683 0 0" />
     <parent link="abad_R_actuator_Link" />
-    <child link="abad_R_Link" />
+    <child link="hip_R_actuator_Link" />
     <axis xyz="-1 0 0" />
     <dynamics damping="0" friction="0" />
     <limit effort="80.0" lower="-0.38397" upper="1.39626" velocity="15.0" />
   </joint>
 
-  <link name="abad_R_Link">
+  <link name="hip_R_actuator_Link">
     <visual>
-      <origin rpy="1.57079632679 0 0" xyz="-0.0683 0.035 0" />
+      <!-- the y offset here must be y = (0.00775 + l / 2) -->
+      <origin rpy="1.57079632679 0 0" xyz="0 0.035 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="1.57079632679 0 0" xyz="-0.0683 0.035 0" />
+      <origin rpy="1.57079632679 0 0" xyz="0 0.035 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
@@ -138,7 +142,7 @@
       <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.0483, L=0.0545, m=1.469
            Iyy = m*r^2/2 = 1.469*0.0483^2/2 = 0.001713
            Ixx = Izz = m*(3r^2+L^2)/12 = 1.469*(3*0.002333+0.002970)/12 = 0.001220 -->
-      <origin rpy="0 0 0" xyz="-0.0683 0.035 0" />
+      <origin rpy="0 0 0" xyz="0 0.035 0" />
       <mass value="1.469" />
       <inertia ixx="0.001220" ixy="0" ixz="0"
                iyy="0.001713" iyz="0" izz="0.001220" />
@@ -146,69 +150,100 @@
   </link>
 
   <joint name="hip_R_Joint" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.0683 0.03050 0" />
-    <parent link="abad_R_Link" />
+    <!-- y offset set to offset of the hip actuator link above -->
+    <origin rpy="0 0.610865 0" xyz="0 0.00775 0" />
+    <parent link="hip_R_actuator_Link" />
     <child link="hip_R_Link" />
     <axis xyz="0 -1 0" />
     <dynamics damping="0" friction="0" />
     <limit effort="80.0" lower="-1.396263" upper="1.012291" velocity="15.0" />
   </joint>
-
+ 
   <link name="hip_R_Link">
     <visual>
-      <origin rpy="1.57079632679 0 0" xyz="0 -0.08275 0" />
+       <!-- y offset = R_{hip_R_Link} / 2 -->
+      <origin rpy="1.57079632679 0 0" xyz="0 -0.016 0" />
+      <geometry>
+        <cylinder length="0.032" radius="0.0483" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="1.57079632679 0 0" xyz="0 -0.016 0" />
+      <geometry>
+        <cylinder length="0.032" radius="0.0483" />
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.0483, L=0.032, m=0.5
+           Iyy = m*r^2/2 = 0.5*0.002333/2 = 0.000583
+           Ixx = Izz = m*(3r^2+L^2)/12 = 0.5*(3*0.002333+0.001024)/12 = 0.000334 -->
+      <origin rpy="0 0 0" xyz="0 -0.016 0" />
+      <mass value="0.5" />
+      <inertia ixx="0.000334" ixy="0" ixz="0" iyy="0.000583" iyz="0" izz="0.000334" />
+    </inertial>
+  </link>
+
+  <link name="knee_R_actuator_Link">
+    <visual>
+       <!-- y offset = -l_{knee_R_actuator_Link} / 2 -->
+      <origin rpy="1.57079632679 0 0" xyz="0 -0.02725 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="1.57079632679 0 0" xyz="0 -0.08275 0" />
+      <origin rpy="1.57079632679 0 0" xyz="0 -0.02725 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0 -0.08275 0" />
+      <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.0483, L=0.0545, m=0.95
+           Iyy = m*r^2/2 = 0.95*0.002333/2 = 0.001108
+           Ixx = Izz = m*(3r^2+L^2)/12 = 0.95*0.009969/12 = 0.000789 -->
+      <origin rpy="0 0 0" xyz="0 -0.02725 0" />
       <mass value="0.95" />
       <inertia ixx="0.000789" ixy="0" ixz="0" iyy="0.001108" iyz="0" izz="0.000789" />
     </inertial>
   </link>
 
+  <joint name="knee_R_actuator_joint" type="fixed">
+    <!-- y offset = -l_{hip_R_Link}  -->
+    <origin rpy="0 0 0" xyz="0 -0.032 0" />
+    <parent link="hip_R_Link" />
+    <child link="knee_R_actuator_Link" />
+  </joint>
+
   <joint name="hip_R_fixed_joint" type="fixed">
-    <origin rpy="0 0.610865 0" xyz="0 -0.08275 0" />
+    <!-- y offset = l_{hip_R_Link} / 2 -->
+    <!-- z offset = R_{hip_R_Link} -->
+    <origin rpy="0 0 0" xyz="0 -0.016 -0.0483" />
     <parent link="hip_R_Link" />
     <child link="hip_R_thigh_Link" />
   </joint>
 
   <link name="hip_R_thigh_Link">
     <visual>
-      <origin rpy="1.57079632679 0 0" xyz="0 0.04325 0" />
-      <geometry>
-        <cylinder length="0.032" radius="0.0483" />
-      </geometry>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0.04325 -0.175" />
+       <!-- z offset is -length_{hip_R_thigh_Link} / 2 -->
+      <origin rpy="0 0 0" xyz="0 0  -0.125" />
       <geometry>
         <box size="0.05 0.032 0.25" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="1.57079632679 0 0" xyz="0 0.04325 0" />
-      <geometry>
-        <cylinder length="0.032" radius="0.0483" />
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0.04325 -0.175" />
+      <origin rpy="0 0 0" xyz="0 0 -0.125" />
       <geometry>
         <box size="0.05 0.032 0.25" />
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0.04325 -0.175" />
+      <!-- Box 0.05(x)*0.032(y)*0.25(z), m=1.5, CoM at box center
+           Ixx = m*(b^2+c^2)/12 = 1.5*(0.001024+0.062500)/12 = 0.007941
+           Iyy = m*(a^2+c^2)/12 = 1.5*(0.002500+0.062500)/12 = 0.008125
+           Izz = m*(a^2+b^2)/12 = 1.5*(0.002500+0.001024)/12 = 0.000441 -->
+      <origin rpy="0 0 0" xyz="0 0 -0.125" />
       <mass value="1.5" />
-      <inertia ixx="0.011378" ixy="0" ixz="0" iyy="0.011562" iyz="0" izz="0.000441" />
+      <inertia ixx="0.007941" ixy="0" ixz="0" iyy="0.008125" iyz="0" izz="0.000441" />
     </inertial>
   </link>
 
@@ -218,7 +253,8 @@
       hip_R_fixed_joint: (0,-0.08275,0) + knee_R_Joint: (-0.15000,0.10325,-0.25981) = (-0.15000,0.02050,-0.25981)
   -->
   <joint name="knee_R_Joint" type="revolute">
-    <origin rpy="0 -1.3090 0" xyz="0 0.04325 -0.35" />
+    <!-- z offset = l_{hip_R_thigh_Link} + 0.05 -->
+    <origin rpy="0 -1.3090 0" xyz="0 0 -0.3" />
     <parent link="hip_R_thigh_Link" />
     <child link="knee_R_Link" />
     <axis xyz="0 -1 0" />
@@ -228,6 +264,7 @@
 
   <link name="knee_R_Link">
     <visual>
+      <!-- z offset = -l_{knee_R_Link} / 2 -->
       <origin rpy="0 0 0" xyz="0 0 -0.15" />
       <geometry>
         <box size="0.025 0.032 0.3" />
@@ -252,7 +289,7 @@
   </link>
 
   <joint name="ankle_R_actuator_Joint" type="fixed">
-    <origin rpy="0 0.6982 0" xyz="0.018 0 -0.34" />
+    <origin rpy="0 0.6982 0" xyz="0.018 0 -0.35" />
     <parent link="knee_R_Link" />
     <child link="ankle_R_actuator_Link" />
   </joint>
@@ -271,12 +308,12 @@
       </geometry>
     </collision>
     <inertial>
-      <!-- Solid cylinder, axis along X (collision rpy="0 1.57 0"), r=0.03, L=0.0545, m=0.95
-           Ixx = m*r^2/2 = 0.95*0.0009/2 = 0.000428
-           Iyy = Izz = m*(3r^2+L^2)/12 = 0.95*(0.0027+0.002970)/12 = 0.000449 -->
+      <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.03, L=0.0545, m=0.95
+           Iyy = m*r^2/2 = 0.95*0.0009/2 = 0.000428
+           Ixx = Izz = m*(3r^2+L^2)/12 = 0.95*(0.0027+0.002970)/12 = 0.000449 -->
       <origin rpy="0 0 0" xyz="-0.02725 0 0" />
       <mass value="0.95" />
-      <inertia ixx="0.000428" ixy="0" ixz="0" iyy="0.000449" iyz="0" izz="0.000449" />
+      <inertia ixx="0.000449" ixy="0" ixz="0" iyy="0.000428" iyz="0" izz="0.000449" />
     </inertial>
   </link>
 
@@ -323,26 +360,26 @@
       => fixed_xyz = (0.11006, 0.10500, -0.26020)
   -->
   <joint name="abad_L_fixed_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.08865 0.0817 -0.1875" />
+    <origin rpy="0 0 0" xyz="0.06 0.0817 -0.1875" />
     <parent link="base_Link" />
     <child link="abad_L_actuator_Link" />
   </joint>
 
   <link name="abad_L_actuator_Link">
     <visual>
-      <origin rpy="0 1.57079632679 0" xyz="-0.02725 0 0" />
+      <origin rpy="0 1.57079632679 0" xyz="0.02725 0 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 1.57079632679 0" xyz="-0.02725 0 0" />
+      <origin rpy="0 1.57079632679 0" xyz="0.02725 0 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.02725 0 0" />
+      <origin rpy="0 0 0" xyz="0.02725 0 0" />
       <mass value="0.95" />
       <inertia ixx="0.001108" ixy="0" ixz="0" iyy="0.000789" iyz="0" izz="0.000789" />
     </inertial>
@@ -350,23 +387,25 @@
 
   <!-- Revolute joint at (-0.0545,0,0) relative to actuator; effective position from base_Link = (0.05556,0.105,-0.2602) -->
   <joint name="abad_L_Joint" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.0545 0 0" />
+    <!-- the origin x = -(0.2 + R_{abad_L_actuator_Link}) -->
+    <origin rpy="0 0 0" xyz="-0.0683 0 0" />
     <parent link="abad_L_actuator_Link" />
-    <child link="abad_L_Link" />
+    <child link="hip_L_actuator_Link" />
     <axis xyz="1 0 0" />
     <dynamics damping="0" friction="0" />
     <limit effort="80.0" lower="-0.38397" upper="1.39626" velocity="15.0" />
   </joint>
 
-  <link name="abad_L_Link">
+  <link name="hip_L_actuator_Link">
     <visual>
-      <origin rpy="1.57079632679 0 0" xyz="-0.0683 -0.035 0" />
+        <!-- the y offset here must be y = -(0.00775 + l / 2) -->
+      <origin rpy="1.57079632679 0 0" xyz="0 -0.035 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="1.57079632679 0 0" xyz="-0.0683 -0.035 0" />
+      <origin rpy="1.57079632679 0 0" xyz="0 -0.035 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
@@ -375,7 +414,7 @@
       <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.0483, L=0.0545, m=1.469
            Iyy = m*r^2/2 = 1.469*0.0483^2/2 = 0.001713
            Ixx = Izz = m*(3r^2+L^2)/12 = 1.469*(3*0.002333+0.002970)/12 = 0.001220 -->
-      <origin rpy="0 0 0" xyz="-0.0683 -0.035 0" />
+      <origin rpy="0 0 0" xyz="0 -0.035 0" />
       <mass value="1.469" />
       <inertia ixx="0.001220" ixy="0" ixz="0"
                iyy="0.001713" iyz="0" izz="0.001220" />
@@ -383,8 +422,8 @@
   </link>
 
   <joint name="hip_L_Joint" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.0683 -0.03050 0" />
-    <parent link="abad_L_Link" />
+    <origin rpy="0 0.610865 0" xyz="0 -0.00775 0" />
+    <parent link="hip_L_actuator_Link" />
     <child link="hip_L_Link" />
     <axis xyz="0 1 0" />
     <dynamics damping="0" friction="0" />
@@ -393,59 +432,85 @@
 
   <link name="hip_L_Link">
     <visual>
-      <origin rpy="1.57079632679 0 0" xyz="0 0.08275 0" />
+      <origin rpy="1.57079632679 0 0" xyz="0 0.016 0" />
+      <geometry>
+        <cylinder length="0.032" radius="0.0483" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="1.57079632679 0 0" xyz="0 0.016 0" />
+      <geometry>
+        <cylinder length="0.032" radius="0.0483" />
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.0483, L=0.032, m=0.5
+           Iyy = m*r^2/2 = 0.5*0.002333/2 = 0.000583
+           Ixx = Izz = m*(3r^2+L^2)/12 = 0.5*(3*0.002333+0.001024)/12 = 0.000334 -->
+      <origin rpy="0 0 0" xyz="0 0.016 0" />
+      <mass value="0.5" />
+      <inertia ixx="0.000334" ixy="0" ixz="0" iyy="0.000583" iyz="0" izz="0.000334" />
+    </inertial>
+  </link>
+
+  <link name="knee_L_actuator_Link">
+    <visual>
+       <!-- y offset = l_{knee_R_actuator_Link} / 2 -->
+      <origin rpy="1.57079632679 0 0" xyz="0 0.02725 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="1.57079632679 0 0" xyz="0 0.08275 0" />
+      <origin rpy="1.57079632679 0 0" xyz="0 0.02725 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.0483" />
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0.08275 0" />
+      <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.0483, L=0.0545, m=0.95
+           Iyy = m*r^2/2 = 0.95*0.002333/2 = 0.001108
+           Ixx = Izz = m*(3r^2+L^2)/12 = 0.95*0.009969/12 = 0.000789 -->
+      <origin rpy="0 0 0" xyz="0 0.02725 0" />
       <mass value="0.95" />
       <inertia ixx="0.000789" ixy="0" ixz="0" iyy="0.001108" iyz="0" izz="0.000789" />
     </inertial>
   </link>
 
+  <joint name="knee_L_actuator_joint" type="fixed">
+    <!-- y offset = l_{hip_L_link} -->
+    <origin rpy="0 0 0" xyz="0 0.032 0" />
+    <parent link="hip_L_Link" />
+    <child link="knee_L_actuator_Link" />
+  </joint>
+
   <joint name="hip_L_fixed_joint" type="fixed">
-    <origin rpy="0 0.610865 0" xyz="0 0.08275 0" />
+    <origin rpy="0 0 0" xyz="0 0.016 -0.0483" />
     <parent link="hip_L_Link" />
     <child link="hip_L_thigh_Link" />
   </joint>
 
   <link name="hip_L_thigh_Link">
     <visual>
-      <origin rpy="1.57079632679 0 0" xyz="0 -0.04325 0" />
-      <geometry>
-        <cylinder length="0.032" radius="0.0483" />
-      </geometry>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 -0.04325 -0.175" />
+      <origin rpy="0 0 0" xyz="0 0 -0.125" />
       <geometry>
         <box size="0.05 0.032 0.25" />
       </geometry>
     </visual>
     <collision>
-      <origin rpy="1.57079632679 0 0" xyz="0 -0.04325 0" />
-      <geometry>
-        <cylinder length="0.032" radius="0.0483" />
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 -0.04325 -0.175" />
+      <origin rpy="0 0 0" xyz="0 0 -0.125" />
       <geometry>
         <box size="0.05 0.032 0.25" />
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0 -0.04325 -0.175" />
+      <!-- Box 0.05(x)*0.032(y)*0.25(z), m=1.5, CoM at box center
+           Ixx = m*(b^2+c^2)/12 = 1.5*(0.001024+0.062500)/12 = 0.007941
+           Iyy = m*(a^2+c^2)/12 = 1.5*(0.002500+0.062500)/12 = 0.008125
+           Izz = m*(a^2+b^2)/12 = 1.5*(0.002500+0.001024)/12 = 0.000441 -->
+      <origin rpy="0 0 0" xyz="0 0 -0.125" />
       <mass value="1.5" />
-      <inertia ixx="0.011378" ixy="0" ixz="0" iyy="0.011562" iyz="0" izz="0.000441" />
+      <inertia ixx="0.007941" ixy="0" ixz="0" iyy="0.008125" iyz="0" izz="0.000441" />
     </inertial>
   </link>
 
@@ -455,7 +520,7 @@
       hip_L_fixed_joint: (0,0.08275,0) + knee_L_Joint: (-0.15000,-0.10325,-0.25981) = (-0.15000,-0.02050,-0.25981)
   -->
   <joint name="knee_L_Joint" type="revolute">
-    <origin rpy="0 -1.3090 0" xyz="0 -0.04325 -0.35" />
+    <origin rpy="0 -1.3090 0" xyz="0 0 -0.3" />
     <parent link="hip_L_thigh_Link" />
     <child link="knee_L_Link" />
     <axis xyz="0 -1 0" />
@@ -489,7 +554,7 @@
   </link>
   
   <joint name="ankle_L_actuator_Joint" type="fixed">
-    <origin rpy="0 0.6982 0" xyz="0.018 0 -0.34" />
+    <origin rpy="0 0.6982 0" xyz="0.018 0 -0.35" />
     <parent link="knee_L_Link" />
     <child link="ankle_L_actuator_Link" />
   </joint>
@@ -503,21 +568,21 @@
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 1.57079632679 0" xyz="-0.02725 0 0" />
+      <origin rpy="1.57079632679 0 0" xyz="-0.02725 0 0" />
       <geometry>
         <cylinder length="0.0545" radius="0.03" />
       </geometry>
     </collision>
     <inertial>
-      <!-- Solid cylinder, axis along X (collision rpy="0 1.57 0"), r=0.03, L=0.0545, m=0.95
-           Ixx = m*r^2/2 = 0.95*0.0009/2 = 0.000428
-           Iyy = Izz = m*(3r^2+L^2)/12 = 0.95*(0.0027+0.002970)/12 = 0.000449 -->
+      <!-- Solid cylinder, axis along Y (rpy="1.57 0 0"), r=0.03, L=0.0545, m=0.95
+           Iyy = m*r^2/2 = 0.95*0.0009/2 = 0.000428
+           Ixx = Izz = m*(3r^2+L^2)/12 = 0.95*(0.0027+0.002970)/12 = 0.000449 -->
       <origin rpy="0 0 0" xyz="-0.02725 0 0" />
       <mass value="0.95" />
-      <inertia ixx="0.000428" ixy="0" ixz="0" iyy="0.000449" iyz="0" izz="0.000449" />
+      <inertia ixx="0.000449" ixy="0" ixz="0" iyy="0.000428" iyz="0" izz="0.000449" />
     </inertial>
   </link>
-  
+
   <joint name="ankle_L_Joint" type="revolute">
     <origin rpy="0 0 0" xyz="-0.025 0 -0.025" />
     <parent link="ankle_L_actuator_Link" />
