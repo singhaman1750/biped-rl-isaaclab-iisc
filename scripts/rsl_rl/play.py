@@ -107,6 +107,7 @@ class DataLogger:
             "base_angular_velocity": [],
             "commanded_linear_velocity": [],
             "commanded_angular_velocity": [],
+            "latent_space_output": [],
         }
         self.num_envs = num_envs
         self.seed = seed
@@ -189,7 +190,12 @@ class DataLogger:
         self.data["commanded_angular_velocity"].append(
             env.command_manager.get_command("base_velocity")[:, 2].cpu()
         )
+        print(asset.data.joint_acc.cpu())
         self.data["joint_accelerations"].append(asset.data.joint_acc.cpu())
+
+    def log_latent(self, latent):
+        print(latent.cpu())
+        self.data["latent_space_output"].append(latent.cpu())
 
     def plot(self):
         data = {}
@@ -308,13 +314,20 @@ def main():
     i = 0
     while simulation_app.is_running():
         # run everything in inference mode
+        actions = None
+        latent = None
         with torch.inference_mode():
-            actions = policy(obs)
+            if policy_type == "HIMPPO":
+                actions, latent = policy(obs)
+            else:
+                actions = policy(obs)
             # env stepping
             obs, _, _, infos = env.step(actions)
 
             # log data
             data_logger.log(env.unwrapped, SceneEntityCfg("robot"))
+            if policy_type == "HIMPPO":
+                data_logger.log_latent(latent)
             i += 1
             if i > args_cli.video_length:
                 break

@@ -81,7 +81,7 @@ class PF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     encoder = EncoderCfg(
         output_detach=True,
         num_output_dim=19,
-        hidden_dims=[256, 128, 64, 16],
+        hidden_dims=[128, 64, 16],
         activation="elu",
         orthogonal_init=False,
     )
@@ -91,7 +91,7 @@ class PF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 15000
+    max_iterations = 30000
     save_interval = 500
     experiment_name = "sf_tron_1a_flat"
     empirical_normalization = False
@@ -120,7 +120,7 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     encoder = EncoderCfg(
         output_detach=True,
         num_output_dim=19,
-        hidden_dims=[256, 128, 64, 16],
+        hidden_dims=[128, 64, 16],
         activation="elu",
         orthogonal_init=False,
     )
@@ -165,8 +165,8 @@ class WF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
     encoder = EncoderCfg(
         output_detach=True,
-        num_output_dim=3,
-        hidden_dims=[256, 128],
+        num_output_dim=19,
+        hidden_dims=[128, 64, 16],
         activation="elu",
         orthogonal_init=False,
     )

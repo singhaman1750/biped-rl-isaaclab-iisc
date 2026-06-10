@@ -332,11 +332,11 @@ class ObservationsCfg:
                 "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
             },
         )
-        # heights = ObsTerm(
-        #     func=mdp.height_scan,
-        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        #     clip=(-1.0, 1.0),
-        # )
+        heights = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            clip=(-1.0, 1.0),
+        )
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -466,9 +466,59 @@ class HIMObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
-            self.history_length = 25
+            self.history_length = 10
             # Required by HIMActorCritic
             self.flatten_history_dim = False
+
+
+    @configclass
+    class TargetEncCfg(ObsGroup):
+        """Observation for critic group"""
+
+        # robot base measurements
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        proj_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        # robot joint measurements
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        # last action
+        last_action = ObsTerm(
+            func=mdp.last_action,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
 
     @configclass
     class CriticCfg(ObsGroup):
@@ -544,7 +594,7 @@ class HIMObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-            self.history_length = 25
+            self.history_length = 10
             self.flatten_history_dim = True
 
     @configclass
@@ -570,6 +620,7 @@ class HIMObservationsCfg:
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
     estimatorGT: EstimatorGTCfg = EstimatorGTCfg()
+    targetEnc: TargetEncCfg = TargetEncCfg()
 
 
 @configclass
@@ -592,7 +643,7 @@ class EventsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base_Link"),
             # Converted from add(-5.0, 5.0) on baseline 9.585 kg → ±52.2% symmetric scale
-            "mass_distribution_params": (0.478, 1.522),
+            "mass_distribution_params": (0.85, 1.25),
             "operation": "scale",
         },
     )
@@ -782,7 +833,7 @@ class RewardsCfg:
     rew_ang_vel_z = RewTerm(
         func=mdp.track_ang_vel_z_exp,
         weight=7.5,
-        params={"command_name": "base_velocity", "std": math.sqrt(0.09)},
+        params={"command_name": "base_velocity", "std": math.sqrt(0.16)},
     )
     rew_keep_ankle_pitch_zero_in_air = RewTerm(
         func=mdp.keep_ankle_pitch_zero_in_air,
@@ -928,8 +979,10 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 200 * 24,
-            "starting_step": 1500 * 24,
+            "interval": 400 * 24,
+            "starting_step": 2000 * 24,
+            "increment_rate": 1.225,
+            "decrement_rate" : 0.2
         },
     )
 
@@ -938,9 +991,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 200 * 24,
-            "starting_step": 2500 * 24,
-            "update_rate": 0.04,
+            "interval": 300 * 24,
+            "starting_step": 6000 * 24,
+            "update_rate": 0.03,
             "update_threshold": 0.6,
         }
     )
@@ -950,22 +1003,22 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1, 1),
-            "interval": 200 * 24,
-            "starting_step": 2500 * 24,
-            "update_rate": 0.04,
-            "update_threshold": 0.25,
+            "interval": 300 * 24,
+            "starting_step": 6000 * 24,
+            "update_rate": 0.03,
+            "update_threshold": 0.4,
         }
     )
-    
+
     modify_command_velocity_ang_z = CurrTerm(
         func=mdp.modify_command_velocity_angular,
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
-            "interval": 200 * 24,
-            "starting_step": 2500 * 24,
-            "update_rate": 0.04,
-            "update_threshold": 0.25,
+            "interval": 250 * 24,
+            "starting_step": 6000 * 24,
+            "update_rate": 0.03,
+            "update_threshold": 0.4,
         }
     )
 

@@ -48,7 +48,7 @@ class HIMEstimator(nn.Module):
         self.encoder = nn.Sequential(*enc_layers)
 
         # Target
-        tar_input_dim = self.num_one_step_obs
+        tar_input_dim = self.num_one_step_obs + 3
         tar_layers = []
         for l in range(len(tar_hidden_dims)):
             tar_layers += [nn.Linear(tar_input_dim, tar_hidden_dims[l]), activation]
@@ -82,17 +82,18 @@ class HIMEstimator(nn.Module):
         return vel, z
 
     def update(self, obs, next_obs, lr=None):
+        # Refer to HIM.md for more information regarding mathematics
         obs_history = torch.flatten(
             self.actor_obs_normalizer(obs["obsHistory"]), start_dim=1
         )
-        next_obs_enc = self.actor_obs_normalizer(next_obs["policy"])
+        next_obs_enc = self.actor_obs_normalizer(next_obs["targetEnc"])
         if lr is not None:
             self.learning_rate = lr
             for param_group in self.optimizer.param_groups:
                 param_group["lr"] = self.learning_rate
 
         # There must be a estimatorGT key in obs, which is to be added in the configuration for the agent and the learning algorithm
-        vel = obs["estimatorGT"].detach()
+        vel = next_obs["estimatorGT"].detach()
 
         z_s = self.encoder(obs_history)
         z_t = self.target(next_obs_enc)

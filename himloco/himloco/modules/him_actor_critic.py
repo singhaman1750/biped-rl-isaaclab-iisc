@@ -108,7 +108,7 @@ class HIMActorCritic(ActorCritic):
         print(f"Estimator: {self.estimator.encoder}")
 
         # Action noise
-        self.std = nn.Parameter(init_noise_std * torch.ones(num_actions))
+        self.log_std = nn.Parameter(torch.log(init_noise_std * torch.ones(num_actions)))
         self.distribution = None
         # disable args validation for speedup
         Normal.set_default_validate_args = False
@@ -155,7 +155,8 @@ class HIMActorCritic(ActorCritic):
             vel, latent = self.estimator(obs_history)
         actor_input = torch.cat((actor_obs, vel, latent), dim=-1)
         mean = self.actor(actor_input)
-        self.distribution = Normal(mean, mean * 0.0 + self.std)
+        std = torch.exp(self.log_std)
+        self.distribution = Normal(mean, std)
 
     def act(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
         self._update_distribution(obs)
@@ -172,4 +173,4 @@ class HIMActorCritic(ActorCritic):
         )
         vel, latent = self.estimator(obs_history)
         actions_mean = self.actor(torch.cat((actor_obs, vel, latent), dim=-1))
-        return actions_mean
+        return actions_mean, latent

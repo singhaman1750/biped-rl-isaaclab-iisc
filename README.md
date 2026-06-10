@@ -44,14 +44,40 @@ Running an example training to see if everything works:
 The training should create `logs/rsl_rl/anymal_c_rough/<timestamp>` in IsaacLab folder. And the `.pt` file can be found under that directory.
 
 ### bipedal_locomotion
-Running `train.py` script requires `bidepal_locomotion` package.
+Running `train.py` script requires `exts/bidepal_locomotion`, `co_optimisation` and `himloco` packages.
 ```zsh
-cd exts
-pip install -e bipedal_locomotion
+pip install -e exts/bipedal_locomotion co_optimisation himloco
 ```
 
 ## Running train.py
 Go to your Isaac Lab root directory, then run:
 ```zsh
 ./isaaclab.sh -p path/to/tron1-rl-isaaclab-cozum/scripts/rsl_rl/train.py --task=Isaac-Limx-WF-Blind-Flat-v0 --headless
+```
+
+### Anaconda Setup
+Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) by downloading and running the installer for Linux:
+```zsh
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+```
+Follow the prompts and restart your shell (or run `source ~/.bashrc`) to activate the base conda environment.
+
+Create and activate a conda environment with Python 3.11:
+```zsh
+conda create -n limx_env python=3.11
+conda activate limx_env
+pip install --upgrade pip
+```
+Do not forget to activate the environment in every new shell session:
+```zsh
+conda activate limx_env
+```
+After activating the environment, proceed with the Isaac Sim, Isaac Lab, `bipedal_locomotion`, and RSL-RL installation steps as described above and below.
+
+### RSL-RL Package Installation
+This repository includes a custom fork of `rsl_rl` with Hybrid Internal Model (HIM) support, as well as the `himloco` package. Install both as editable packages from the repository root:
+```zsh
+pip install rsl-rl-lib==3.1.0
+pip install -e himloco
 ```

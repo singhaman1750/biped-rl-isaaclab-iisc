@@ -114,7 +114,11 @@ class HIMPPO(PPO):
         dones: torch.Tensor,
         extras: dict[str, torch.Tensor],
     ) -> None:
-        self.transition.next_observations = obs
+        if "terminal_obs" in extras:
+            self.transition.next_observations = extras["terminal_obs"]
+        else:
+            self.transition.next_observations = obs
+
         super().process_env_step(obs, rewards, dones, extras)
 
     def update(self) -> dict[str, float]:
@@ -136,6 +140,8 @@ class HIMPPO(PPO):
         )
 
         # Iterate over batches
+        estimator_data = []
+        estimator_learning_rate = self.learning_rate
         for (
             obs_batch,
             next_obs_batch,
@@ -235,9 +241,7 @@ class HIMPPO(PPO):
                         param_group["lr"] = self.learning_rate
 
             # Estimator Update
-            estimation_loss, swap_loss = self.policy.estimator.update(
-                obs_batch, next_obs_batch, lr=self.learning_rate
-            )
+            estimator_data.append([obs_batch, next_obs_batch])
 
             # Surrogate loss
             ratio = torch.exp(
@@ -279,7 +283,7 @@ class HIMPPO(PPO):
                     num_aug = int(obs_batch.shape[0] / original_batch_size)
 
                 # Actions predicted by the actor for symmetrically-augmented observations
-                mean_actions_batch = self.policy.act_inference(
+                mean_actions_batch, _ = self.policy.act_inference(
                     obs_batch.detach().clone()
                 )
 
@@ -344,14 +348,20 @@ class HIMPPO(PPO):
             mean_value_loss += value_loss.item()
             mean_surrogate_loss += surrogate_loss.item()
             mean_entropy += entropy_batch.mean().item()
-            mean_estimation_loss += estimation_loss
-            mean_swap_loss += swap_loss
+
             # RND loss
             if mean_rnd_loss is not None:
                 mean_rnd_loss += rnd_loss.item()
             # Symmetry loss
             if mean_symmetry_loss is not None:
                 mean_symmetry_loss += symmetry_loss.item()
+
+        for [obs_batch, next_obs_batch] in estimator_data:
+            estimation_loss, swap_loss = self.policy.estimator.update(
+                obs_batch, next_obs_batch, lr=estimator_learning_rate
+            )
+            mean_estimation_loss += estimation_loss
+            mean_swap_loss += swap_loss
 
         # Divide the losses by the number of updates
         num_updates = self.num_learning_epochs * self.num_mini_batches
@@ -374,7 +384,7 @@ class HIMPPO(PPO):
             "surrogate": mean_surrogate_loss,
             "entropy": mean_entropy,
             "estimattion_loss": mean_estimation_loss,
-            "swap_loss": mean_swap_loss
+            "swap_loss": mean_swap_loss,
         }
         if self.rnd:
             loss_dict["rnd"] = mean_rnd_loss
