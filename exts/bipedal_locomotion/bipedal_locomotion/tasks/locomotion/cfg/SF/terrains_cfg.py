@@ -205,8 +205,8 @@ STAIRS_TERRAINS_PLAY_CFG = TerrainGeneratorCfg(
 BERKELEY_MIMIC_TERRAINS_CFG = TerrainGeneratorCfg(
     size=(8.0, 8.0),
     border_width=20.0,
-    num_rows=16,
-    num_cols=16,  # Wider grid for more variety
+    num_rows=10,
+    num_cols=20,  # Wider grid for more variety
     horizontal_scale=0.1,
     vertical_scale=0.005,
     slope_threshold=0.75,
@@ -215,23 +215,41 @@ BERKELEY_MIMIC_TERRAINS_CFG = TerrainGeneratorCfg(
     sub_terrains={
         "flat": MeshPlaneTerrainCfg(proportion=0.3),
         "hf_pyramid_slope": HfPyramidSlopedTerrainCfg(
-            proportion=0.1, slope_range=(0.05, 0.15), platform_width=2.0
+            proportion=0.1,
+            slope_range=(0.00, 0.25),
+            platform_width=2.0,
+            border_width=0.25,
         ),
         "hf_pyramid_slope_inv": HfInvertedPyramidSlopedTerrainCfg(
-            proportion=0.1, slope_range=(0.05, 0.15), platform_width=2.0
+            proportion=0.1,
+            slope_range=(0.00, 0.25),
+            platform_width=2.0,
+            border_width=0.25,
         ),
         "pyramid_stairs": MeshPyramidStairsTerrainCfg(
-            proportion=0.1,
-            step_height_range=(0.05, 0.1),
+            proportion=0.05,
+            step_height_range=(0.00, 0.1),
             step_width=0.3,
             platform_width=3.0,
+            border_width=1.0,
+            holes=False,
+        ),
+        "pyramid_stairs_inv": MeshInvertedPyramidStairsTerrainCfg(
+            proportion=0.05,
+            step_height_range=(0.0, 0.1),
+            step_width=0.3,
+            platform_width=3.0,
+            border_width=1.0,
             holes=False,
         ),
         "waves": HfWaveTerrainCfg(
-            proportion=0.2, amplitude_range=(0.01, 0.06), num_waves=10
+            proportion=0.2, amplitude_range=(0.00, 0.2), num_waves=4, border_width=0.25
         ),
         "random_rough": HfRandomUniformTerrainCfg(
-            proportion=0.2000000, noise_range=(0.01, 0.06), noise_step=0.01
+            proportion=0.2000000,
+            noise_range=(0.00, 0.06),
+            noise_step=0.02,
+            border_width=0.25,
         ),
     },
     curriculum=True,

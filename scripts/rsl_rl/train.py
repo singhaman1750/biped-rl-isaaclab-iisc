@@ -79,6 +79,7 @@ import os
 import torch
 from datetime import datetime
 
+from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -93,6 +94,8 @@ from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
 # Import extensions to set up environment tasks
 from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
+from co_optimisation.runners import CoptOnPolicyRunner
+from co_optimisation.runners.usd_generator import RandomDesignGenerator
 from himloco.runners import HIMOnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -157,6 +160,9 @@ def main():
 
     # wrap for video recording
     if args_cli.video:
+        # track lowest-difficulty terrain env before each captured frame
+        env = HighestTerrainCameraWrapper(env)
+
         video_kwargs = {
             "video_folder": os.path.join(log_dir, "videos", "train"),
             "step_trigger": lambda step: step % args_cli.video_interval == 0,
@@ -176,10 +182,34 @@ def main():
         runner_cls = HIMOnPolicyRunner
         agent_cfg.policy.class_name = "HIMActorCritic"
         agent_cfg.algorithm.class_name = "HIMPPO"
+    runner = None
+    if args_cli.policy_type == "COPT":
 
-    runner = runner_cls(
-        env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device
-    )
+        _base_urdf = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+        )
+        _num_individuals = 64
+        design_generator = RandomDesignGenerator(
+            base_urdf_path=_base_urdf,
+            num_individuals=_num_individuals,
+        )
+        agent_cfg_dict = agent_cfg.to_dict()
+        agent_cfg_dict["copt"] = {
+            "ea_update_interval": 1000,
+            "num_individuals": _num_individuals,
+        }
+        runner = CoptOnPolicyRunner(
+            env,
+            design_generator,
+            agent_cfg_dict,
+            log_dir=log_dir,
+            device=agent_cfg.device,
+        )
+    else:
+        runner = runner_cls(
+            env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device
+        )
 
     # write git state to logs
     # runner.add_git_repo_to_log(__file__)

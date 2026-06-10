@@ -8,14 +8,16 @@ from isaaclab.assets import Articulation, RigidObject
 from isaaclab.envs import ManagerBasedEnv
 from isaaclab.managers import SceneEntityCfg
 
+
 def prepare_quantity_for_tron(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    foot_radius = 0.127,
+    foot_radius=0.127,
 ):
     asset: Articulation = env.scene[asset_cfg.name]
     env._foot_radius = foot_radius
+
 
 def apply_external_force_torque_stochastic(
     env: ManagerBasedEnv,
@@ -46,20 +48,31 @@ def apply_external_force_torque_stochastic(
         return
 
     # resolve number of bodies
-    num_bodies = len(asset_cfg.body_ids) if isinstance(asset_cfg.body_ids, list) else asset.num_bodies
+    num_bodies = (
+        len(asset_cfg.body_ids)
+        if isinstance(asset_cfg.body_ids, list)
+        else asset.num_bodies
+    )
 
     # sample random forces and torques
     size = (len(masked_env_ids), num_bodies, 3)
     force_range_list = [force_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z"]]
     force_range = torch.tensor(force_range_list, device=asset.device)
-    forces = math_utils.sample_uniform(force_range[:, 0], force_range[:, 1], size, asset.device)
+    forces = math_utils.sample_uniform(
+        force_range[:, 0], force_range[:, 1], size, asset.device
+    )
     torque_range_list = [torque_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z"]]
     torque_range = torch.tensor(torque_range_list, device=asset.device)
-    torques = math_utils.sample_uniform(torque_range[:, 0], torque_range[:, 1], size, asset.device)
+    torques = math_utils.sample_uniform(
+        torque_range[:, 0], torque_range[:, 1], size, asset.device
+    )
     # set the forces and torques into the buffers
     # note: these are only applied when you call: `asset.write_data_to_sim()`
     asset.instantaneous_wrench_composer.add_forces_and_torques(
-        forces=forces, torques=torques, env_ids=masked_env_ids, body_ids=asset_cfg.body_ids
+        forces=forces,
+        torques=torques,
+        env_ids=masked_env_ids,
+        body_ids=asset_cfg.body_ids,
     )
 
 
@@ -100,7 +113,12 @@ def randomize_rigid_body_mass_inertia(
     masses = asset.root_physx_view.get_masses().clone()
 
     masses = _randomize_prop_by_op(
-        masses, mass_inertia_distribution_params, env_ids, body_ids, operation=operation, distribution=distribution
+        masses,
+        mass_inertia_distribution_params,
+        env_ids,
+        body_ids,
+        operation=operation,
+        distribution=distribution,
     )
     scale = masses / asset.root_physx_view.get_masses()
     inertias *= scale.unsqueeze(-1)
@@ -113,7 +131,9 @@ def randomize_rigid_body_coms(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,
     asset_cfg: SceneEntityCfg,
-    com_distribution_params: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
+    com_distribution_params: tuple[
+        tuple[float, float], tuple[float, float], tuple[float, float]
+    ],
     operation: Literal["add", "scale", "abs"],
     distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
 ):
@@ -206,11 +226,17 @@ def _randomize_prop_by_op(
         )
     # perform the operation
     if operation == "add":
-        data[dim_0_ids, dim_1_ids] += dist_fn(*distribution_parameters, (n_dim_0, n_dim_1), device=data.device)
+        data[dim_0_ids, dim_1_ids] += dist_fn(
+            *distribution_parameters, (n_dim_0, n_dim_1), device=data.device
+        )
     elif operation == "scale":
-        data[dim_0_ids, dim_1_ids] *= dist_fn(*distribution_parameters, (n_dim_0, n_dim_1), device=data.device)
+        data[dim_0_ids, dim_1_ids] *= dist_fn(
+            *distribution_parameters, (n_dim_0, n_dim_1), device=data.device
+        )
     elif operation == "abs":
-        data[dim_0_ids, dim_1_ids] = dist_fn(*distribution_parameters, (n_dim_0, n_dim_1), device=data.device)
+        data[dim_0_ids, dim_1_ids] = dist_fn(
+            *distribution_parameters, (n_dim_0, n_dim_1), device=data.device
+        )
     else:
         raise NotImplementedError(
             f"Unknown operation: '{operation}' for property randomization. Please use 'add', 'scale', or 'abs'."
@@ -240,12 +266,19 @@ def randomize_joint_default_pos(
     if asset_cfg.joint_ids == slice(None):
         joint_ids = slice(None)  # for optimization purposes
     else:
-        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device=asset.device)
+        joint_ids = torch.tensor(
+            asset_cfg.joint_ids, dtype=torch.int, device=asset.device
+        )
 
     if pos_distribution_params is not None:
         pos = asset.data.default_joint_pos.to(asset.device).clone()
         pos = _randomize_prop_by_op(
-            pos, pos_distribution_params, env_ids, joint_ids, operation=operation, distribution=distribution
+            pos,
+            pos_distribution_params,
+            env_ids,
+            joint_ids,
+            operation=operation,
+            distribution=distribution,
         )[env_ids][:, joint_ids]
 
         if env_ids != slice(None) and joint_ids != slice(None):
@@ -275,13 +308,17 @@ def randomize_joint_friction_model(
     if asset_cfg.joint_ids == slice(None):
         joint_ids = slice(None)  # for optimization purposes
     else:
-        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device=asset.device)
+        joint_ids = torch.tensor(
+            asset_cfg.joint_ids, dtype=torch.int, device=asset.device
+        )
 
     # sample joint properties from the given ranges and set into the physics simulation
     # -- friction
     if friction_distribution_params is not None:
         for actuator in asset.actuators.values():
-            actuator_joint_ids = [joint_id in joint_ids for joint_id in actuator.joint_indices]
+            actuator_joint_ids = [
+                joint_id in joint_ids for joint_id in actuator.joint_indices
+            ]
             if sum(actuator_joint_ids) > 0:
                 friction = actuator.friction.to(asset.device).clone()
                 friction = _randomize_prop_by_op(
@@ -292,7 +329,9 @@ def randomize_joint_friction_model(
                     operation=operation,
                     distribution=distribution,
                 )
-                actuator.friction[env_ids[:, None], actuator_joint_ids] = friction[:, actuator_joint_ids]
+                actuator.friction[env_ids[:, None], actuator_joint_ids] = friction[
+                    :, actuator_joint_ids
+                ]
 
                 friction = actuator.dynamic_friction.to(asset.device).clone()
                 friction = _randomize_prop_by_op(
@@ -303,4 +342,6 @@ def randomize_joint_friction_model(
                     operation=operation,
                     distribution=distribution,
                 )
-                actuator.dynamic_friction[env_ids[:, None], actuator_joint_ids] = friction[:, actuator_joint_ids]
+                actuator.dynamic_friction[env_ids[:, None], actuator_joint_ids] = (
+                    friction[:, actuator_joint_ids]
+                )

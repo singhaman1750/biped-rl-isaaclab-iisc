@@ -1,2 +1,2 @@
-from .solefoot_cfg import SOLEFOOT_CFG
-from .solefoot_identified_cfg import SOLEFOOT_IDENTIFIED_CFG
+from .solefoot_cfg import SOLEFOOT_CFG, SOLEFOOT_CFG_URDF
+from .solefoot_identified_cfg import SOLEFOOT_IDENTIFIED_CFG, SOLEFOOT_IDENTIFIED_CFG_URDF

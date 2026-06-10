@@ -91,7 +91,7 @@ class PF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 30000
+    max_iterations = 15000
     save_interval = 500
     experiment_name = "sf_tron_1a_flat"
     empirical_normalization = False
@@ -106,7 +106,7 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.01,
+        entropy_coef=0.005,
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,
@@ -124,6 +124,13 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         activation="elu",
         orthogonal_init=False,
     )
+
+
+# -----------------------------------------------------------------
+@configclass
+class SFCoptPPORunnerCfg(SF_TRON1AFlatPPORunnerCfg):
+    experiment_name: str = "sf_copt"
+    max_iterations: int = 15000
 
 
 # -----------------------------------------------------------------
@@ -169,7 +176,7 @@ class WF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SF_Berkeley_PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 30000
+    max_iterations = 15000
     save_interval = 500
     experiment_name = "sf_tron_berkeley_mimic"
     empirical_normalization = False

@@ -61,7 +61,7 @@ def add_rsl_rl_args(parser: argparse.ArgumentParser):
         "--policy-type",
         type=str,
         default="PPO",
-        help="Type of the policy to use. Can be one of PPO or HIMPPO",
+        help="Type of the policy to use. Can be one of PPO, HIMPPO, or COPT",
     )
 
 
