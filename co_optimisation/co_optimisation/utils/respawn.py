@@ -83,12 +83,12 @@ class respawn_robots:
             self.activate_contact_sensors = scene.articulations[
                 "robot"
             ].cfg.spawn.activate_contact_sensors
-        for env_idx in range(num_envs):
-            prim_path = scene.articulations["robot"].cfg.prim_path.format(
-                env_id=env_idx
-            )
+        for prim_path_pre in scene.env_prim_paths:
+            # prim_path = scene.articulations["robot"].cfg.prim_path.format(
+            #     env_id=env_idx
+            # )
+            prim_path = f"{prim_path_pre}/Robot"
             if prim_path not in deleted:
-                print("Deleting Prim Path: ", prim_path)
                 sim_utils.delete_prim(prim_path)
                 deleted.append(prim_path)
 
