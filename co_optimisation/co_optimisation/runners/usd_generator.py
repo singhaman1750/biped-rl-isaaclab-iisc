@@ -60,11 +60,14 @@ asymmetric abs ranges are resolved by taking the smaller half (tightest constrai
 
 from __future__ import annotations
 
+import math
 import numpy as np
 import os
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
+from pathlib import Path
 
+import cma
 from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg
 
 from bipedal_locomotion.assets.config.solefoot_identified_cfg import (
@@ -150,6 +153,85 @@ DEFAULT_PARAM_RANGES: dict[str, tuple[float, float]] = {
 
 
 # ---------------------------------------------------------------------------
+# Length-scalable links (used by CMAESDesignGenerator)
+# ---------------------------------------------------------------------------
+
+# Constant geometric offset between a scaled link's bottom edge and its
+# child joint's local z (see base_robot.urdf line 256 — comment "+ 0.5" is
+# a typo for "+ 0.05"; numerically -0.3 = -(0.25 + 0.05) confirms 0.05).
+SCALABLE_LINK_CHILD_OFFSET: float = 0.05
+
+# The single child joint whose origin z depends on each scalable link's length.
+# This is a structural relationship that doesn't change across URDF edits.
+SCALABLE_LINK_CHILD_JOINTS: dict[str, str] = {
+    "hip_R_thigh_Link": "knee_R_Joint",
+    "hip_L_thigh_Link": "knee_L_Joint",
+    "knee_R_Link":      "ankle_R_actuator_Joint",
+    "knee_L_Link":      "ankle_L_actuator_Joint",
+}
+
+
+def _parse_scalable_links_from_urdf(
+    urdf_path: str,
+) -> tuple[dict[str, dict], dict[str, float]]:
+    """Parse box size and mass for each scalable link from the base URDF.
+
+    Returns:
+        scalable_links: dict mapping link name to {"size": (x,y,z), "mass": m,
+                        "child_joint": joint_name}.
+        link_densities: dict mapping link name to density (kg/m³).
+    """
+    tree = ET.parse(urdf_path)
+    root = tree.getroot()
+
+    scalable_links: dict[str, dict] = {}
+    for link_name, child_joint in SCALABLE_LINK_CHILD_JOINTS.items():
+        link_el = None
+        for link in root.iter("link"):
+            if link.get("name") == link_name:
+                link_el = link
+                break
+        if link_el is None:
+            raise ValueError(
+                f"Scalable link {link_name!r} not found in {urdf_path}"
+            )
+
+        # Read box size from <visual>/<geometry>/<box>
+        box = link_el.find("visual/geometry/box")
+        if box is None:
+            raise ValueError(
+                f"Link {link_name!r} has no <visual>/<geometry>/<box> in {urdf_path}"
+            )
+        sx, sy, sz = (float(v) for v in box.get("size").split())
+
+        # Read mass from <inertial>/<mass>
+        mass_el = link_el.find("inertial/mass")
+        if mass_el is None:
+            raise ValueError(
+                f"Link {link_name!r} has no <inertial>/<mass> in {urdf_path}"
+            )
+        mass = float(mass_el.get("value"))
+
+        scalable_links[link_name] = {
+            "size": (sx, sy, sz),
+            "mass": mass,
+            "child_joint": child_joint,
+        }
+
+    link_densities = {
+        name: meta["mass"] / (meta["size"][0] * meta["size"][1] * meta["size"][2])
+        for name, meta in scalable_links.items()
+    }
+    return scalable_links, link_densities
+
+# CMA-ES restricts its search to the two length scales it actually drives.
+CMAES_PARAM_RANGES: dict[str, tuple[float, float]] = {
+    "thigh_length_scale": DEFAULT_PARAM_RANGES["thigh_length_scale"],
+    "shank_length_scale": DEFAULT_PARAM_RANGES["shank_length_scale"],
+}
+
+
+# ---------------------------------------------------------------------------
 # Abstract interfaces
 # ---------------------------------------------------------------------------
 
@@ -194,7 +276,7 @@ class DesignGeneratorBase(ABC):
         """Generate a new population for *generation*."""
         ...
 
-    def update_with_fitness(self, population: Population, fitness: list[float]) -> None:
+    def update_with_fitness(self, fitness: list[float]) -> None:
         """Optionally update internal state using per-individual fitness scores.
 
         The default implementation is a no-op (random search).  Override this
@@ -205,6 +287,9 @@ class DesignGeneratorBase(ABC):
             fitness: Mean episode return for each individual, indexed by
                 individual index (not env index).
         """
+        pass
+
+    def sample_batch() -> None:
         pass
 
 
@@ -297,6 +382,9 @@ class RandomDesignGenerator(DesignGeneratorBase):
         # Deterministic per (generation, individual) pair
         rng = np.random.default_rng(seed=generation * 10000 + idx)
         scales = self._sample_scales(rng)
+        print('generating individual with the following scales')
+        for key, item in scales.enumerate():
+            print(f'{key}: {item}')
 
         # ---- Parse template URDF ----------------------------------------
         tree = ET.parse(self.base_urdf_path)
@@ -416,3 +504,318 @@ class RandomDesignGenerator(DesignGeneratorBase):
         )
         converter = UrdfConverter(cfg)
         return converter.usd_path
+
+class CMAESDesignGenerator(RandomDesignGenerator):
+    """Generates robot designs by sampling from a CMA-ES search distribution.
+
+    The design vector is the unit-hypercube encoding of the scale-factor
+    dictionary used by :class:`RandomDesignGenerator`; CMA-ES adapts the
+    multivariate Gaussian search distribution from the per-individual
+    mean episode return reported by :class:`CoptOnPolicyRunner`.
+    """
+
+    def __init__(
+        self,
+        base_urdf_path: str,
+        num_individuals: int,
+        param_ranges: dict[str, tuple[float, float]] | None = None,
+        output_dir: str = "/tmp/copt_usds",
+        sigma0: float = 0.2,
+        seed: int = 0,
+        es_state_path: str | None = None,
+        late_start: bool = False
+    ) -> None:
+        super().__init__(
+            base_urdf_path=base_urdf_path,
+            num_individuals=num_individuals,
+            param_ranges=param_ranges,
+            output_dir=output_dir,
+        )
+        # Restrict CMA-ES to only the length scales this generator drives.
+        # Caller-supplied param_ranges may tune the bounds of these two keys
+        # but cannot add new dimensions (any extras would be inert).
+        self.param_ranges = {**CMAES_PARAM_RANGES}
+        if param_ranges is not None:
+            for key, rng in param_ranges.items():
+                if key in self.param_ranges:
+                    self.param_ranges[key] = rng
+
+        self.param_keys: list[str] = list(self.param_ranges.keys())
+        self.num_params: int = len(self.param_keys)
+        self._sigma0: float = float(sigma0)
+        self._seed: int = int(seed)
+        self.late_start = late_start
+
+        if es_state_path is not None:
+            with open(es_state_path, "rb") as fh:
+                self._es = cma.CMAEvolutionStrategy.pickle_loads(fh.read())
+            assert self._es.N == self.num_params, (
+                f"Checkpoint dimension mismatch: "
+                f"pickled {self._es.N}, expected {self.num_params}"
+            )
+        else:
+            opts = cma.CMAOptions()
+            opts.set({
+                "popsize": int(num_individuals),
+                "bounds": [np.zeros(self.num_params), np.ones(self.num_params)],
+                "seed": self._seed,
+                "verb_disp": 1,
+                "verb_filenameprefix": str(Path(output_dir) / "cma_log") + "/",
+            })
+            self._es = cma.CMAEvolutionStrategy(
+                np.full(self.num_params, 1.0), self._sigma0, opts
+            )
+
+        self._pending_solutions: list[np.ndarray] | None = None
+        self._last_solutions: list[np.ndarray] | None = None
+        self._terminated = False
+
+        # Parse box sizes and masses from the base URDF so they always mirror
+        # the actual URDF values rather than relying on hardcoded constants.
+        self.scalable_links, self.link_densities = (
+            _parse_scalable_links_from_urdf(base_urdf_path)
+        )
+
+        # Holds the parsed URDF root for the duration of one _generate_individual call.
+        self._current_root: ET.Element | None = None
+
+    # --- Public API ---------------------------------------------------
+
+    def toggle_late_start(self) -> None:
+        self.late_start = not self.late_start
+
+    def sample_batch(self) -> None:
+        assert self._pending_solutions is None, "sample_batch called twice consecutively"
+        self._pending_solutions = self._es.ask()
+
+    def update_with_fitness(
+        self, fitness: list[float]
+    ) -> None:
+        assert self._last_solutions is not None, (
+            "update_with_fitness called before generate_population"
+        )
+        if not self._terminated:
+            print("Updating Designs with PPO Training Roll")
+            costs = [self._sanitise_cost(-float(f)) for f in fitness]
+            self._es.tell(self._last_solutions, costs)
+            if self._es.stop():
+                print(f"[CMA-ES] terminated: {self._es.stop()}")
+                self._terminated = True
+            self.sample_batch()
+
+    def generate_population(self, generation: int) -> Population:
+        if not self._terminated:
+            print("Generating New Designs using CMAES output")
+            assert self._pending_solutions is not None, (
+                "generate_population called before sample_batch"
+            )
+            usd_files: list[str] = []
+            actuator_params: list[dict[str, dict]] = []
+            print('generating individual with the following scales')
+            for idx, _ in enumerate(self._pending_solutions):
+                usd_path, act_params = self._generate_individual(generation, idx)
+                usd_files.append(usd_path)
+                actuator_params.append(act_params)
+            self._last_solutions = self._pending_solutions
+            self._pending_solutions = None
+            return RandomPopulation(usd_files, actuator_params)
+
+    # --- Internal helpers --------------------------------------------
+
+    def _denormalise(self, x: np.ndarray) -> dict[str, float]:
+        scales: dict[str, float] = {}
+        for i, key in enumerate(self.param_keys):
+            lo, hi = self.param_ranges[key]
+            xi = float(np.clip(x[i], 0.0, 1.0))
+            scales[key] = float(lo + xi * (hi - lo))
+        return scales
+
+    @staticmethod
+    def _sanitise_cost(c: float, fallback: float = 1e6) -> float:
+        if not np.isfinite(c):
+            return fallback
+        return c
+
+    def save_state(self, path: str) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(self._es.pickle_dumps())
+
+    def _sample_scales(self, rng: np.random.Generator) -> dict[str, float]:
+        return super()._sample_scales(rng)
+
+    def _generate_individual(
+        self, generation: int, idx: int
+    ) -> tuple[str, dict[str, dict]]:
+        """Build one length-scaled URDF + USD and return (usd_path, {})."""
+        scales = None
+        if self.late_start:
+            rng = np.random.default_rng(seed=generation * 10000 + idx)
+            scales = self._sample_scales(rng)
+        else:
+            scales = self._denormalise(self._pending_solutions[idx])
+        print("===============================================")
+        print(f'late start: {self.late_start}')
+        for key, item in scales.items():
+            print(f'{key}: {item}')
+
+        s_thigh = scales["thigh_length_scale"]
+        s_shank = scales["shank_length_scale"]
+
+        tree = ET.parse(self.base_urdf_path)
+        self._current_root = tree.getroot()
+
+        self._update_link_length("hip_R_thigh_Link", s_thigh)
+        self._update_link_length("hip_L_thigh_Link", s_thigh)
+        self._update_link_length("knee_R_Link", s_shank)
+        self._update_link_length("knee_L_Link", s_shank)
+
+        gen_dir = os.path.join(self.output_dir, f"gen_{generation:04d}")
+        os.makedirs(gen_dir, exist_ok=True)
+        urdf_path = os.path.join(gen_dir, f"individual_{idx:04d}.urdf")
+        tree.write(urdf_path, xml_declaration=True, encoding="utf-8")
+
+        usd_out_dir = os.path.join(gen_dir, f"individual_{idx:04d}_usd")
+        usd_path = self._convert_urdf_to_usd(urdf_path, usd_out_dir, idx)
+
+        self._current_root = None
+        # Actuator overrides intentionally empty for now; structure preserved
+        # so downstream _reload_morphology / RandomPopulation consumers don't break.
+        return usd_path, {}
+
+    # ------------------------------------------------------------------
+    # Length-scaling helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_box_mass(density: float, x: float, y: float, z: float) -> float:
+        return density * x * y * z
+
+    @staticmethod
+    def _get_box_inertia(
+        mass: float, x: float, y: float, z: float
+    ) -> tuple[float, float, float]:
+        """Diagonal MoI of a solid box at its CoM (per base_robot.md)."""
+        ixx = mass * (y * y + z * z) / 12.0
+        iyy = mass * (x * x + z * z) / 12.0
+        izz = mass * (x * x + y * y) / 12.0
+        return ixx, iyy, izz
+
+    def _update_inertial(
+        self, link_name: str, mass: float, moi: tuple[float, float, float]
+    ) -> None:
+        """Set <mass> and <inertia> on the named link. Off-diagonals are zeroed."""
+        link = self._find_link(link_name)
+        inertial = link.find("inertial")
+        if inertial is None:
+            raise ValueError(f"Link {link_name!r} has no <inertial> element.")
+
+        mass_el = inertial.find("mass")
+        if mass_el is None:
+            raise ValueError(f"Link {link_name!r}/<inertial> has no <mass>.")
+        mass_el.set("value", str(mass))
+
+        inertia_el = inertial.find("inertia")
+        if inertia_el is None:
+            raise ValueError(f"Link {link_name!r}/<inertial> has no <inertia>.")
+        ixx, iyy, izz = moi
+        inertia_el.set("ixx", str(ixx))
+        inertia_el.set("iyy", str(iyy))
+        inertia_el.set("izz", str(izz))
+        inertia_el.set("ixy", "0")
+        inertia_el.set("ixz", "0")
+        inertia_el.set("iyz", "0")
+
+    def _update_joint_position(
+        self, link_name: str, joint_name: str, z: float
+    ) -> None:
+        """Set the z component of <joint name=joint_name>/<origin xyz>.
+
+        Asserts the joint's <parent link> matches `link_name` so only joints
+        whose parent is the scaled link are touched.
+        """
+        joint = self._find_joint(joint_name)
+        parent = joint.find("parent")
+        parent_link = parent.get("link") if parent is not None else None
+        if parent_link != link_name:
+            raise ValueError(
+                f"Joint {joint_name!r} parent is {parent_link!r}, expected "
+                f"{link_name!r}; refusing to update."
+            )
+        origin = joint.find("origin")
+        if origin is None:
+            raise ValueError(f"Joint {joint_name!r} has no <origin> element.")
+        x, y, _ = (float(v) for v in origin.get("xyz", "0 0 0").split())
+        origin.set("xyz", f"{x} {y} {z}")
+
+    def _update_link_length(self, link_name: str, scale: float) -> None:
+        """Scale the z dimension of a self.scalable_links entry and propagate.
+
+        Updates the link's box geometry, element origins, mass+inertia, and
+        the single child joint whose parent is the scaled link.
+        """
+        if link_name not in self.scalable_links:
+            raise ValueError(f"{link_name!r} is not a scalable link.")
+        meta = self.scalable_links[link_name]
+        x, y, z0 = meta["size"]
+        child_joint = meta["child_joint"]
+        density = self.link_densities[link_name]
+
+        z_new = z0 * scale
+        new_origin_z = -z_new / 2.0
+
+        link = self._find_link(link_name)
+
+        # 1) box sizes on <visual> and <collision>
+        for el_tag in ("visual", "collision"):
+            el = link.find(el_tag)
+            if el is None:
+                continue
+            box = el.find("geometry/box")
+            if box is None:
+                raise ValueError(
+                    f"{link_name}/{el_tag} has no <box> geometry."
+                )
+            box.set("size", f"{x} {y} {z_new}")
+        # print(f"updating {link_name} dimensions from {x},{y},{z0} to {x},{y},{z_new}")
+        # print(f"new link length is {math.sqrt(x*x + y * y + z_new * z_new)}")
+
+        # 2) origin z on <visual>, <collision>, <inertial>
+        for el_tag in ("visual", "collision", "inertial"):
+            el = link.find(el_tag)
+            if el is None:
+                continue
+            origin = el.find("origin")
+            if origin is None:
+                continue
+            ox, oy, _ = (float(v) for v in origin.get("xyz", "0 0 0").split())
+            origin.set("xyz", f"{ox} {oy} {new_origin_z}")
+
+        # 3) mass + inertia
+        m_new = self._get_box_mass(density, x, y, z_new)
+        moi_new = self._get_box_inertia(m_new, x, y, z_new)
+        self._update_inertial(link_name, m_new, moi_new)
+
+        # 4) child joint position
+        joint_z = -(z_new + SCALABLE_LINK_CHILD_OFFSET)
+        self._update_joint_position(link_name, child_joint, joint_z)
+
+    # ------------------------------------------------------------------
+    # Element lookup helpers
+    # ------------------------------------------------------------------
+
+    def _find_link(self, name: str) -> ET.Element:
+        if self._current_root is None:
+            raise RuntimeError("_find_link called with no current URDF root.")
+        for link in self._current_root.iter("link"):
+            if link.get("name") == name:
+                return link
+        raise KeyError(f"No <link name={name!r}> in current URDF.")
+
+    def _find_joint(self, name: str) -> ET.Element:
+        if self._current_root is None:
+            raise RuntimeError("_find_joint called with no current URDF root.")
+        for joint in self._current_root.iter("joint"):
+            if joint.get("name") == name:
+                return joint
+        raise KeyError(f"No <joint name={name!r}> in current URDF.")

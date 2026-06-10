@@ -95,7 +95,11 @@ from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 # Import extensions to set up environment tasks
 from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from co_optimisation.runners import CoptOnPolicyRunner
-from co_optimisation.runners.usd_generator import RandomDesignGenerator
+from co_optimisation.runners.usd_generator import (
+    DEFAULT_PARAM_RANGES,
+    CMAESDesignGenerator,
+    RandomDesignGenerator,
+)
 from himloco.runners import HIMOnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -125,10 +129,14 @@ def main():
         task_name=args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs
     )
     env_cfg.sim.log_dir = "/root/logs"
+    env_cfg.sim.render.rendering_mode = "performance"
+    env_cfg.sim.render.enable_shadows = True
+    env_cfg.sim.render.dlss_mode = 0
+    # env_cfg.viewer.resolution = (640, 480)
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(
         args_cli.task, args_cli
     )
-    agent_cfg.resume = True
+    # agent_cfg.resume = True
 
     if args_cli.max_iterations is not None:
         agent_cfg.max_iterations = args_cli.max_iterations
@@ -172,7 +180,7 @@ def main():
             "disable_logger": True,
         }
         print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
+        # print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
     # wrap around environment for rsl-rl
@@ -191,14 +199,24 @@ def main():
             os.path.dirname(os.path.abspath(__file__)),
             "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
         )
-        _num_individuals = 64
-        design_generator = RandomDesignGenerator(
+        _num_individuals = 256
+        param_ranges = {}
+        params = ["thigh_length_scale", "shank_length_scale"]
+        for param in params:
+            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
+        design_generator = CMAESDesignGenerator(
             base_urdf_path=_base_urdf,
             num_individuals=_num_individuals,
+            param_ranges=param_ranges,
+            sigma0=0.1,
+            seed=42,
+            late_start=False,
         )
+        agent_cfg.policy.class_name = "CoptActorCritic"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
-            "ea_update_interval": 1000,
+            "ea_update_interval": 10,
+            "ea_late_start": -1,
             "num_individuals": _num_individuals,
         }
         runner = CoptOnPolicyRunner(

@@ -19,7 +19,7 @@ robot_type = os.getenv("ROBOT_TYPE")
 @configclass
 class PFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 15000
+    max_iterations = 30000
     save_interval = 500
     experiment_name = "pf_flat"
     empirical_normalization = False
@@ -130,7 +130,7 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SFCoptPPORunnerCfg(SF_TRON1AFlatPPORunnerCfg):
     experiment_name: str = "sf_copt"
-    max_iterations: int = 15000
+    max_iterations: int = 30000
 
 
 # -----------------------------------------------------------------
@@ -175,8 +175,8 @@ class WF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 # -----------------------------------------------------------------
 @configclass
 class SF_Berkeley_PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
-    max_iterations = 15000
+    num_steps_per_env = 96
+    max_iterations = 30000
     save_interval = 500
     experiment_name = "sf_tron_berkeley_mimic"
     empirical_normalization = False
@@ -204,7 +204,7 @@ class SF_Berkeley_PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     encoder = EncoderCfg(
         output_detach=True,
         num_output_dim=19,
-        hidden_dims=[256, 128, 64, 16],
+        hidden_dims=[512, 256, 128],
         activation="elu",
         orthogonal_init=False,
     )

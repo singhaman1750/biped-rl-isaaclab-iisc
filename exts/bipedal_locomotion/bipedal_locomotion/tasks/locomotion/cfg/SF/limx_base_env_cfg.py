@@ -335,7 +335,7 @@ class ObservationsCfg:
         heights = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            clip=(-1.0, 1.0),
+            clip=(-5.0, 5.0),
         )
 
         def __post_init__(self):
@@ -354,6 +354,220 @@ class ObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
+    # obsHistory: HistoryObsCfg = HistoryObsCfg()
+
+@configclass
+class CoptObservationsCfg:
+    """Observation specifications for the MDP"""
+
+    @configclass
+    class PolicyCfg(ObsGroup):
+        """Observation for policy group"""
+
+        # robot base measurements
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel,
+            clip=(-100.0, 100.0),
+            noise=GaussianNoise(mean=0.0, std=0.05),
+            scale=1.0,
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel,
+            noise=GaussianNoise(mean=0.0, std=0.05),
+            clip=(-100.0, 100.0),
+            scale=0.25,
+        )
+        proj_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=GaussianNoise(mean=0.0, std=0.025),
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        # robot joint measurements
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            noise=GaussianNoise(mean=0.0, std=0.01),
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            noise=GaussianNoise(mean=0.0, std=0.01),
+            clip=(-100.0, 100.0),
+            scale=0.25,
+        )
+
+        # last action
+        last_action = ObsTerm(
+            func=mdp.last_action,
+            noise=GaussianNoise(mean=0.0, std=0.01),
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+
+        # gaits
+        # gait_phase = ObsTerm(func=mdp.get_gait_phase)
+        # gait_command = ObsTerm(func=mdp.get_gait_command, params={"command_name": "gait_command"})
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+            self.history_length = 10
+            # Required by HIMActorCritic
+            self.flatten_history_dim = True
+
+    @configclass
+    class PrivligedObsCfg(ObsGroup):
+        """Observation for policy group"""
+
+        link_lengths = ObsTerm(
+            func=mdp.robot_link_lengths,
+            params={
+                "asset_cfg": SceneEntityCfg("robot"),
+                "parent_body_names": [
+                    "hip_R_thigh_Link",
+                    "hip_L_thigh_Link",
+                    "knee_R_Link",
+                    "knee_L_Link",
+                ],
+                "child_body_names": [
+                    "knee_R_Link",
+                    "knee_L_Link",
+                    "ankle_R_actuator_Link",
+                    "ankle_L_actuator_Link",
+                ],
+            },
+            clip=(0.0, 100.0),
+        )
+        robot_mass = ObsTerm(func=mdp.robot_mass, clip = (0.0, 100.0))
+        heights = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            clip=(-5.0, 5.0),
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+            # self.history_length = 10
+            # self.flatten_history_dim = True
+
+    @configclass
+    class CriticCfg(ObsGroup):
+        """Observation for critic group"""
+
+        # robot base measurements
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        proj_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        # robot joint measurements
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+
+        # last action
+        last_action = ObsTerm(
+            func=mdp.last_action,
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+
+        # velocity command
+        # vel_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
+
+        # gait_phase = ObsTerm(func=mdp.get_gait_phase)
+        # gait_command = ObsTerm(func=mdp.get_gait_command, params={"command_name": "gait_command"})
+
+        # Privileged observation
+        robot_joint_torque = ObsTerm(func=mdp.robot_joint_torque)
+        robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
+        feet_lin_vel = ObsTerm(
+            func=mdp.feet_lin_vel,
+            params={"asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*")},
+        )
+        robot_mass = ObsTerm(func=mdp.robot_mass)
+        robot_inertia = ObsTerm(func=mdp.robot_inertia)
+        robot_joint_pos = ObsTerm(func=mdp.robot_joint_pos)
+        robot_joint_stiffness = ObsTerm(func=mdp.robot_joint_stiffness)
+        robot_joint_damping = ObsTerm(func=mdp.robot_joint_damping)
+        robot_pos = ObsTerm(func=mdp.robot_pos)
+        robot_vel = ObsTerm(func=mdp.robot_vel)
+        robot_material_properties = ObsTerm(func=mdp.robot_material_properties)
+        feet_contact_force = ObsTerm(
+            func=mdp.robot_contact_force,
+            params={
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
+            },
+        )
+        heights = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            clip=(-5.0, 5.0),
+        )
+        link_lengths = ObsTerm(
+            func=mdp.robot_link_lengths,
+            params={
+                "asset_cfg": SceneEntityCfg("robot"),
+                "parent_body_names": [
+                    "hip_R_thigh_Link",
+                    "hip_L_thigh_Link",
+                    "knee_R_Link",
+                    "knee_L_Link",
+                ],
+                "child_body_names": [
+                    "knee_R_Link",
+                    "knee_L_Link",
+                    "ankle_R_actuator_Link",
+                    "ankle_L_actuator_Link",
+                ],
+            },
+            clip=(0.0, 100.0),
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+            self.history_length = 10
+            # Required by HIMActorCritic
+            self.flatten_history_dim = True
+
+    @configclass
+    class CommandsObsCfg(ObsGroup):
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
+    commands: CommandsObsCfg = CommandsObsCfg()
+    privilegedObs: PrivligedObsCfg = PrivligedObsCfg()
     # obsHistory: HistoryObsCfg = HistoryObsCfg()
 
 
@@ -567,6 +781,7 @@ class HIMObservationsCfg:
         heights = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            clip=(-1.0, 1.0),
         )
 
         # Privileged observation
@@ -800,7 +1015,7 @@ class EventsCfg:
         mode="interval",
         interval_range_s=(10.0, 15.0),
         params={
-            "velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)},
+            "velocity_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05)},
         },
     )
     
@@ -970,7 +1185,7 @@ class CurriculumCfg:
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 200*24
+            "starting_step": 3000*24
         }
     )
 
@@ -979,10 +1194,10 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 400 * 24,
-            "starting_step": 2000 * 24,
-            "increment_rate": 1.225,
-            "decrement_rate" : 0.2
+            "interval": 450 * 24,
+            "starting_step": 5000 * 24,
+            "increment_rate": 1.05,
+            "decrement_rate" : 0.05
         },
     )
 
@@ -1127,6 +1342,37 @@ class SFHIMEnvCfg(ManagerBasedRLEnvCfg):
     scene: SFSceneCfg = SFSceneCfg(num_envs=4096, env_spacing=env_spacing)
     # Basic settings
     observations: HIMObservationsCfg = HIMObservationsCfg()
+    actions: ActionsCfg = ActionsCfg()
+    commands: CommandsCfg = CommandsCfg()
+    # MDP settings
+    rewards: RewardsCfg = RewardsCfg()
+    terminations: TerminationsCfg = TerminationsCfg()
+    events: EventsCfg = EventsCfg()
+    curriculum: CurriculumCfg = CurriculumCfg()
+
+    def __post_init__(self):
+        """Post initialization"""
+        self.decimation = 4
+        self.episode_length_s = 20.0
+        self.sim.render_interval = 2 * self.decimation
+        # simulation settings
+        self.sim.dt = 0.005
+        self.seed = 42
+        # update sensor update periods
+        # we tick all the sensors based on the smallest update period (physics update period)
+        if self.scene.height_scanner is not None:
+            self.scene.height_scanner.update_period = self.decimation * self.sim.dt
+        if self.scene.contact_forces is not None:
+            self.scene.contact_forces.update_period = self.sim.dt
+
+@configclass
+class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
+    """Configuration for the test environment"""
+
+    # Scene settings
+    scene: SFSceneCfg = SFSceneCfg(num_envs=4096, env_spacing=env_spacing)
+    # Basic settings
+    observations: CoptObservationsCfg = CoptObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
     # MDP settings

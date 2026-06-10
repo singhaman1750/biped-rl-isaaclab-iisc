@@ -3,6 +3,7 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+from typing import Union
 
 import visualise
 from isaaclab.app import AppLauncher
@@ -84,6 +85,12 @@ from bipedal_locomotion.utils.wrappers.rsl_rl import (
     export_mlp_as_onnx,
     export_policy_as_jit,
 )
+from co_optimisation.runners import CoptOnPolicyRunner
+from co_optimisation.runners.usd_generator import (
+    DEFAULT_PARAM_RANGES,
+    CMAESDesignGenerator,
+    RandomDesignGenerator,
+)
 from himloco.runners import HIMOnPolicyRunner
 
 
@@ -112,7 +119,7 @@ class DataLogger:
         self.num_envs = num_envs
         self.seed = seed
 
-    def log_link_properties(self, usd_path: str):
+    def log_link_properties(self, usd_path: Union[list, str]):
         """Log the mass and size of each link from the USD file.
         Args:
             usd_path: The path to the USD file of the robot.
@@ -120,45 +127,49 @@ class DataLogger:
         from pxr import Usd, UsdGeom, UsdPhysics
 
         # Resolve the USD path if it contains environment variables or relative paths
-        usd_path = os.path.abspath(usd_path)
-        if not os.path.exists(usd_path):
-            print(f"[WARNING] USD file not found at: {usd_path}")
-            return
+        if not isinstance(usd_path, list):
+            usd_path = [usd_path]
 
-        stage = Usd.Stage.Open(usd_path)
-        link_data = []
+        for path in usd_path:
+            _usd_path = os.path.abspath(path)
+            if not os.path.exists(_usd_path):
+                print(f"[WARNING] USD file not found at: {_usd_path}")
+                return
 
-        for prim in stage.Traverse():
-            # Check if prim is a rigid body
-            if prim.HasAPI(UsdPhysics.RigidBodyAPI):
-                name = prim.GetName()
+            stage = Usd.Stage.Open(_usd_path)
+            link_data = []
 
-                # Get mass from MassAPI
-                mass = 0.0
-                if prim.HasAPI(UsdPhysics.MassAPI):
-                    mass_api = UsdPhysics.MassAPI(prim)
-                    mass_attr = mass_api.GetMassAttr().Get()
-                    if mass_attr is not None:
-                        mass = mass_attr
+            for prim in stage.Traverse():
+                # Check if prim is a rigid body
+                if prim.HasAPI(UsdPhysics.RigidBodyAPI):
+                    name = prim.GetName()
 
-                # Get dimensions from bounding box
-                geom = UsdGeom.Imageable(prim)
-                # Compute the local bounding box
-                res = geom.ComputeLocalBound(
-                    Usd.TimeCode.Default(), UsdGeom.Tokens.default_
-                )
-                box = res.GetRange()
-                size = box.GetSize()
+                    # Get mass from MassAPI
+                    mass = 0.0
+                    if prim.HasAPI(UsdPhysics.MassAPI):
+                        mass_api = UsdPhysics.MassAPI(prim)
+                        mass_attr = mass_api.GetMassAttr().Get()
+                        if mass_attr is not None:
+                            mass = mass_attr
 
-                link_data.append(
-                    {
-                        "Link Name": name,
-                        "Mass (kg)": mass,
-                        "Size X (m)": size[0],
-                        "Size Y (m)": size[1],
-                        "Size Z (m)": size[2],
-                    }
-                )
+                    # Get dimensions from bounding box
+                    geom = UsdGeom.Imageable(prim)
+                    # Compute the local bounding box
+                    res = geom.ComputeLocalBound(
+                        Usd.TimeCode.Default(), UsdGeom.Tokens.default_
+                    )
+                    box = res.GetRange()
+                    size = box.GetSize()
+
+                    link_data.append(
+                        {
+                            "Link Name": name,
+                            "Mass (kg)": mass,
+                            "Size X (m)": size[0],
+                            "Size Y (m)": size[1],
+                            "Size Z (m)": size[2],
+                        }
+                    )
 
         if link_data:
             df = pd.DataFrame(link_data)
@@ -190,11 +201,9 @@ class DataLogger:
         self.data["commanded_angular_velocity"].append(
             env.command_manager.get_command("base_velocity")[:, 2].cpu()
         )
-        print(asset.data.joint_acc.cpu())
         self.data["joint_accelerations"].append(asset.data.joint_acc.cpu())
 
     def log_latent(self, latent):
-        print(latent.cpu())
         self.data["latent_space_output"].append(latent.cpu())
 
     def plot(self):
@@ -205,7 +214,8 @@ class DataLogger:
                 data[key] = [self.data[key]]
             else:
                 data[key] = self.data[key]
-            write_data[key] = torch.stack(self.data[key]).numpy()
+            if len(self.data[key]) > 0:
+                write_data[key] = torch.stack(self.data[key]).numpy()
         visualise.visualise(data, self.log_dir, self.num_envs, self.seed)
         data_path = os.path.join(self.log_dir, "data", f"{self.seed}")
         os.makedirs(data_path, exist_ok=True)
@@ -284,6 +294,39 @@ def main():
         ppo_runner = HIMOnPolicyRunner(
             env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device
         )
+    elif args_cli.policy_type == "COPT":
+
+        _base_urdf = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+        )
+        _num_individuals = 256
+        param_ranges = {}
+        params = ["thigh_length_scale", "shank_length_scale"]
+        for param in params:
+            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
+        design_generator = CMAESDesignGenerator(
+            base_urdf_path=_base_urdf,
+            num_individuals=_num_individuals,
+            param_ranges=param_ranges,
+            sigma0=0.1,
+            seed=42,
+            late_start=False,
+        )
+        agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg_dict = agent_cfg.to_dict()
+        agent_cfg_dict["copt"] = {
+            "ea_update_interval": 50,
+            "ea_late_start": -1,
+            "num_individuals": _num_individuals,
+        }
+        ppo_runner = CoptOnPolicyRunner(
+            env,
+            design_generator,
+            agent_cfg_dict,
+            log_dir=log_dir,
+            device=agent_cfg.device,
+        )
     else:
         ppo_runner = OnPolicyRunner(
             env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device
@@ -308,7 +351,6 @@ def main():
 
     # reset environment
     obs = env.get_observations()
-    print(obs)
 
     # simulate environment
     i = 0
@@ -317,7 +359,7 @@ def main():
         actions = None
         latent = None
         with torch.inference_mode():
-            if policy_type == "HIMPPO":
+            if args_cli.policy_type == "HIMPPO":
                 actions, latent = policy(obs)
             else:
                 actions = policy(obs)
@@ -326,7 +368,7 @@ def main():
 
             # log data
             data_logger.log(env.unwrapped, SceneEntityCfg("robot"))
-            if policy_type == "HIMPPO":
+            if args_cli.policy_type == "HIMPPO":
                 data_logger.log_latent(latent)
             i += 1
             if i > args_cli.video_length:

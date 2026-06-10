@@ -16,12 +16,16 @@ from __future__ import annotations
 import os
 import time
 import torch
+import warnings
 from collections import deque
 from tensordict import TensorDict
 
+from rsl_rl.algorithms import PPO
 from rsl_rl.env import VecEnv
+from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.runners import OnPolicyRunner
 
+from co_optimisation.modules import CoptActorCritic
 from co_optimisation.runners.usd_generator import DesignGeneratorBase, Population
 from co_optimisation.utils.respawn import apply_actuator_params, respawn_robots
 
@@ -51,6 +55,8 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             - ``"ea_update_interval"`` (int, default 100): policy-update
               iterations between EA generations.
             - ``"num_individuals"`` (int, default 16): population size.
+            - ``"ea_late_start"`` (int, default -1): delay for policy warm
+              start before EA generations are updated.
 
         log_dir: Directory for TensorBoard / checkpoint logging.
         device: Torch device string.
@@ -67,6 +73,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # Extract COPT-specific config before calling super().__init__
         copt_cfg: dict = train_cfg.get("copt", {})
         self._ea_update_interval: int = copt_cfg.get("ea_update_interval", 100)
+        self._ea_late_start: int = copt_cfg.get("ea_late_start", -1)
         self._num_individuals: int = copt_cfg.get("num_individuals", 16)
         self._design_generator = design_generator
         # Per-generation state
@@ -80,6 +87,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._individual_episode_counts = torch.zeros(
             self._num_individuals, dtype=torch.long, device=device
         )
+        self.encoder_cfg = train_cfg["encoder"]
 
         super().__init__(env, train_cfg, log_dir=log_dir, device=device)
         # Maps env_idx → individual_idx (round-robin)
@@ -234,7 +242,14 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                         self.writer.save_file(path)
 
             # ---- COPT: EA generation update ---------------------------------
-            if (it + 1 - start_iter) % self._ea_update_interval == 0:
+            if ((it + 1 - start_iter) % self._ea_update_interval == 0) and (
+                self._ea_late_start < (it + 1 - start_iter)
+            ):
+                if self._ea_late_start > 0 and self._design_generator.late_start:
+                    print(
+                        f"toggling late start at {it + 1 - start_iter} steps with configure threshold at {self._ea_late_start}"
+                    )
+                    self._design_generator.toggle_late_start()
                 with torch.inference_mode():
                     self._reload_morphology()
                 # Refresh observations after respawn
@@ -248,6 +263,63 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 )
             )
 
+    def _construct_algorithm(self, obs: TensorDict) -> PPO:
+       # TODO Check if we can just run this method from the parent class by updating the configuration?
+        # In such a case we would only have to update the logging and the rest of the pipeline from the parent class gets used.
+        """Construct the actor-critic algorithm."""
+        # Resolve RND config
+        self.alg_cfg = resolve_rnd_config(
+                self.alg_cfg, obs, self.cfg["obs_groups"], self.env
+                )
+
+        # Resolve symmetry config
+        self.alg_cfg = resolve_symmetry_config(self.alg_cfg, self.env)
+
+        # Resolve deprecated normalization config
+        if self.cfg.get("empirical_normalization") is not None:
+            warnings.warn(
+                    "The `empirical_normalization` parameter is deprecated. Please set `actor_obs_normalization` and "
+                    "`critic_obs_normalization` as part of the `policy` configuration instead.",
+                    DeprecationWarning,
+                    )
+            if self.policy_cfg.get("actor_obs_normalization") is None:
+                self.policy_cfg["actor_obs_normalization"] = self.cfg[
+                        "empirical_normalization"
+                        ]
+            if self.policy_cfg.get("critic_obs_normalization") is None:
+                self.policy_cfg["critic_obs_normalization"] = self.cfg[
+                        "empirical_normalization"
+                        ]
+
+        # Initialize the policy
+        actor_critic_class = eval(self.policy_cfg.pop("class_name"))
+        actor_critic: CoptActorCritic = actor_critic_class(
+                obs,
+                self.cfg["obs_groups"],
+                self.env.num_actions,
+                self.encoder_cfg,
+                **self.policy_cfg,
+                ).to(self.device)
+
+        # Initialize the algorithm
+        alg_class = eval(self.alg_cfg.pop("class_name"))
+        alg: PPO = alg_class(
+                actor_critic,
+                device=self.device,
+                **self.alg_cfg,
+                multi_gpu_cfg=self.multi_gpu_cfg,
+                )
+
+        # Initialize the storage
+        alg.init_storage(
+            "rl",
+            self.env.num_envs,
+            self.num_steps_per_env,
+            obs,
+            [self.env.num_actions],
+        )
+        return alg
+
     # ------------------------------------------------------------------
     # COPT helpers
     # ------------------------------------------------------------------
@@ -257,7 +329,11 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         if self.current_population is not None:
             fitness = self._compute_individual_fitness()
             print("Updating Design Population")
-            self._design_generator.update_with_fitness(self.current_population, fitness)
+            self._design_generator.update_with_fitness(fitness)
+
+        elif self.current_population is None:
+            self._design_generator.sample_batch()
+
         # Generate new population
         print("Sampling New Population")
         self.current_population = self._design_generator.generate_population(

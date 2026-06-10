@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import isaaclab.utils.math as math_utils
@@ -223,3 +224,46 @@ def joint_pos_rel_exclude_wheel(
         asset.data.joint_pos[:, pos_idx_exclude_wheel]
         - asset.data.default_joint_pos[:, pos_idx_exclude_wheel]
     )
+
+
+class robot_link_lengths(ManagerTermBase):
+    """Per-env link lengths derived from body-frame world positions.
+
+    For each (parent, child) pair, returns ``||body_link_pos_w[child] - body_link_pos_w[parent]||``.
+    The norm is invariant under joint angles for chains of revolute joints (every joint between
+    a URDF parent link and its kinematic child is revolute or fixed in this robot), so the value
+    is a per-morphology constant that can be cached.
+
+    The cache is invalidated via ``reset()``, which is called by ``ObservationManager.reset()``
+    on every per-env episode termination and after ``respawn_robots()`` (whose final ``env.reset()``
+    routes through the same cascade). The next ``__call__`` then recomputes for all envs, reflecting
+    the current morphology.
+    """
+
+    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self._cache: torch.Tensor | None = None
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        # Cache is shared across all envs (one tensor of shape (num_envs, k));
+        # nuke regardless of which envs reset. Recompute cost is one slice + norm.
+        self._cache = None
+
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        asset_cfg: SceneEntityCfg,
+        parent_body_names: list[str],
+        child_body_names: list[str],
+    ) -> torch.Tensor:
+        if self._cache is None:
+            asset: Articulation = env.scene[asset_cfg.name]
+            parent_ids, _ = asset.find_bodies(parent_body_names, preserve_order=True)
+            child_ids, _ = asset.find_bodies(child_body_names, preserve_order=True)
+            delta = (
+                asset.data.body_link_pos_w[:, child_ids]
+                - asset.data.body_link_pos_w[:, parent_ids]
+            )
+            self._cache = delta.norm(dim=-1).clone()
+            torch.set_printoptions(precision=10)
+        return self._cache
