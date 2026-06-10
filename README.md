@@ -44,10 +44,9 @@ Running an example training to see if everything works:
 The training should create `logs/rsl_rl/anymal_c_rough/<timestamp>` in IsaacLab folder. And the `.pt` file can be found under that directory.
 
 ### bipedal_locomotion
-Running `train.py` script requires `bidepal_locomotion` package.
+Running `train.py` script requires `exts/bidepal_locomotion`, `co_optimisation` and `himloco` packages.
 ```zsh
-cd exts
-pip install -e bipedal_locomotion
+pip install -e exts/bipedal_locomotion co_optimisation himloco
 ```
 
 ## Running train.py
