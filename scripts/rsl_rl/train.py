@@ -129,8 +129,7 @@ def main():
         task_name=args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs
     )
     env_cfg.sim.log_dir = "/root/logs"
-    env_cfg.sim.render.rendering_mode = "performance"
-    env_cfg.sim.render.enable_shadows = True
+    env_cfg.sim.render.rendering_mode = "balanced"
     env_cfg.sim.render.dlss_mode = 0
     # env_cfg.viewer.resolution = (640, 480)
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(
@@ -199,7 +198,11 @@ def main():
             os.path.dirname(os.path.abspath(__file__)),
             "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
         )
-        _num_individuals = 256
+        _num_individuals = 64
+        # ea_update_interval * num_steps_per_env (50 * 24 = 1200) should be more
+        # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
+        ea_update_interval = 40
+        ea_late_start = 2000
         param_ranges = {}
         params = ["thigh_length_scale", "shank_length_scale"]
         for param in params:
@@ -211,13 +214,16 @@ def main():
             sigma0=0.1,
             seed=42,
             late_start=False,
+            max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
+            / ea_update_interval,
         )
         agent_cfg.policy.class_name = "CoptActorCritic"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
-            "ea_update_interval": 10,
-            "ea_late_start": -1,
+            "ea_update_interval": ea_update_interval,
+            "ea_late_start": ea_late_start,
             "num_individuals": _num_individuals,
+            "randomise_before_late_start": True,
         }
         runner = CoptOnPolicyRunner(
             env,

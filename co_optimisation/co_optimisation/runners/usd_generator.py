@@ -60,7 +60,6 @@ asymmetric abs ranges are resolved by taking the smaller half (tightest constrai
 
 from __future__ import annotations
 
-import math
 import numpy as np
 import os
 import xml.etree.ElementTree as ET
@@ -153,7 +152,7 @@ DEFAULT_PARAM_RANGES: dict[str, tuple[float, float]] = {
 
 
 # ---------------------------------------------------------------------------
-# Length-scalable links (used by CMAESDesignGenerator)
+# Length-scalable links
 # ---------------------------------------------------------------------------
 
 # Constant geometric offset between a scaled link's bottom edge and its
@@ -168,6 +167,14 @@ SCALABLE_LINK_CHILD_JOINTS: dict[str, str] = {
     "hip_L_thigh_Link": "knee_L_Joint",
     "knee_R_Link":      "ankle_R_actuator_Joint",
     "knee_L_Link":      "ankle_L_actuator_Joint",
+}
+
+# Which sampled scale drives each scalable link's length.
+SCALABLE_LINK_LENGTH_SCALE: dict[str, str] = {
+    "hip_R_thigh_Link": "thigh_length_scale",
+    "hip_L_thigh_Link": "thigh_length_scale",
+    "knee_R_Link":      "shank_length_scale",
+    "knee_L_Link":      "shank_length_scale",
 }
 
 
@@ -224,6 +231,7 @@ def _parse_scalable_links_from_urdf(
     }
     return scalable_links, link_densities
 
+
 # CMA-ES restricts its search to the two length scales it actually drives.
 CMAES_PARAM_RANGES: dict[str, tuple[float, float]] = {
     "thigh_length_scale": DEFAULT_PARAM_RANGES["thigh_length_scale"],
@@ -240,8 +248,9 @@ class Population(ABC):
     """Abstract base class for a design population.
 
     A population holds a fixed set of robot designs (individuals).  Each
-    individual is represented by a USD file path and an actuator-parameter
-    dict that overrides the Python-side ``IdentifiedActuator`` attributes.
+    individual is represented by a USD file path, an actuator-parameter
+    dict that overrides the Python-side ``IdentifiedActuator`` attributes,
+    and an absolute link-extent dict for in-place morphology updates.
     """
 
     @abstractmethod
@@ -260,74 +269,24 @@ class Population(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_link_length_params(self) -> list[dict[str, dict[str, float]]]:
+        """Return absolute link-extent dicts, one per individual."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Base class
+# ---------------------------------------------------------------------------
+
 
 class DesignGeneratorBase(ABC):
     """Abstract base class for design generators.
 
-    A design generator encapsulates an optimisation algorithm (e.g. random
-    search, evolutionary algorithm) and produces successive :class:`Population`
-    objects.  The runner calls :meth:`generate_population` at the start of
-    every EA generation, and :meth:`update_with_fitness` after evaluating the
-    current population so that the generator can improve future generations.
-    """
-
-    @abstractmethod
-    def generate_population(self, generation: int) -> Population:
-        """Generate a new population for *generation*."""
-        ...
-
-    def update_with_fitness(self, fitness: list[float]) -> None:
-        """Optionally update internal state using per-individual fitness scores.
-
-        The default implementation is a no-op (random search).  Override this
-        to implement selection, mutation, cross-over, etc.
-
-        Args:
-            population: The population that was just evaluated.
-            fitness: Mean episode return for each individual, indexed by
-                individual index (not env index).
-        """
-        pass
-
-    def sample_batch() -> None:
-        pass
-
-
-class RandomPopulation(Population):
-    """A concrete population backed by pre-generated USD paths and actuator params."""
-
-    def __init__(
-        self, usd_files: list[str], actuator_params: list[dict[str, dict]]
-    ) -> None:
-        self._usd_files = usd_files
-        self._actuator_params = actuator_params
-
-    def get_usd_files(self) -> list[str]:
-        return self._usd_files
-
-    def get_actuator_params(self) -> list[dict[str, dict]]:
-        return self._actuator_params
-
-
-class RandomDesignGenerator(DesignGeneratorBase):
-    """Generates robot design populations by randomly perturbing a base URDF.
-
-    Each individual is produced by:
-
-    1. Sampling scalar scale factors from ``param_ranges``.
-    2. Modifying the parsed URDF tree (joint origins, link masses/inertias,
-       actuator cylinder geometry, joint limits).
-    3. Writing the modified URDF to ``output_dir``.
-    4. Converting the URDF to USD via :class:`isaaclab.sim.converters.UrdfConverter`.
-    5. Recording actuator-param overrides that cannot be expressed in USD/URDF.
-
-    Args:
-        base_urdf_path: Absolute path to the template URDF file.
-        num_individuals: Number of designs per generation.
-        param_ranges: Optional dict overriding entries in
-            :data:`DEFAULT_PARAM_RANGES`.  Only the keys you provide are
-            overridden; all other defaults remain.
-        output_dir: Directory for writing generated URDFs and USDs.
+    Provides all shared link-scaling machinery.  Subclasses implement
+    :meth:`_generate_individual` to emit per-individual parameters and
+    optionally override :meth:`_apply_extra_urdf_mutations` for additional
+    URDF edits applied after the link-length changes.
     """
 
     def __init__(
@@ -340,160 +299,98 @@ class RandomDesignGenerator(DesignGeneratorBase):
         self.base_urdf_path = base_urdf_path
         self.num_individuals = num_individuals
         self.output_dir = output_dir
-
-        # Merge user overrides with defaults
         self.param_ranges: dict[str, tuple[float, float]] = {**DEFAULT_PARAM_RANGES}
         if param_ranges is not None:
             self.param_ranges.update(param_ranges)
+        # Cached base box sizes + densities (used to emit ABSOLUTE extents).
+        self.scalable_links, self.link_densities = _parse_scalable_links_from_urdf(base_urdf_path)
+        # Transient per-individual state during the generate_population loop.
+        self._current_root: ET.Element | None = None
+        self._current_scales: dict[str, float] | None = None
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    # ---- abstract design hooks ------------------------------------------------
 
-    def generate_population(self, generation: int) -> Population:
-        """Generate *num_individuals* robot designs for *generation*.
-
-        Returns a :class:`RandomPopulation` with USD paths and actuator params.
-        """
-        usd_files: list[str] = []
-        actuator_params: list[dict[str, dict]] = []
-
-        for idx in range(self.num_individuals):
-            usd_path, act_params = self._generate_individual(generation, idx)
-            usd_files.append(usd_path)
-            actuator_params.append(act_params)
-
-        return RandomPopulation(usd_files, actuator_params)
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _sample_scales(self, rng: np.random.Generator) -> dict[str, float]:
-        return {
-            key: float(rng.uniform(lo, hi))
-            for key, (lo, hi) in self.param_ranges.items()
-        }
-
+    @abstractmethod
     def _generate_individual(
         self, generation: int, idx: int
-    ) -> tuple[str, dict[str, dict]]:
-        """Build one perturbed URDF + USD and return (usd_path, actuator_params)."""
-        # Deterministic per (generation, individual) pair
-        rng = np.random.default_rng(seed=generation * 10000 + idx)
-        scales = self._sample_scales(rng)
-        print('generating individual with the following scales')
-        for key, item in scales.enumerate():
-            print(f'{key}: {item}')
+    ) -> tuple[dict[str, dict[str, float]], dict[str, dict]]:
+        """Return (link_length_params, actuator_params) for one individual."""
+        ...
 
-        # ---- Parse template URDF ----------------------------------------
+    @abstractmethod
+    def generate_population(self, generation: int) -> Population:
+        """Generate a new population for *generation*."""
+        ...
+
+    def update_with_fitness(self, fitness: list[float]) -> None:
+        """Optionally update internal state using per-individual fitness scores.
+
+        The default implementation is a no-op (random search).  Override this
+        to implement selection, mutation, cross-over, etc.
+        """
+        pass
+
+    def sample_batch(self) -> None:
+        pass
+
+    # ---- shared population pipeline -------------------------------------------
+
+    def _build_population(self, generation: int, indices) -> "RandomPopulation":
+        """Method to build generation index `generation` for environment indices `indices`"""
+        usd_files: list[str] = []
+        actuator_params: list[dict[str, dict]] = []
+        link_length_params: list[dict[str, dict[str, float]]] = []
+        for idx in indices:
+            llp, act = self._generate_individual(generation, idx)
+            urdf_path = self._generate_individual_urdf(generation, idx, llp)
+            usd_path = self._generate_individual_usd(urdf_path, idx)
+            usd_files.append(usd_path)
+            actuator_params.append(act)
+            link_length_params.append(llp)
+        return RandomPopulation(usd_files, actuator_params, link_length_params)
+
+    # ---- scale sampling + absolute-extent computation -------------------------
+
+    def _sample_scales(self, rng: np.random.Generator) -> dict[str, float]:
+        return {k: float(rng.uniform(lo, hi)) for k, (lo, hi) in self.param_ranges.items()}
+
+    def _compute_link_extents(self, scales: dict[str, float]) -> dict[str, dict[str, float]]:
+        """Absolute box extents (metres) = cached base size × sampled length scale."""
+        extents: dict[str, dict[str, float]] = {}
+        for link, scale_key in SCALABLE_LINK_LENGTH_SCALE.items():
+            x, y, z0 = self.scalable_links[link]["size"]
+            extents[link] = {"x": x, "y": y, "z": z0 * scales.get(scale_key, 1.0)}
+            extents[link] = {key: round(val, 3) for key, val in extents[link].items()}
+        return extents
+
+    # ---- URDF authoring (shared) ----------------------------------------------
+
+    def _generate_individual_urdf(
+        self, generation: int, idx: int, params: dict[str, dict[str, float]]
+    ) -> str:
         tree = ET.parse(self.base_urdf_path)
-        root = tree.getroot()
+        self._current_root = tree.getroot()
+        for link_name, ext in params.items():       # link lengths FIRST
+            self._apply_link_extents(link_name, ext["x"], ext["y"], ext["z"])
+        self._apply_extra_urdf_mutations()                      # subclass extras AFTER
+        self._current_root = None
 
-        # ---- B: Thigh / shank length ------------------------------------
-        s_thigh = scales["thigh_length_scale"]
-        s_shank = scales["shank_length_scale"]
-        self._scale_joint_z_origin(root, ["knee_L_Joint", "knee_R_Joint"], s_thigh)
-        self._scale_joint_z_origin(root, ["ankle_L_Joint", "ankle_R_Joint"], s_shank)
-
-        # ---- C: Link mass & inertia -------------------------------------
-        s_mass = scales["link_mass_scale"]
-        for link in root.iter("link"):
-            link_name = link.get("name", "")
-            if IMU_LINK_NAME in link_name:
-                continue
-            for mass_el in link.iter("mass"):
-                v = float(mass_el.get("value", 0.0))
-                mass_el.set("value", str(v * s_mass))
-            for inertia_el in link.iter("inertia"):
-                for attr in ("ixx", "iyy", "izz", "ixy", "ixz", "iyz"):
-                    val = inertia_el.get(attr)
-                    if val is not None:
-                        inertia_el.set(attr, str(float(val) * s_mass))
-
-        # ---- D: Actuator cylinder geometry (abad/hip links) -------------
-        s_r = scales["actuator_radius_scale"]
-        s_l = scales["actuator_length_scale"]
-        for link in root.iter("link"):
-            link_name = link.get("name", "")
-            if any(al in link_name for al in ABAD_HIP_LINKS):
-                for cylinder in link.iter("cylinder"):
-                    r = float(cylinder.get("radius", 0.0))
-                    l_val = float(cylinder.get("length", 0.0))
-                    cylinder.set("radius", str(r * s_r))
-                    cylinder.set("length", str(l_val * s_l))
-
-        # ---- E: Joint effort & velocity limits --------------------------
-        s_eff = scales["joint_effort_scale"]
-        s_vel = scales["velocity_limit_scale"]
-        for joint in root.iter("joint"):
-            joint_name = joint.get("name", "")
-            actuator_group = JOINT_TO_ACTUATOR.get(joint_name)
-            if actuator_group is None:
-                continue
-            baseline = ACTUATOR_BASELINES[actuator_group]
-            for limit_el in joint.iter("limit"):
-                limit_el.set("effort", str(baseline["effort_limit"] * s_eff))
-                limit_el.set("velocity", str(baseline["velocity_limit"] * s_vel))
-
-        # ---- F: Write modified URDF -------------------------------------
         gen_dir = os.path.join(self.output_dir, f"gen_{generation:04d}")
         os.makedirs(gen_dir, exist_ok=True)
         urdf_path = os.path.join(gen_dir, f"individual_{idx:04d}.urdf")
         tree.write(urdf_path, xml_declaration=True, encoding="utf-8")
+        return urdf_path
 
-        # ---- G: Convert URDF → USD --------------------------------------
-        usd_out_dir = os.path.join(gen_dir, f"individual_{idx:04d}_usd")
-        usd_path = self._convert_urdf_to_usd(urdf_path, usd_out_dir, idx)
+    def _apply_extra_urdf_mutations(self) -> None:
+        """Hook: extra non-length URDF edits applied after link extents. Base is a no-op."""
+        pass
 
-        # ---- H: Build actuator params dict (Python-side attrs) ----------
-        s_fs = scales["friction_static_scale"]
-        s_fd = scales["friction_dynamic_scale"]
-        s_sat = scales["saturation_effort_scale"]
-        s_arm = scales["armature_scale"]
-
-        act_params: dict[str, dict] = {}
-        for group, baseline in ACTUATOR_BASELINES.items():
-            s_stiff = scales[f"{group}_stiffness_scale"]
-            s_damp = scales[f"{group}_damping_scale"]
-            act_params[group] = {
-                "effort_limit": baseline["effort_limit"] * s_eff,
-                "velocity_limit": baseline["velocity_limit"] * s_vel,
-                "saturation_effort": baseline["saturation_effort"] * s_sat,
-                "armature": baseline["armature"] * s_arm,
-                "friction_static": baseline["friction_static"] * s_fs,
-                "friction_dynamic": baseline["friction_dynamic"] * s_fd,
-                "stiffness": baseline["stiffness"] * s_stiff,
-                "damping": baseline["damping"] * s_damp,
-            }
-
-        return usd_path, act_params
-
-    # ------------------------------------------------------------------
-    # Utility methods
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _scale_joint_z_origin(
-        root: ET.Element, joint_names: list[str], scale: float
-    ) -> None:
-        """Scale the Z component of the <origin xyz="..."> of specified joints."""
-        for joint in root.iter("joint"):
-            if joint.get("name") not in joint_names:
-                continue
-            for origin in joint.iter("origin"):
-                xyz_str = origin.get("xyz", "0 0 0")
-                x, y, z = (float(v) for v in xyz_str.split())
-                origin.set("xyz", f"{x} {y} {z * scale}")
-
-    @staticmethod
-    def _convert_urdf_to_usd(urdf_path: str, usd_out_dir: str, idx: int) -> str:
-        """Converts a URDF file to USD using IsaacLab's UrdfConverter."""
-        usd_file_name = f"biped_{idx}.usd"
+    def _generate_individual_usd(self, urdf_path: str, idx: int) -> str:
+        usd_out_dir = os.path.join(os.path.dirname(urdf_path), f"individual_{idx:04d}_usd")
         cfg = UrdfConverterCfg(
             asset_path=urdf_path,
             usd_dir=usd_out_dir,
-            usd_file_name=usd_file_name,
+            usd_file_name=f"biped_{idx}.usd",
             link_density=0.0,
             merge_fixed_joints=False,
             fix_base=False,
@@ -502,190 +399,47 @@ class RandomDesignGenerator(DesignGeneratorBase):
             joint_drive=None,
             force_usd_conversion=True,
         )
-        converter = UrdfConverter(cfg)
-        return converter.usd_path
+        return UrdfConverter(cfg).usd_path
 
-class CMAESDesignGenerator(RandomDesignGenerator):
-    """Generates robot designs by sampling from a CMA-ES search distribution.
+    # ---- absolute link-extent application (supersedes _scale_joint_z_origin
+    #      and _update_link_length) ---------------------------------------------
 
-    The design vector is the unit-hypercube encoding of the scale-factor
-    dictionary used by :class:`RandomDesignGenerator`; CMA-ES adapts the
-    multivariate Gaussian search distribution from the per-individual
-    mean episode return reported by :class:`CoptOnPolicyRunner`.
-    """
+    def _apply_link_extents(self, link_name: str, x: float, y: float, z: float) -> None:
+        """Set ABSOLUTE box extents on a scalable link and propagate to mass/inertia/child joint. Assumes box links only"""
+        if link_name not in self.scalable_links:
+            raise ValueError(f"{link_name!r} is not a scalable link.")
+        density = self.link_densities[link_name]
+        child_joint = self.scalable_links[link_name]["child_joint"]
+        new_origin_z = -z / 2.0
+        link = self._find_link(link_name)
 
-    def __init__(
-        self,
-        base_urdf_path: str,
-        num_individuals: int,
-        param_ranges: dict[str, tuple[float, float]] | None = None,
-        output_dir: str = "/tmp/copt_usds",
-        sigma0: float = 0.2,
-        seed: int = 0,
-        es_state_path: str | None = None,
-        late_start: bool = False
-    ) -> None:
-        super().__init__(
-            base_urdf_path=base_urdf_path,
-            num_individuals=num_individuals,
-            param_ranges=param_ranges,
-            output_dir=output_dir,
-        )
-        # Restrict CMA-ES to only the length scales this generator drives.
-        # Caller-supplied param_ranges may tune the bounds of these two keys
-        # but cannot add new dimensions (any extras would be inert).
-        self.param_ranges = {**CMAES_PARAM_RANGES}
-        if param_ranges is not None:
-            for key, rng in param_ranges.items():
-                if key in self.param_ranges:
-                    self.param_ranges[key] = rng
+        for el_tag in ("visual", "collision"):                   # 1) box size (absolute)
+            el = link.find(el_tag)
+            if el is None:
+                continue
+            box = el.find("geometry/box")
+            if box is None:
+                raise ValueError(f"{link_name}/{el_tag} has no <box> geometry.")
+            box.set("size", f"{x} {y} {z}")
 
-        self.param_keys: list[str] = list(self.param_ranges.keys())
-        self.num_params: int = len(self.param_keys)
-        self._sigma0: float = float(sigma0)
-        self._seed: int = int(seed)
-        self.late_start = late_start
+        for el_tag in ("visual", "collision", "inertial"):       # 2) recentre origin
+            el = link.find(el_tag)
+            if el is None:
+                continue
+            origin = el.find("origin")
+            if origin is None:
+                continue
+            ox, oy, _ = (float(v) for v in origin.get("xyz", "0 0 0").split())
+            origin.set("xyz", f"{ox} {oy} {new_origin_z}")
 
-        if es_state_path is not None:
-            with open(es_state_path, "rb") as fh:
-                self._es = cma.CMAEvolutionStrategy.pickle_loads(fh.read())
-            assert self._es.N == self.num_params, (
-                f"Checkpoint dimension mismatch: "
-                f"pickled {self._es.N}, expected {self.num_params}"
-            )
-        else:
-            opts = cma.CMAOptions()
-            opts.set({
-                "popsize": int(num_individuals),
-                "bounds": [np.zeros(self.num_params), np.ones(self.num_params)],
-                "seed": self._seed,
-                "verb_disp": 1,
-                "verb_filenameprefix": str(Path(output_dir) / "cma_log") + "/",
-            })
-            self._es = cma.CMAEvolutionStrategy(
-                np.full(self.num_params, 1.0), self._sigma0, opts
-            )
+        m_new = self._get_box_mass(density, x, y, z)             # 3) mass + inertia
+        self._update_inertial(link_name, m_new, self._get_box_inertia(m_new, x, y, z))
 
-        self._pending_solutions: list[np.ndarray] | None = None
-        self._last_solutions: list[np.ndarray] | None = None
-        self._terminated = False
-
-        # Parse box sizes and masses from the base URDF so they always mirror
-        # the actual URDF values rather than relying on hardcoded constants.
-        self.scalable_links, self.link_densities = (
-            _parse_scalable_links_from_urdf(base_urdf_path)
+        self._update_joint_position(                             # 4) child joint
+            link_name, child_joint, -(z + SCALABLE_LINK_CHILD_OFFSET)
         )
 
-        # Holds the parsed URDF root for the duration of one _generate_individual call.
-        self._current_root: ET.Element | None = None
-
-    # --- Public API ---------------------------------------------------
-
-    def toggle_late_start(self) -> None:
-        self.late_start = not self.late_start
-
-    def sample_batch(self) -> None:
-        assert self._pending_solutions is None, "sample_batch called twice consecutively"
-        self._pending_solutions = self._es.ask()
-
-    def update_with_fitness(
-        self, fitness: list[float]
-    ) -> None:
-        assert self._last_solutions is not None, (
-            "update_with_fitness called before generate_population"
-        )
-        if not self._terminated:
-            print("Updating Designs with PPO Training Roll")
-            costs = [self._sanitise_cost(-float(f)) for f in fitness]
-            self._es.tell(self._last_solutions, costs)
-            if self._es.stop():
-                print(f"[CMA-ES] terminated: {self._es.stop()}")
-                self._terminated = True
-            self.sample_batch()
-
-    def generate_population(self, generation: int) -> Population:
-        if not self._terminated:
-            print("Generating New Designs using CMAES output")
-            assert self._pending_solutions is not None, (
-                "generate_population called before sample_batch"
-            )
-            usd_files: list[str] = []
-            actuator_params: list[dict[str, dict]] = []
-            print('generating individual with the following scales')
-            for idx, _ in enumerate(self._pending_solutions):
-                usd_path, act_params = self._generate_individual(generation, idx)
-                usd_files.append(usd_path)
-                actuator_params.append(act_params)
-            self._last_solutions = self._pending_solutions
-            self._pending_solutions = None
-            return RandomPopulation(usd_files, actuator_params)
-
-    # --- Internal helpers --------------------------------------------
-
-    def _denormalise(self, x: np.ndarray) -> dict[str, float]:
-        scales: dict[str, float] = {}
-        for i, key in enumerate(self.param_keys):
-            lo, hi = self.param_ranges[key]
-            xi = float(np.clip(x[i], 0.0, 1.0))
-            scales[key] = float(lo + xi * (hi - lo))
-        return scales
-
-    @staticmethod
-    def _sanitise_cost(c: float, fallback: float = 1e6) -> float:
-        if not np.isfinite(c):
-            return fallback
-        return c
-
-    def save_state(self, path: str) -> None:
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb") as fh:
-            fh.write(self._es.pickle_dumps())
-
-    def _sample_scales(self, rng: np.random.Generator) -> dict[str, float]:
-        return super()._sample_scales(rng)
-
-    def _generate_individual(
-        self, generation: int, idx: int
-    ) -> tuple[str, dict[str, dict]]:
-        """Build one length-scaled URDF + USD and return (usd_path, {})."""
-        scales = None
-        if self.late_start:
-            rng = np.random.default_rng(seed=generation * 10000 + idx)
-            scales = self._sample_scales(rng)
-        else:
-            scales = self._denormalise(self._pending_solutions[idx])
-        print("===============================================")
-        print(f'late start: {self.late_start}')
-        for key, item in scales.items():
-            print(f'{key}: {item}')
-
-        s_thigh = scales["thigh_length_scale"]
-        s_shank = scales["shank_length_scale"]
-
-        tree = ET.parse(self.base_urdf_path)
-        self._current_root = tree.getroot()
-
-        self._update_link_length("hip_R_thigh_Link", s_thigh)
-        self._update_link_length("hip_L_thigh_Link", s_thigh)
-        self._update_link_length("knee_R_Link", s_shank)
-        self._update_link_length("knee_L_Link", s_shank)
-
-        gen_dir = os.path.join(self.output_dir, f"gen_{generation:04d}")
-        os.makedirs(gen_dir, exist_ok=True)
-        urdf_path = os.path.join(gen_dir, f"individual_{idx:04d}.urdf")
-        tree.write(urdf_path, xml_declaration=True, encoding="utf-8")
-
-        usd_out_dir = os.path.join(gen_dir, f"individual_{idx:04d}_usd")
-        usd_path = self._convert_urdf_to_usd(urdf_path, usd_out_dir, idx)
-
-        self._current_root = None
-        # Actuator overrides intentionally empty for now; structure preserved
-        # so downstream _reload_morphology / RandomPopulation consumers don't break.
-        return usd_path, {}
-
-    # ------------------------------------------------------------------
-    # Length-scaling helpers
-    # ------------------------------------------------------------------
+    # ---- physics helpers (moved verbatim from CMAESDesignGenerator) -----------
 
     @staticmethod
     def _get_box_mass(density: float, x: float, y: float, z: float) -> float:
@@ -695,7 +449,7 @@ class CMAESDesignGenerator(RandomDesignGenerator):
     def _get_box_inertia(
         mass: float, x: float, y: float, z: float
     ) -> tuple[float, float, float]:
-        """Diagonal MoI of a solid box at its CoM (per base_robot.md)."""
+        """Diagonal MoI of a solid box at its CoM."""
         ixx = mass * (y * y + z * z) / 12.0
         iyy = mass * (x * x + z * z) / 12.0
         izz = mass * (x * x + y * y) / 12.0
@@ -748,62 +502,6 @@ class CMAESDesignGenerator(RandomDesignGenerator):
         x, y, _ = (float(v) for v in origin.get("xyz", "0 0 0").split())
         origin.set("xyz", f"{x} {y} {z}")
 
-    def _update_link_length(self, link_name: str, scale: float) -> None:
-        """Scale the z dimension of a self.scalable_links entry and propagate.
-
-        Updates the link's box geometry, element origins, mass+inertia, and
-        the single child joint whose parent is the scaled link.
-        """
-        if link_name not in self.scalable_links:
-            raise ValueError(f"{link_name!r} is not a scalable link.")
-        meta = self.scalable_links[link_name]
-        x, y, z0 = meta["size"]
-        child_joint = meta["child_joint"]
-        density = self.link_densities[link_name]
-
-        z_new = z0 * scale
-        new_origin_z = -z_new / 2.0
-
-        link = self._find_link(link_name)
-
-        # 1) box sizes on <visual> and <collision>
-        for el_tag in ("visual", "collision"):
-            el = link.find(el_tag)
-            if el is None:
-                continue
-            box = el.find("geometry/box")
-            if box is None:
-                raise ValueError(
-                    f"{link_name}/{el_tag} has no <box> geometry."
-                )
-            box.set("size", f"{x} {y} {z_new}")
-        # print(f"updating {link_name} dimensions from {x},{y},{z0} to {x},{y},{z_new}")
-        # print(f"new link length is {math.sqrt(x*x + y * y + z_new * z_new)}")
-
-        # 2) origin z on <visual>, <collision>, <inertial>
-        for el_tag in ("visual", "collision", "inertial"):
-            el = link.find(el_tag)
-            if el is None:
-                continue
-            origin = el.find("origin")
-            if origin is None:
-                continue
-            ox, oy, _ = (float(v) for v in origin.get("xyz", "0 0 0").split())
-            origin.set("xyz", f"{ox} {oy} {new_origin_z}")
-
-        # 3) mass + inertia
-        m_new = self._get_box_mass(density, x, y, z_new)
-        moi_new = self._get_box_inertia(m_new, x, y, z_new)
-        self._update_inertial(link_name, m_new, moi_new)
-
-        # 4) child joint position
-        joint_z = -(z_new + SCALABLE_LINK_CHILD_OFFSET)
-        self._update_joint_position(link_name, child_joint, joint_z)
-
-    # ------------------------------------------------------------------
-    # Element lookup helpers
-    # ------------------------------------------------------------------
-
     def _find_link(self, name: str) -> ET.Element:
         if self._current_root is None:
             raise RuntimeError("_find_link called with no current URDF root.")
@@ -819,3 +517,284 @@ class CMAESDesignGenerator(RandomDesignGenerator):
             if joint.get("name") == name:
                 return joint
         raise KeyError(f"No <joint name={name!r}> in current URDF.")
+
+
+# ---------------------------------------------------------------------------
+# Concrete population
+# ---------------------------------------------------------------------------
+
+
+class RandomPopulation(Population):
+    """A concrete population backed by pre-generated USD paths, actuator params,
+    and absolute link-extent dicts."""
+
+    def __init__(
+        self,
+        usd_files: list[str],
+        actuator_params: list[dict[str, dict]],
+        link_length_params: list[dict[str, dict[str, float]]],
+    ) -> None:
+        self._usd_files = usd_files
+        self._actuator_params = actuator_params
+        self._link_length_params = link_length_params
+
+    def get_usd_files(self) -> list[str]:
+        return self._usd_files
+
+    def get_actuator_params(self) -> list[dict[str, dict]]:
+        return self._actuator_params
+
+    def get_link_length_params(self) -> list[dict[str, dict[str, float]]]:
+        return self._link_length_params
+
+
+# ---------------------------------------------------------------------------
+# Random design generator
+# ---------------------------------------------------------------------------
+
+
+class RandomDesignGenerator(DesignGeneratorBase):
+    """Generates robot design populations by randomly perturbing a base URDF.
+
+    Each individual is produced by:
+
+    1. Sampling scalar scale factors from ``param_ranges``.
+    2. Computing absolute link extents from cached base sizes.
+    3. Writing a modified URDF (link lengths first, then extra mutations).
+    4. Converting the URDF to USD via :class:`isaaclab.sim.converters.UrdfConverter`.
+    5. Recording actuator-param overrides that cannot be expressed in USD/URDF.
+
+    Args:
+        base_urdf_path: Absolute path to the template URDF file.
+        num_individuals: Number of designs per generation.
+        param_ranges: Optional dict overriding entries in
+            :data:`DEFAULT_PARAM_RANGES`.  Only the keys you provide are
+            overridden; all other defaults remain.
+        output_dir: Directory for writing generated URDFs and USDs.
+    """
+
+    def __init__(
+        self,
+        base_urdf_path: str,
+        num_individuals: int,
+        param_ranges: dict[str, tuple[float, float]] | None = None,
+        output_dir: str = "/tmp/copt_usds",
+    ) -> None:
+        super().__init__(base_urdf_path, num_individuals, param_ranges, output_dir)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate_population(self, generation: int) -> Population:
+        return self._build_population(generation, range(self.num_individuals))
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _generate_individual(
+        self, generation: int, idx: int
+    ) -> tuple[dict[str, dict[str, float]], dict[str, dict]]:
+        rng = np.random.default_rng(seed=generation * 10000 + idx)
+        scales = self._sample_scales(rng)
+        self._current_scales = scales
+        return self._compute_link_extents(scales), self._build_actuator_params(scales)
+
+    def _build_actuator_params(self, scales: dict[str, float]) -> dict[str, dict]:
+        act_params: dict[str, dict] = {}
+        for group, baseline in ACTUATOR_BASELINES.items():
+            act_params[group] = {
+                "effort_limit":      baseline["effort_limit"]      * scales["joint_effort_scale"],
+                "velocity_limit":    baseline["velocity_limit"]    * scales["velocity_limit_scale"],
+                "saturation_effort": baseline["saturation_effort"] * scales["saturation_effort_scale"],
+                "armature":          baseline["armature"]          * scales["armature_scale"],
+                "friction_static":   baseline["friction_static"]   * scales["friction_static_scale"],
+                "friction_dynamic":  baseline["friction_dynamic"]  * scales["friction_dynamic_scale"],
+                "stiffness":         baseline["stiffness"]         * scales[f"{group}_stiffness_scale"],
+                "damping":           baseline["damping"]           * scales[f"{group}_damping_scale"],
+            }
+            act_params[group] = {key: round(val, 3) for key, val in act_params[group].items()}
+        return act_params
+
+    def _apply_extra_urdf_mutations(self) -> None:
+        """Apply C/D/E URDF mutations (mass, cylinders, joint limits) after link lengths."""
+        scales, root = self._current_scales, self._current_root
+        if scales is None or root is None:
+            return
+        s_mass = scales["link_mass_scale"]                              # C: mass & inertia
+        for link in root.iter("link"):
+            if IMU_LINK_NAME in link.get("name", ""):
+                continue
+            for mass_el in link.iter("mass"):
+                mass_el.set("value", str(float(mass_el.get("value", 0.0)) * s_mass))
+            for inertia_el in link.iter("inertia"):
+                for attr in ("ixx", "iyy", "izz", "ixy", "ixz", "iyz"):
+                    val = inertia_el.get(attr)
+                    if val is not None:
+                        inertia_el.set(attr, str(float(val) * s_mass))
+        s_r = scales["actuator_radius_scale"]                           # D: cylinders
+        s_l = scales["actuator_length_scale"]
+        for link in root.iter("link"):
+            if any(al in link.get("name", "") for al in ABAD_HIP_LINKS):
+                for cyl in link.iter("cylinder"):
+                    cyl.set("radius", str(float(cyl.get("radius", 0.0)) * s_r))
+                    cyl.set("length", str(float(cyl.get("length", 0.0)) * s_l))
+        s_eff = scales["joint_effort_scale"]                            # E: joint limits
+        s_vel = scales["velocity_limit_scale"]
+        for joint in root.iter("joint"):
+            grp = JOINT_TO_ACTUATOR.get(joint.get("name", ""))
+            if grp is None:
+                continue
+            for limit_el in joint.iter("limit"):
+                limit_el.set("effort",   str(ACTUATOR_BASELINES[grp]["effort_limit"]   * s_eff))
+                limit_el.set("velocity", str(ACTUATOR_BASELINES[grp]["velocity_limit"] * s_vel))
+
+
+# ---------------------------------------------------------------------------
+# CMA-ES design generator
+# ---------------------------------------------------------------------------
+
+
+class CMAESDesignGenerator(DesignGeneratorBase):
+    """Generates robot designs by sampling from a CMA-ES search distribution.
+
+    The design vector is the unit-hypercube encoding of the scale-factor
+    dictionary used by :class:`RandomDesignGenerator`; CMA-ES adapts the
+    multivariate Gaussian search distribution from the per-individual
+    mean episode return reported by :class:`CoptOnPolicyRunner`.
+    """
+
+    def __init__(
+        self,
+        base_urdf_path: str,
+        num_individuals: int,
+        param_ranges: dict[str, tuple[float, float]] | None = None,
+        output_dir: str = "/tmp/copt_usds",
+        sigma0: float = 0.2,
+        seed: int = 0,
+        es_state_path: str | None = None,
+        late_start: bool = False,
+        max_cma_iter: int = 10000,
+    ) -> None:
+        super().__init__(
+            base_urdf_path=base_urdf_path,
+            num_individuals=num_individuals,
+            param_ranges=param_ranges,
+            output_dir=output_dir,
+        )
+        # Restrict CMA-ES to only the length scales this generator drives.
+        # Caller-supplied param_ranges may tune the bounds of these two keys
+        # but cannot add new dimensions (any extras would be inert).
+        self.param_ranges = {**CMAES_PARAM_RANGES}
+        if param_ranges is not None:
+            for key, rng in param_ranges.items():
+                if key in self.param_ranges:
+                    self.param_ranges[key] = rng
+
+        self.param_keys: list[str] = list(self.param_ranges.keys())
+        self.num_params: int = len(self.param_keys)
+        self._sigma0: float = float(sigma0)
+        self._seed: int = int(seed)
+        self.late_start = late_start
+
+        if es_state_path is not None:
+            with open(es_state_path, "rb") as fh:
+                self._es = cma.CMAEvolutionStrategy.pickle_loads(fh.read())
+            assert self._es.N == self.num_params, (
+                f"Checkpoint dimension mismatch: "
+                f"pickled {self._es.N}, expected {self.num_params}"
+            )
+        else:
+            opts = cma.CMAOptions()
+            opts.set({
+                "popsize": int(num_individuals),
+                "bounds": [np.zeros(self.num_params), np.ones(self.num_params)],
+                "seed": self._seed,
+                "verb_disp": 1,
+                "verb_filenameprefix": str(Path(output_dir) / "cma_log") + "/",
+                "maxiter": max_cma_iter, 
+            })
+            self._es = cma.CMAEvolutionStrategy(
+                np.full(self.num_params, 1.0), self._sigma0, opts
+            )
+
+        self._pending_solutions: list[np.ndarray] | None = None
+        self._last_solutions: list[np.ndarray] | None = None
+        self._terminated = False
+
+    # --- Public API ---------------------------------------------------
+
+    def toggle_late_start(self) -> None:
+        self.late_start = not self.late_start
+
+    def sample_batch(self) -> None:
+        assert self._pending_solutions is None, "sample_batch called twice consecutively"
+        self._pending_solutions = self._es.ask()
+
+    def update_with_fitness(
+        self, fitness: list[float]
+    ) -> None:
+        assert self._last_solutions is not None, (
+            "update_with_fitness called before generate_population"
+        )
+        if not self._terminated:
+            print("Updating Designs with PPO Training Roll")
+            costs = [self._sanitise_cost(-float(f)) for f in fitness]
+            self._es.tell(self._last_solutions, costs)
+            if self._es.stop():
+                print(f"[CMA-ES] terminated: {self._es.stop()}")
+                self._terminated = True
+            self.sample_batch()
+
+    def generate_population(self, generation: int) -> Population | None:  # type: ignore[override]
+        if self._terminated:
+            return None
+        print("Generating New Designs using CMAES output")
+        assert self._pending_solutions is not None, (
+            "generate_population called before sample_batch"
+        )
+        pop = self._build_population(generation, range(len(self._pending_solutions)))
+        self._last_solutions = self._pending_solutions
+        self._pending_solutions = None
+        return pop
+
+    # --- Internal helpers --------------------------------------------
+
+    def _generate_individual(
+        self, generation: int, idx: int
+    ) -> tuple[dict[str, dict[str, float]], dict[str, dict]]:
+        """Return (link_length_params, {}) for one CMA-ES individual."""
+        if self.late_start:
+            rng = np.random.default_rng(seed=generation * 10000 + idx)
+            scales = self._sample_scales(rng)
+        else:
+            assert self._pending_solutions is not None, (
+                "_generate_individual called before sample_batch"
+            )
+            scales = self._denormalise(self._pending_solutions[idx])
+        # print("===============================================")
+        # print(f'late start: {self.late_start}')
+        # for key, item in scales.items():
+        #     print(f'{key}: {item}')
+        self._current_scales = scales
+        return self._compute_link_extents(scales), {}   # actuator overrides empty
+
+    def _denormalise(self, x: np.ndarray) -> dict[str, float]:
+        scales: dict[str, float] = {}
+        for i, key in enumerate(self.param_keys):
+            lo, hi = self.param_ranges[key]
+            xi = float(np.clip(x[i], 0.0, 1.0))
+            scales[key] = float(lo + xi * (hi - lo))
+        return scales
+
+    @staticmethod
+    def _sanitise_cost(c: float, fallback: float = 1e6) -> float:
+        if not np.isfinite(c):
+            return fallback
+        return c
+
+    def save_state(self, path: str) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(self._es.pickle_dumps())

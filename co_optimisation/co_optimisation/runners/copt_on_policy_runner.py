@@ -20,6 +20,8 @@ import warnings
 from collections import deque
 from tensordict import TensorDict
 
+import pandas as pd
+from isaaclab.sim.utils.stage import get_current_stage
 from rsl_rl.algorithms import PPO
 from rsl_rl.env import VecEnv
 from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
@@ -27,7 +29,9 @@ from rsl_rl.runners import OnPolicyRunner
 
 from co_optimisation.modules import CoptActorCritic
 from co_optimisation.runners.usd_generator import DesignGeneratorBase, Population
+from co_optimisation.utils.analysis import log_prototype_and_instance_info
 from co_optimisation.utils.respawn import apply_actuator_params, respawn_robots
+from co_optimisation.utils.update import apply_link_length_params
 
 
 class CoptOnPolicyRunner(OnPolicyRunner):
@@ -75,6 +79,9 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._ea_update_interval: int = copt_cfg.get("ea_update_interval", 100)
         self._ea_late_start: int = copt_cfg.get("ea_late_start", -1)
         self._num_individuals: int = copt_cfg.get("num_individuals", 16)
+        self._randomise_before_late_start: bool = copt_cfg.get(
+            "randomise_before_late_start", False
+        )
         self._design_generator = design_generator
         # Per-generation state
         self.generation: int = 0
@@ -107,9 +114,14 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             )
 
         # Generate initial population before the first rollout and start learning
+        # print("[respawn] Logging prototype and instance info...")
+        # log_prototype_and_instance_info(get_current_stage())
         self.respawn_robots = respawn_robots()
+        if self.log_dir is not None:
+            if not os.path.exists(os.path.join(self.log_dir, "designs")):
+                os.mkdir(os.path.join(self.log_dir, "designs"))
         with torch.inference_mode():
-            self._reload_morphology()
+            self._update_morphology()
 
         obs = self.env.get_observations().to(self.device)
         self.train_mode()
@@ -147,8 +159,12 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         for it in range(start_iter, tot_iter):
             start = time.time()
             # Rollout
+            is_late_start_toggle_time = self._ea_late_start < (it + 1 - start_iter)
+            is_morph_update_time = (
+                (it + 1 - start_iter) % self._ea_update_interval == 0
+            ) and (is_late_start_toggle_time or self._randomise_before_late_start)
             with torch.inference_mode():
-                for _ in range(self.num_steps_per_env):
+                for step in range(self.num_steps_per_env):
                     # Sample actions
                     actions = self.alg.act(obs)
                     obs, rewards, dones, extras = self.env.step(
@@ -181,33 +197,45 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                         # Update episode length
                         cur_episode_length += 1
                         # Clear data for completed episodes
+
                         new_ids = (dones > 0).nonzero(as_tuple=False)
-                        # ---- COPT: accumulate per-individual fitness --------
-                        completed_env_ids = new_ids[:, 0]
-                        for env_idx in completed_env_ids.tolist():
-                            ind_idx = self._env_to_individual[env_idx]
-                            self._individual_fitness[ind_idx] += cur_reward_sum[env_idx]
-                            self._individual_episode_counts[ind_idx] += 1
-                        # ---- end COPT injection ----------------------------
+                        if (step < self.num_steps_per_env - 1) or (
+                            not is_morph_update_time
+                        ):
+                            # ---- COPT: accumulate per-individual fitness --------
+                            completed_env_ids = new_ids[:, 0]
+                            for env_idx in completed_env_ids.tolist():
+                                ind_idx = self._env_to_individual[env_idx]
+                                self._individual_fitness[ind_idx] += cur_reward_sum[
+                                    env_idx
+                                ]
+                                self._individual_episode_counts[ind_idx] += 1
+                            # ---- end COPT injection ----------------------------
 
-                        rewbuffer.extend(
-                            cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist()
-                        )
-                        lenbuffer.extend(
-                            cur_episode_length[new_ids][:, 0].cpu().numpy().tolist()
-                        )
-                        cur_reward_sum[new_ids] = 0
-                        cur_episode_length[new_ids] = 0
+                            rewbuffer.extend(
+                                cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist()
+                            )
+                            lenbuffer.extend(
+                                cur_episode_length[new_ids][:, 0].cpu().numpy().tolist()
+                            )
+                            cur_reward_sum[new_ids] = 0
+                            cur_episode_length[new_ids] = 0
 
-                        if self.alg.rnd:
-                            erewbuffer.extend(
-                                cur_ereward_sum[new_ids][:, 0].cpu().numpy().tolist()
-                            )
-                            irewbuffer.extend(
-                                cur_ireward_sum[new_ids][:, 0].cpu().numpy().tolist()
-                            )
-                            cur_ereward_sum[new_ids] = 0
-                            cur_ireward_sum[new_ids] = 0
+                            if self.alg.rnd:
+                                erewbuffer.extend(
+                                    cur_ereward_sum[new_ids][:, 0]
+                                    .cpu()
+                                    .numpy()
+                                    .tolist()
+                                )
+                                irewbuffer.extend(
+                                    cur_ireward_sum[new_ids][:, 0]
+                                    .cpu()
+                                    .numpy()
+                                    .tolist()
+                                )
+                                cur_ereward_sum[new_ids] = 0
+                                cur_ireward_sum[new_ids] = 0
 
                 stop = time.time()
                 collection_time = stop - start
@@ -222,6 +250,48 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             stop = time.time()
             learn_time = stop - start
             self.current_learning_iteration = it
+
+            # ---- COPT: EA generation update ---------------------------------
+            if is_morph_update_time:
+                if (
+                    self._ea_late_start > 0
+                    and self._design_generator.late_start
+                    and is_late_start_toggle_time
+                ):
+                    print(
+                        f"toggling late start at {it + 1 - start_iter} steps with configure threshold at {self._ea_late_start}"
+                    )
+                    self._design_generator.toggle_late_start()
+                with torch.inference_mode():
+                    self._update_morphology()
+                # Refresh observations after in-place update
+                obs = self.env.get_observations().to(self.device)
+                if self.log_dir is not None:
+                    for env_idx in range(self.env.num_envs):
+                        ind_idx = self._env_to_individual[env_idx]
+                        self._individual_fitness[ind_idx] += cur_reward_sum[env_idx]
+                        self._individual_episode_counts[ind_idx] += 1
+                    rewbuffer.extend(cur_reward_sum.cpu().numpy().tolist())
+                    lenbuffer.extend(cur_episode_length.cpu().numpy().tolist())
+                    cur_reward_sum[:] = 0
+                    cur_episode_length[:] = 0
+
+                    if self.alg.rnd:
+                        erewbuffer.extend(cur_ereward_sum.cpu().numpy().tolist())
+                        irewbuffer.extend(cur_ireward_sum.cpu().numpy().tolist())
+                        cur_ereward_sum[:] = 0
+                        cur_ireward_sum[:] = 0
+                    link_lengths = self.current_population.get_link_length_params()
+                    keys = None
+                    if len(link_lengths) > 0:
+                        keys = link_lengths[0].keys()
+                    df = pd.DataFrame(self.current_population.get_link_length_params())
+                    df.to_csv(
+                        os.path.join(self.log_dir, "designs", f"link_lengths_{it}.csv"),
+                        header=False,
+                        columns=keys,
+                    )
+            # ---- end COPT injection -----------------------------------------
 
             if self.log_dir is not None and not self.disable_logs:
                 # Log information
@@ -241,21 +311,6 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     for path in git_file_paths:
                         self.writer.save_file(path)
 
-            # ---- COPT: EA generation update ---------------------------------
-            if ((it + 1 - start_iter) % self._ea_update_interval == 0) and (
-                self._ea_late_start < (it + 1 - start_iter)
-            ):
-                if self._ea_late_start > 0 and self._design_generator.late_start:
-                    print(
-                        f"toggling late start at {it + 1 - start_iter} steps with configure threshold at {self._ea_late_start}"
-                    )
-                    self._design_generator.toggle_late_start()
-                with torch.inference_mode():
-                    self._reload_morphology()
-                # Refresh observations after respawn
-                obs = self.env.get_observations().to(self.device)
-            # ---- end COPT injection -----------------------------------------
-
         if self.log_dir is not None and not self.disable_logs:
             self.save(
                 os.path.join(
@@ -264,13 +319,13 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             )
 
     def _construct_algorithm(self, obs: TensorDict) -> PPO:
-       # TODO Check if we can just run this method from the parent class by updating the configuration?
+        # TODO Check if we can just run this method from the parent class by updating the configuration?
         # In such a case we would only have to update the logging and the rest of the pipeline from the parent class gets used.
         """Construct the actor-critic algorithm."""
         # Resolve RND config
         self.alg_cfg = resolve_rnd_config(
-                self.alg_cfg, obs, self.cfg["obs_groups"], self.env
-                )
+            self.alg_cfg, obs, self.cfg["obs_groups"], self.env
+        )
 
         # Resolve symmetry config
         self.alg_cfg = resolve_symmetry_config(self.alg_cfg, self.env)
@@ -278,37 +333,37 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # Resolve deprecated normalization config
         if self.cfg.get("empirical_normalization") is not None:
             warnings.warn(
-                    "The `empirical_normalization` parameter is deprecated. Please set `actor_obs_normalization` and "
-                    "`critic_obs_normalization` as part of the `policy` configuration instead.",
-                    DeprecationWarning,
-                    )
+                "The `empirical_normalization` parameter is deprecated. Please set `actor_obs_normalization` and "
+                "`critic_obs_normalization` as part of the `policy` configuration instead.",
+                DeprecationWarning,
+            )
             if self.policy_cfg.get("actor_obs_normalization") is None:
                 self.policy_cfg["actor_obs_normalization"] = self.cfg[
-                        "empirical_normalization"
-                        ]
+                    "empirical_normalization"
+                ]
             if self.policy_cfg.get("critic_obs_normalization") is None:
                 self.policy_cfg["critic_obs_normalization"] = self.cfg[
-                        "empirical_normalization"
-                        ]
+                    "empirical_normalization"
+                ]
 
         # Initialize the policy
         actor_critic_class = eval(self.policy_cfg.pop("class_name"))
         actor_critic: CoptActorCritic = actor_critic_class(
-                obs,
-                self.cfg["obs_groups"],
-                self.env.num_actions,
-                self.encoder_cfg,
-                **self.policy_cfg,
-                ).to(self.device)
+            obs,
+            self.cfg["obs_groups"],
+            self.env.num_actions,
+            self.encoder_cfg,
+            **self.policy_cfg,
+        ).to(self.device)
 
         # Initialize the algorithm
         alg_class = eval(self.alg_cfg.pop("class_name"))
         alg: PPO = alg_class(
-                actor_critic,
-                device=self.device,
-                **self.alg_cfg,
-                multi_gpu_cfg=self.multi_gpu_cfg,
-                )
+            actor_critic,
+            device=self.device,
+            **self.alg_cfg,
+            multi_gpu_cfg=self.multi_gpu_cfg,
+        )
 
         # Initialize the storage
         alg.init_storage(
@@ -355,6 +410,46 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # Reset fitness accumulators
         print("Resetting Accumulators")
         self._individual_fitness.zero_()
+        self._individual_episode_counts.zero_()
+
+    def _update_morphology(self) -> None:
+        """In-place EA cycle: no delete/respawn, no manager re-binding."""
+        unwrapped_env = self.env.unwrapped
+        sim = unwrapped_env.sim
+
+        if sim.is_playing():  # 1. stop (Fabric off)
+            sim._disable_app_control_on_stop_handle = True
+            sim.stop()
+            sim._disable_app_control_on_stop_handle = False
+
+        if self.current_population is not None:
+            fitness = self._compute_individual_fitness()
+            print("Updating Design Population")
+            self._design_generator.update_with_fitness(fitness)
+
+        elif self.current_population is None:
+            self._design_generator.sample_batch()
+
+        self.current_population = self._design_generator.generate_population(  # 3.
+            self.generation
+        )
+        self.generation += 1
+
+        print(
+            "Applying link length parameters in place"
+        )  # 4. author + sim.reset() (inside)
+        apply_link_length_params(
+            unwrapped_env, self.current_population.get_link_length_params()
+        )
+
+        unwrapped_env.reset()  # 5. reset episodes
+
+        print("Applying Sampled Actuator Parameters")  # 6. actuators AFTER reset
+        apply_actuator_params(
+            unwrapped_env, self.current_population.get_actuator_params()
+        )
+
+        self._individual_fitness.zero_()  # 7. zero accumulators
         self._individual_episode_counts.zero_()
 
     def _compute_individual_fitness(self) -> list[float]:

@@ -15,6 +15,10 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.sim.utils.stage import get_current_stage
+from pxr import Usd
+
+from co_optimisation.utils.analysis import log_prototype_and_instance_info
 
 
 class respawn_robots:
@@ -157,6 +161,15 @@ class respawn_robots:
         end_time = time.perf_counter()
         total_time = end_time - start_time
         print(f"Total time taken for sim.reset(): {total_time:.4f} seconds")
+
+        # ------------------------------------------------------------------
+        # Step 6b: Log prototype / instance layout for debugging
+        # ------------------------------------------------------------------
+        # This shows how many prototypes were created, which instances share
+        # each prototype, and what box-dimension scale values are stored in
+        # each prototype — critical for verifying the in-place update path.
+        print("[respawn] Logging prototype and instance info...")
+        log_prototype_and_instance_info(get_current_stage())
 
         # ------------------------------------------------------------------
         # Step 7: Patch scene dict with the now-initialized articulation
