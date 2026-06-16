@@ -858,19 +858,19 @@ class EventsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base_Link"),
             # Converted from add(-5.0, 5.0) on baseline 9.585 kg → ±52.2% symmetric scale
-            "mass_distribution_params": (0.85, 1.25),
+            "mass_distribution_params": (0.65, 1.35),
             "operation": "scale",
         },
     )
-    add_link_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*_[LR]_Link"),
-            "mass_distribution_params": (0.8, 1.2),
-            "operation": "scale",
-        },
-    )
+    # add_link_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*_[LR]_Link"),
+    #         "mass_distribution_params": (0.8, 1.2),
+    #         "operation": "scale",
+    #     },
+    # )
     robot_physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
         mode="startup",
@@ -1015,7 +1015,7 @@ class EventsCfg:
         mode="interval",
         interval_range_s=(10.0, 15.0),
         params={
-            "velocity_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05)},
+            "velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)},
         },
     )
     
@@ -1185,7 +1185,7 @@ class CurriculumCfg:
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 3000*24
+            "starting_step": 200*24
         }
     )
 
@@ -1194,10 +1194,10 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 450 * 24,
-            "starting_step": 5000 * 24,
-            "increment_rate": 1.05,
-            "decrement_rate" : 0.05
+            "interval": 400 * 24,
+            "starting_step": 2000 * 24,
+            "increment_rate": 1.2,
+            "decrement_rate" : 0.2
         },
     )
 

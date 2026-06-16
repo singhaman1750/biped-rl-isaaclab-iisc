@@ -90,7 +90,7 @@ class PF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 # -----------------------------------------------------------------
 @configclass
 class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
+    num_steps_per_env = 25
     max_iterations = 30000
     save_interval = 500
     experiment_name = "sf_tron_1a_flat"
@@ -175,7 +175,7 @@ class WF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 # -----------------------------------------------------------------
 @configclass
 class SF_Berkeley_PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 96
+    num_steps_per_env = 24
     max_iterations = 30000
     save_interval = 500
     experiment_name = "sf_tron_berkeley_mimic"
