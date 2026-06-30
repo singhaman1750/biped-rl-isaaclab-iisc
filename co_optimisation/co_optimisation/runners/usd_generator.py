@@ -318,7 +318,7 @@ class DesignGeneratorBase(ABC):
         ...
 
     @abstractmethod
-    def generate_population(self, generation: int) -> Population:
+    def generate_population(self, generation: int) -> Population | None:
         """Generate a new population for *generation*."""
         ...
 
@@ -354,13 +354,22 @@ class DesignGeneratorBase(ABC):
     def _sample_scales(self, rng: np.random.Generator) -> dict[str, float]:
         return {k: float(rng.uniform(lo, hi)) for k, (lo, hi) in self.param_ranges.items()}
 
+    def _sample_scales_v2(self, rng: np.random.Generator, scale: float) -> dict[str, float]:
+        scales = {}
+        for k, (lo, hi) in self.param_ranges.items():
+            mean = (lo + hi) / 2
+            lo_n = (lo - mean) * scale + mean 
+            hi_n = (hi - mean) * scale + mean
+            scales[k] = float(rng.uniform(lo_n, hi_n))
+        return scales
+
     def _compute_link_extents(self, scales: dict[str, float]) -> dict[str, dict[str, float]]:
         """Absolute box extents (metres) = cached base size × sampled length scale."""
         extents: dict[str, dict[str, float]] = {}
         for link, scale_key in SCALABLE_LINK_LENGTH_SCALE.items():
             x, y, z0 = self.scalable_links[link]["size"]
             extents[link] = {"x": x, "y": y, "z": z0 * scales.get(scale_key, 1.0)}
-            extents[link] = {key: round(val, 3) for key, val in extents[link].items()}
+            extents[link] = {key: round(val, 2) for key, val in extents[link].items()}
         return extents
 
     # ---- URDF authoring (shared) ----------------------------------------------
@@ -586,7 +595,7 @@ class RandomDesignGenerator(DesignGeneratorBase):
     # Public API
     # ------------------------------------------------------------------
 
-    def generate_population(self, generation: int) -> Population:
+    def generate_population(self, generation: int) -> Population | None:
         return self._build_population(generation, range(self.num_individuals))
 
     # ------------------------------------------------------------------
@@ -614,7 +623,7 @@ class RandomDesignGenerator(DesignGeneratorBase):
                 "stiffness":         baseline["stiffness"]         * scales[f"{group}_stiffness_scale"],
                 "damping":           baseline["damping"]           * scales[f"{group}_damping_scale"],
             }
-            act_params[group] = {key: round(val, 3) for key, val in act_params[group].items()}
+            act_params[group] = {key: round(val, 2) for key, val in act_params[group].items()}
         return act_params
 
     def _apply_extra_urdf_mutations(self) -> None:
@@ -675,6 +684,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         seed: int = 0,
         es_state_path: str | None = None,
         late_start: bool = False,
+        late_start_it: int = 8000,
         max_cma_iter: int = 10000,
     ) -> None:
         super().__init__(
@@ -697,6 +707,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         self._sigma0: float = float(sigma0)
         self._seed: int = int(seed)
         self.late_start = late_start
+        self.late_start_it = late_start_it
 
         if es_state_path is not None:
             with open(es_state_path, "rb") as fh:
@@ -716,7 +727,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
                 "maxiter": max_cma_iter, 
             })
             self._es = cma.CMAEvolutionStrategy(
-                np.full(self.num_params, 1.0), self._sigma0, opts
+                np.full(self.num_params, 0.5), self._sigma0, opts
             )
 
         self._pending_solutions: list[np.ndarray] | None = None
@@ -749,12 +760,14 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
     def generate_population(self, generation: int) -> Population | None:  # type: ignore[override]
         if self._terminated:
+            print("CMAES Terminated. Fine-tuning parent policy on selected design only")
+            self._pending_solutions = self._last_solutions
+            # return self._build_population(generation, range(self.num_individuals))
             return None
         print("Generating New Designs using CMAES output")
-        assert self._pending_solutions is not None, (
-            "generate_population called before sample_batch"
-        )
-        pop = self._build_population(generation, range(len(self._pending_solutions)))
+        if self.late_start:
+            print("late start enabled sampling random designs")
+        pop = self._build_population(generation, range(self.num_individuals))
         self._last_solutions = self._pending_solutions
         self._pending_solutions = None
         return pop
@@ -798,3 +811,87 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fh:
             fh.write(self._es.pickle_dumps())
+
+    def get_state(self) -> dict:
+        """Return a picklable snapshot of the full CMA-ES search state.
+
+        Widens the strategy-object-only :meth:`save_state` into the complete
+        bookkeeping required for an identical resume, namely the pending and last
+        ``ask`` solutions that pair genotypes with their fitness, the termination
+        flag, and the late-start flag.  The subclass
+        :class:`GrowingDesignDistCMAESDesignGenerator` inherits this unchanged.
+        """
+        return {
+            "es": self._es.pickle_dumps(),
+            "pending_solutions": self._pending_solutions,
+            "last_solutions": self._last_solutions,
+            "terminated": self._terminated,
+            "late_start": self.late_start,
+        }
+
+    def load_state(self, state: dict) -> None:
+        """Restore the search state produced by :meth:`get_state`."""
+        self._es = cma.CMAEvolutionStrategy.pickle_loads(state["es"])
+        assert self._es.N == self.num_params, (
+            f"CMA-ES dimension mismatch on resume: "
+            f"pickled {self._es.N}, expected {self.num_params}"
+        )
+        self._pending_solutions = state["pending_solutions"]
+        self._last_solutions = state["last_solutions"]
+        self._terminated = state["terminated"]
+        self.late_start = state["late_start"]
+
+
+class GrowingDesignDistCMAESDesignGenerator(CMAESDesignGenerator):
+    def __init__(
+        self,
+        base_urdf_path: str,
+        num_individuals: int,
+        param_ranges: dict[str, tuple[float, float]] | None = None,
+        output_dir: str = "/tmp/copt_usds",
+        sigma0: float = 0.2,
+        seed: int = 0,
+        es_state_path: str | None = None,
+        late_start: bool = False,
+        late_start_it: int = 8000,
+        max_cma_iter: int = 10000,
+    ) -> None:
+        super().__init__(
+            base_urdf_path=base_urdf_path,
+            num_individuals=num_individuals,
+            param_ranges=param_ranges,
+            output_dir=output_dir,
+            sigma0=sigma0,
+            seed=seed,
+            es_state_path=es_state_path,
+            late_start=late_start,
+            late_start_it=late_start_it,
+            max_cma_iter=max_cma_iter,
+        )
+
+    def _generate_individual(
+        self, generation: int, idx: int
+    ) -> tuple[dict[str, dict[str, float]], dict[str, dict]]:
+        """Return (link_length_params, {}) for one CMA-ES individual."""
+        if self.late_start:
+            rng = np.random.default_rng(seed=generation * 10000 + idx)
+            # Saturation Point of design distribution growth
+            s = 0.1
+            # Total Number of generations of random population sampling
+            n = self.late_start_it
+            # Current generation
+            g = generation
+            # scale = ((1.0 - 0.05) / ((n - s) - 0.0)) * g + 0.05
+            scale = 0.95 * (g / (n - s)) + 0.05
+            scales = self._sample_scales_v2(rng, scale)
+        else:
+            assert self._pending_solutions is not None, (
+                "_generate_individual called before sample_batch"
+            )
+            scales = self._denormalise(self._pending_solutions[idx])
+        # print("===============================================")
+        # print(f'late start: {self.late_start}')
+        # for key, item in scales.items():
+        #     print(f'{key}: {item}')
+        self._current_scales = scales
+        return self._compute_link_extents(scales), {}   # actuator overrides empty

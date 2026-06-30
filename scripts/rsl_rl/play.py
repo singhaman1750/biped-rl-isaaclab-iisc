@@ -5,7 +5,7 @@
 import argparse
 from typing import Union
 
-import visualise
+# import visualise
 from isaaclab.app import AppLauncher
 
 # local imports
@@ -206,20 +206,20 @@ class DataLogger:
     def log_latent(self, latent):
         self.data["latent_space_output"].append(latent.cpu())
 
-    def plot(self):
-        data = {}
-        write_data = {}
-        for key, item in self.data.items():
-            if "commanded" not in key:
-                data[key] = [self.data[key]]
-            else:
-                data[key] = self.data[key]
-            if len(self.data[key]) > 0:
-                write_data[key] = torch.stack(self.data[key]).numpy()
-        visualise.visualise(data, self.log_dir, self.num_envs, self.seed)
-        data_path = os.path.join(self.log_dir, "data", f"{self.seed}")
-        os.makedirs(data_path, exist_ok=True)
-        np.save(os.path.join(data_path, "dump.npy"), data)
+    # def plot(self):
+    #     data = {}
+    #     write_data = {}
+    #     for key, item in self.data.items():
+    #         if "commanded" not in key:
+    #             data[key] = [self.data[key]]
+    #         else:
+    #             data[key] = self.data[key]
+    #         if len(self.data[key]) > 0:
+    #             write_data[key] = torch.stack(self.data[key]).numpy()
+    #     visualise.visualise(data, self.log_dir, self.num_envs, self.seed)
+    #     data_path = os.path.join(self.log_dir, "data", f"{self.seed}")
+    #     os.makedirs(data_path, exist_ok=True)
+    #     np.save(os.path.join(data_path, "dump.npy"), data)
 
 
 def main():
@@ -375,7 +375,7 @@ def main():
                 break
 
     # plot data
-    data_logger.plot()
+    # data_logger.plot()
 
     # close the simulator
     env.close()

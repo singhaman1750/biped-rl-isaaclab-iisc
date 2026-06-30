@@ -98,6 +98,7 @@ from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
     CMAESDesignGenerator,
+    GrowingDesignDistCMAESDesignGenerator,
     RandomDesignGenerator,
 )
 from himloco.runners import HIMOnPolicyRunner
@@ -135,7 +136,6 @@ def main():
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(
         args_cli.task, args_cli
     )
-    # agent_cfg.resume = True
 
     if args_cli.max_iterations is not None:
         agent_cfg.max_iterations = args_cli.max_iterations
@@ -201,19 +201,20 @@ def main():
         _num_individuals = 64
         # ea_update_interval * num_steps_per_env (50 * 24 = 1200) should be more
         # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
-        ea_update_interval = 40
-        ea_late_start = 2000
+        ea_update_interval = 120
+        ea_late_start = 8000
         param_ranges = {}
         params = ["thigh_length_scale", "shank_length_scale"]
         for param in params:
             param_ranges[param] = DEFAULT_PARAM_RANGES[param]
-        design_generator = CMAESDesignGenerator(
+        design_generator = GrowingDesignDistCMAESDesignGenerator(
             base_urdf_path=_base_urdf,
             num_individuals=_num_individuals,
             param_ranges=param_ranges,
-            sigma0=0.1,
+            sigma0=0.75,
             seed=42,
-            late_start=False,
+            late_start=True,
+            late_start_it=int(ea_late_start / 120),
             max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
             / ea_update_interval,
         )

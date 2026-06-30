@@ -28,10 +28,37 @@ from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.runners import OnPolicyRunner
 
 from co_optimisation.modules import CoptActorCritic
-from co_optimisation.runners.usd_generator import DesignGeneratorBase, Population
+from co_optimisation.runners.usd_generator import (
+    DesignGeneratorBase,
+    Population,
+    RandomPopulation,
+)
 from co_optimisation.utils.analysis import log_prototype_and_instance_info
+from co_optimisation.utils.env_state import capture_env_state, restore_env_state
 from co_optimisation.utils.respawn import apply_actuator_params, respawn_robots
 from co_optimisation.utils.update import apply_link_length_params
+
+
+def _population_to_dict(pop: Population) -> dict:
+    """Serialise a :class:`Population` to plain Python lists for checkpointing.
+
+    A :class:`RandomPopulation` is fully described by three parallel lists, so the
+    snapshot is loss-less and rebuilds an identical population on resume.
+    """
+    return {
+        "usd_files": pop.get_usd_files(),
+        "actuator_params": pop.get_actuator_params(),
+        "link_length_params": pop.get_link_length_params(),
+    }
+
+
+def _population_from_dict(state: dict) -> RandomPopulation:
+    """Reconstruct a :class:`RandomPopulation` from :func:`_population_to_dict`."""
+    return RandomPopulation(
+        state["usd_files"],
+        state["actuator_params"],
+        state["link_length_params"],
+    )
 
 
 class CoptOnPolicyRunner(OnPolicyRunner):
@@ -95,11 +122,98 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             self._num_individuals, dtype=torch.long, device=device
         )
         self.encoder_cfg = train_cfg["encoder"]
+        self._copt_started = False
 
         super().__init__(env, train_cfg, log_dir=log_dir, device=device)
         # Maps env_idx → individual_idx (round-robin)
         # The round robin is setup in co_optimisation.utils.respawn.respawn_robots
         self._env_to_individual: list[int] = self._assign_individuals_to_envs()
+        # Set by ``load`` when a checkpoint carries the extended COPT state, and
+        # consumed once by ``learn`` to apply the restored population and env state.
+        self._resumed_from_checkpoint: bool = False
+        self._restored_population: Population | None = None
+        self._restored_env_state: dict | None = None
+
+    # ------------------------------------------------------------------
+    # Checkpoint persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: str, infos: dict | None = None) -> None:
+        """Persist policy weights plus the full co-optimisation and env state.
+
+        The base implementation is called first so the policy, optimiser, and
+        iteration counter are written exactly as before, preserving compatibility
+        with the inherited loader and with non-COPT tooling.  The saved file is then
+        reopened and augmented with the residual PPO state (the adaptive learning
+        rate and the logging totals), the evolutionary state (generation, population,
+        fitness accumulators, and the CMA-ES search distribution), and the IsaacLab
+        environment state (curriculum, command, reward, counters, and RNG).
+        """
+        super().save(path, infos)
+        saved = torch.load(path, weights_only=False)
+        saved["learning_rate"] = self.alg.learning_rate
+        saved["tot_timesteps"] = self.tot_timesteps
+        saved["tot_time"] = self.tot_time
+        saved["copt"] = {
+            "generation": self.generation,
+            "copt_started": self._copt_started,
+            "individual_fitness": self._individual_fitness.detach().cpu().clone(),
+            "individual_episode_counts": self._individual_episode_counts.detach()
+            .cpu()
+            .clone(),
+            "current_population": _population_to_dict(self.current_population),
+            "design_generator": self._design_generator.get_state(),
+        }
+        saved["env_state"] = capture_env_state(self.env)
+        torch.save(saved, path)
+
+        # Re-upload the augmented checkpoint to any external logger, mirroring the
+        # base behaviour which uploads the policy-only file.
+        if self.logger_type in ["neptune", "wandb"] and not self.disable_logs:
+            self.writer.save_model(path, self.current_learning_iteration)
+
+    def load(
+        self,
+        path: str,
+        load_optimizer: bool = True,
+        map_location: str | None = None,
+    ) -> dict:
+        """Restore policy weights plus the full co-optimisation and env state.
+
+        The base loader restores the policy, optimiser, and iteration counter.  When
+        the checkpoint additionally carries the extended COPT state this method
+        restores the adaptive learning rate (and writes it onto every optimiser
+        parameter group so the first adaptive update does not silently reset it), the
+        logging totals, the evolutionary state, and the CMA-ES search distribution,
+        and it stashes the population and env state for ``learn`` to apply once the
+        simulation is live.  Legacy policy-only checkpoints load unchanged.
+        """
+        infos = super().load(path, load_optimizer, map_location)
+        loaded = torch.load(path, weights_only=False, map_location=map_location)
+
+        if "copt" not in loaded:
+            # Legacy or non-COPT checkpoint: nothing further to restore.
+            return infos
+
+        self.alg.learning_rate = loaded["learning_rate"]
+        for group in self.alg.optimizer.param_groups:
+            group["lr"] = self.alg.learning_rate
+        self.tot_timesteps = loaded["tot_timesteps"]
+        self.tot_time = loaded["tot_time"]
+
+        c = loaded["copt"]
+        self.generation = c["generation"]
+        self._copt_started = c["copt_started"]
+        self._individual_fitness.copy_(c["individual_fitness"].to(self.device))
+        self._individual_episode_counts.copy_(
+            c["individual_episode_counts"].to(self.device)
+        )
+        self._design_generator.load_state(c["design_generator"])
+
+        self._restored_population = _population_from_dict(c["current_population"])
+        self._restored_env_state = loaded["env_state"]
+        self._resumed_from_checkpoint = True
+        return infos
 
     def learn(
         self, num_learning_iterations: int, init_at_random_ep_len: bool = False
@@ -121,7 +235,13 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             if not os.path.exists(os.path.join(self.log_dir, "designs")):
                 os.mkdir(os.path.join(self.log_dir, "designs"))
         with torch.inference_mode():
-            self._update_morphology()
+            if getattr(self, "_resumed_from_checkpoint", False):
+                # Resume: re-spawn the checkpointed population and restore the env,
+                # manager, curriculum, and RNG state instead of generating a fresh
+                # generation-zero population.
+                self._apply_restored_state()
+            else:
+                self._update_morphology(0)
 
         obs = self.env.get_observations().to(self.device)
         self.train_mode()
@@ -159,9 +279,14 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         for it in range(start_iter, tot_iter):
             start = time.time()
             # Rollout
-            is_late_start_toggle_time = self._ea_late_start < (it + 1 - start_iter)
+            # Schedule against the ABSOLUTE iteration ``it`` rather than the
+            # resume-relative ``(it - start_iter + 1)`` so that a run resumed at,
+            # for example, iteration eight thousand enters the CMA-ES phase
+            # immediately instead of repeating the random phase. On a fresh run
+            # ``start_iter == 0`` so the two forms coincide.
+            is_late_start_toggle_time = self._ea_late_start <= (it + 1)
             is_morph_update_time = (
-                (it + 1 - start_iter) % self._ea_update_interval == 0
+                (it + 1) % self._ea_update_interval == 0
             ) and (is_late_start_toggle_time or self._randomise_before_late_start)
             with torch.inference_mode():
                 for step in range(self.num_steps_per_env):
@@ -259,11 +384,11 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     and is_late_start_toggle_time
                 ):
                     print(
-                        f"toggling late start at {it + 1 - start_iter} steps with configure threshold at {self._ea_late_start}"
+                        f"toggling late start at absolute iteration {it + 1} with configured threshold at {self._ea_late_start} iterations"
                     )
                     self._design_generator.toggle_late_start()
                 with torch.inference_mode():
-                    self._update_morphology()
+                    self._update_morphology(it + 1)
                 # Refresh observations after in-place update
                 obs = self.env.get_observations().to(self.device)
                 if self.log_dir is not None:
@@ -381,12 +506,12 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
     def _reload_morphology(self) -> None:
         """Run one EA cycle: evaluate fitness, generate new population, respawn."""
-        if self.current_population is not None:
+        if self.current_population is not None :
             fitness = self._compute_individual_fitness()
             print("Updating Design Population")
             self._design_generator.update_with_fitness(fitness)
 
-        elif self.current_population is None:
+        elif self.current_population is None and self._ea_late_start < 0:
             self._design_generator.sample_batch()
 
         # Generate new population
@@ -395,24 +520,62 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             self.generation
         )
         self.generation += 1
+        if self.current_population is not None:
+            # Respawn robots with new USD files
+            unwrapped_env = self.env.unwrapped  # ManagerBasedRLEnv
+            print("Spawning sampled population")
+            self.respawn_robots(unwrapped_env, self.current_population.get_usd_files())
 
-        # Respawn robots with new USD files
-        unwrapped_env = self.env.unwrapped  # ManagerBasedRLEnv
-        print("Spawning sampled population")
-        self.respawn_robots(unwrapped_env, self.current_population.get_usd_files())
+            # Patch actuator params
+            print("Applying Sampled Actuator Parameters")
+            apply_actuator_params(
+                unwrapped_env, self.current_population.get_actuator_params()
+            )
 
-        # Patch actuator params
-        print("Applying Sampled Actuator Parameters")
+            # Reset fitness accumulators
+            print("Resetting Accumulators")
+            self._individual_fitness.zero_()
+            self._individual_episode_counts.zero_()
+
+    def _apply_restored_state(self) -> None:
+        """Re-spawn the checkpointed population and restore env state on resume.
+
+        Mirrors the in-place sequence of :meth:`_update_morphology` but without
+        advancing the design generator, incrementing the generation counter, or
+        zeroing the fitness accumulators, all of which were already restored in
+        :meth:`load`.  The usual ``unwrapped_env.reset()`` is replaced by
+        :func:`restore_env_state`, which runs ``reset_to`` internally so the robots
+        are placed at their checkpointed poses and the curriculum, command, reward,
+        counter, and RNG state are written back.
+        """
+        unwrapped_env = self.env.unwrapped
+        sim = unwrapped_env.sim
+        if sim.is_playing():
+            sim._disable_app_control_on_stop_handle = True
+            sim.stop()
+            sim._disable_app_control_on_stop_handle = False
+
+        self.current_population = self._restored_population
+        print("Re-applying checkpointed morphology population")
+        apply_link_length_params(
+            unwrapped_env, self.current_population.get_link_length_params()
+        )
+
+        print("Restoring environment, curriculum, and RNG state")
+        restore_env_state(self.env, self._restored_env_state)
+
+        print("Applying checkpointed actuator parameters")
         apply_actuator_params(
             unwrapped_env, self.current_population.get_actuator_params()
         )
 
-        # Reset fitness accumulators
-        print("Resetting Accumulators")
-        self._individual_fitness.zero_()
-        self._individual_episode_counts.zero_()
+        # Consume the restore flags so a subsequent in-loop save/checkpoint does not
+        # re-trigger the restore path.
+        self._resumed_from_checkpoint = False
+        self._restored_population = None
+        self._restored_env_state = None
 
-    def _update_morphology(self) -> None:
+    def _update_morphology(self, it: int) -> None:
         """In-place EA cycle: no delete/respawn, no manager re-binding."""
         unwrapped_env = self.env.unwrapped
         sim = unwrapped_env.sim
@@ -422,35 +585,35 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             sim.stop()
             sim._disable_app_control_on_stop_handle = False
 
-        if self.current_population is not None:
-            fitness = self._compute_individual_fitness()
-            print("Updating Design Population")
-            self._design_generator.update_with_fitness(fitness)
-
-        elif self.current_population is None:
-            self._design_generator.sample_batch()
-
-        self.current_population = self._design_generator.generate_population(  # 3.
+        if self._ea_late_start <= it:
+            if not self._copt_started:
+                self._design_generator.sample_batch()
+                self._copt_started = True
+            else:
+                fitness = self._compute_individual_fitness()
+                print("Updating Design Population")
+                self._design_generator.update_with_fitness(fitness)
+        self.current_population = self._design_generator.generate_population(
             self.generation
         )
         self.generation += 1
+        if self.current_population is not None:
+            print(
+                "Applying link length parameters in place"
+            )  # 4. author + sim.reset() (inside)
+            apply_link_length_params(
+                unwrapped_env, self.current_population.get_link_length_params()
+            )
 
-        print(
-            "Applying link length parameters in place"
-        )  # 4. author + sim.reset() (inside)
-        apply_link_length_params(
-            unwrapped_env, self.current_population.get_link_length_params()
-        )
+            unwrapped_env.reset()  # 5. reset episodes
 
-        unwrapped_env.reset()  # 5. reset episodes
+            print("Applying Sampled Actuator Parameters")  # 6. actuators AFTER reset
+            apply_actuator_params(
+                unwrapped_env, self.current_population.get_actuator_params()
+            )
 
-        print("Applying Sampled Actuator Parameters")  # 6. actuators AFTER reset
-        apply_actuator_params(
-            unwrapped_env, self.current_population.get_actuator_params()
-        )
-
-        self._individual_fitness.zero_()  # 7. zero accumulators
-        self._individual_episode_counts.zero_()
+            self._individual_fitness.zero_()  # 7. zero accumulators
+            self._individual_episode_counts.zero_()
 
     def _compute_individual_fitness(self) -> list[float]:
         """Return mean episode return per individual (0.0 if no episodes completed)."""
