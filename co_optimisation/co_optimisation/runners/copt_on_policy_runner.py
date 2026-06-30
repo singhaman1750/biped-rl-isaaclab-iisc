@@ -27,6 +27,7 @@ from rsl_rl.env import VecEnv
 from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.runners import OnPolicyRunner
 
+from co_optimisation.algorithms import CoptPPO
 from co_optimisation.modules import CoptActorCritic
 from co_optimisation.runners.usd_generator import (
     DesignGeneratorBase,
@@ -392,18 +393,13 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 # Refresh observations after in-place update
                 obs = self.env.get_observations().to(self.device)
                 if self.log_dir is not None:
-                    for env_idx in range(self.env.num_envs):
-                        ind_idx = self._env_to_individual[env_idx]
-                        self._individual_fitness[ind_idx] += cur_reward_sum[env_idx]
-                        self._individual_episode_counts[ind_idx] += 1
-                    rewbuffer.extend(cur_reward_sum.cpu().numpy().tolist())
-                    lenbuffer.extend(cur_episode_length.cpu().numpy().tolist())
+                    # Discard partial (truncated) returns so that rewbuffer contains
+                    # only genuinely completed episodes from the normal done path and
+                    # the logged Train/mean_reward is not corrupted by mid-episode sums.
                     cur_reward_sum[:] = 0
                     cur_episode_length[:] = 0
 
                     if self.alg.rnd:
-                        erewbuffer.extend(cur_ereward_sum.cpu().numpy().tolist())
-                        irewbuffer.extend(cur_ireward_sum.cpu().numpy().tolist())
                         cur_ereward_sum[:] = 0
                         cur_ireward_sum[:] = 0
                     link_lengths = self.current_population.get_link_length_params()
@@ -483,8 +479,10 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
         # Initialize the algorithm
         alg_class = eval(self.alg_cfg.pop("class_name"))
-        alg: PPO = alg_class(
+        alg: CoptPPO = alg_class(
             actor_critic,
+            self._num_individuals,
+            [i % self._num_individuals for i in range(self.env.num_envs)],
             device=self.device,
             **self.alg_cfg,
             multi_gpu_cfg=self.multi_gpu_cfg,
@@ -605,7 +603,12 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 unwrapped_env, self.current_population.get_link_length_params()
             )
 
-            unwrapped_env.reset()  # 5. reset episodes
+            # 5. reset episodes — suppress terrain promotion/demotion because the
+            # episodes are truncated by the morphology swap and the walked-distance
+            # signal is meaningless at this boundary.
+            unwrapped_env._suppress_terrain_curriculum = True
+            unwrapped_env.reset()
+            unwrapped_env._suppress_terrain_curriculum = False
 
             print("Applying Sampled Actuator Parameters")  # 6. actuators AFTER reset
             apply_actuator_params(

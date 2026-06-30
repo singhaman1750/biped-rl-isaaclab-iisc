@@ -85,6 +85,7 @@ from bipedal_locomotion.utils.wrappers.rsl_rl import (
     export_mlp_as_onnx,
     export_policy_as_jit,
 )
+from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
@@ -314,6 +315,7 @@ def main():
             late_start=False,
         )
         agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
             "ea_update_interval": 50,

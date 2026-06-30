@@ -94,6 +94,7 @@ from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
 # Import extensions to set up environment tasks
 from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
+from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
@@ -203,22 +204,23 @@ def main():
         # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
         ea_update_interval = 120
         ea_late_start = 8000
-        param_ranges = {}
-        params = ["thigh_length_scale", "shank_length_scale"]
-        for param in params:
-            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
+        param_ranges = {
+            "thigh_length_scale": (0.75, 1.25),
+            "shank_length_scale": (0.75, 1.25),
+        }
         design_generator = GrowingDesignDistCMAESDesignGenerator(
             base_urdf_path=_base_urdf,
             num_individuals=_num_individuals,
             param_ranges=param_ranges,
-            sigma0=0.75,
+            sigma0=0.25,
             seed=42,
             late_start=True,
-            late_start_it=int(ea_late_start / 120),
+            late_start_it=int(ea_late_start / ea_update_interval),
             max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
             / ea_update_interval,
         )
         agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
             "ea_update_interval": ea_update_interval,

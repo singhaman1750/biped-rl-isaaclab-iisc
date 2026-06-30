@@ -233,9 +233,12 @@ def _parse_scalable_links_from_urdf(
 
 
 # CMA-ES restricts its search to the two length scales it actually drives.
+# Range widened from (0.85, 1.15) to (0.75, 1.25) so that the optimum is more
+# likely to lie in the interior of the box and the effective lattice after the
+# round(val, 2) quantisation is finer (Section 3.2, TODO.md).
 CMAES_PARAM_RANGES: dict[str, tuple[float, float]] = {
-    "thigh_length_scale": DEFAULT_PARAM_RANGES["thigh_length_scale"],
-    "shank_length_scale": DEFAULT_PARAM_RANGES["shank_length_scale"],
+    "thigh_length_scale": (0.75, 1.25),
+    "shank_length_scale": (0.75, 1.25),
 }
 
 
@@ -724,7 +727,8 @@ class CMAESDesignGenerator(DesignGeneratorBase):
                 "seed": self._seed,
                 "verb_disp": 1,
                 "verb_filenameprefix": str(Path(output_dir) / "cma_log") + "/",
-                "maxiter": max_cma_iter, 
+                "maxiter": max_cma_iter,
+                "BoundaryHandler": "BoundTransform",
             })
             self._es = cma.CMAEvolutionStrategy(
                 np.full(self.num_params, 0.5), self._sigma0, opts
