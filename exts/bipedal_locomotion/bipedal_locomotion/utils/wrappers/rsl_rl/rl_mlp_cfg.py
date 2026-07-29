@@ -29,6 +29,16 @@ class EncoderCfg:
     orthogonal_init : bool = False
 
 
+@configclass
+class DecoderCfg:
+    output_detach : bool = True
+    num_input_dim : int = MISSING
+    num_output_dim : int = 3
+    hidden_dims : list[int] = [256, 128]
+    activation : str = "elu"
+    orthogonal_init : bool = False
+
+
 import os
 import copy
 import torch

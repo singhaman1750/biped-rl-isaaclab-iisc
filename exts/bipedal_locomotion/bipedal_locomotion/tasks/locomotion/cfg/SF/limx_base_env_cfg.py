@@ -409,20 +409,13 @@ class CoptObservationsCfg:
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
         )
 
-        # gaits
-        # gait_phase = ObsTerm(func=mdp.get_gait_phase)
-        # gait_command = ObsTerm(func=mdp.get_gait_command, params={"command_name": "gait_command"})
-
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
-            self.history_length = 10
-            # Required by HIMActorCritic
-            self.flatten_history_dim = True
 
     @configclass
-    class PrivligedObsCfg(ObsGroup):
-        """Observation for policy group"""
+    class MorphologyCfg(ObsGroup):
+        """P_1, morphology and terrain privileged information"""
 
         link_lengths = ObsTerm(
             func=mdp.robot_link_lengths,
@@ -443,18 +436,63 @@ class CoptObservationsCfg:
             },
             clip=(0.0, 100.0),
         )
-        robot_mass = ObsTerm(func=mdp.robot_mass, clip = (0.0, 100.0))
-        heights = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            clip=(-5.0, 5.0),
-        )
+        robot_mass = ObsTerm(func=mdp.robot_mass, clip=(0.0, 100.0))
+        robot_inertia = ObsTerm(func=mdp.robot_inertia)
 
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
-            # self.history_length = 10
-            # self.flatten_history_dim = True
+
+    @configclass
+    class PredictedMorphologyCfg(ObsGroup):
+        """P_1, morphology and terrain privileged information"""
+
+        link_lengths = ObsTerm(
+            func=mdp.robot_link_lengths,
+            params={
+                "asset_cfg": SceneEntityCfg("robot"),
+                "parent_body_names": [
+                    "hip_R_thigh_Link",
+                    "hip_L_thigh_Link",
+                    "knee_R_Link",
+                    "knee_L_Link",
+                ],
+                "child_body_names": [
+                    "knee_R_Link",
+                    "knee_L_Link",
+                    "ankle_R_actuator_Link",
+                    "ankle_L_actuator_Link",
+                ],
+            },
+            clip=(0.0, 100.0),
+        )
+        robot_mass = ObsTerm(func=mdp.robot_mass, clip=(0.0, 100.0))
+        robot_inertia = ObsTerm(func=mdp.robot_inertia)
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
+    class PredictedPrivilegedCfg(ObsGroup):
+        """P_2, ground-truth dynamic state, the decoder regression target"""
+
+        robot_joint_torque = ObsTerm(func=mdp.robot_joint_torque)
+        robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
+        feet_contact_force = ObsTerm(
+            func=mdp.robot_contact_force,
+            params={
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
+            },
+        )
+        feet_lin_vel = ObsTerm(
+            func=mdp.feet_lin_vel,
+            params={"asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*")},
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     @configclass
     class CriticCfg(ObsGroup):
@@ -559,6 +597,61 @@ class CoptObservationsCfg:
             self.flatten_history_dim = True
 
     @configclass
+    class HistoryObsCfg(ObsGroup):
+        """H, the n-step rolling history of the actor state"""
+
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel,
+            clip=(-100.0, 100.0),
+            noise=GaussianNoise(mean=0.0, std=0.05),
+            scale=1.0,
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel,
+            noise=GaussianNoise(mean=0.0, std=0.05),
+            clip=(-100.0, 100.0),
+            scale=0.25,
+        )
+        proj_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=GaussianNoise(mean=0.0, std=0.025),
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            noise=GaussianNoise(mean=0.0, std=0.01),
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            noise=GaussianNoise(mean=0.0, std=0.01),
+            clip=(-100.0, 100.0),
+            scale=0.25,
+        )
+        last_action = ObsTerm(
+            func=mdp.last_action,
+            noise=GaussianNoise(mean=0.0, std=0.01),
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+        heights = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            clip=(-5.0, 5.0),
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+            self.history_length = 25
+            self.flatten_history_dim = False
+
+    @configclass
     class CommandsObsCfg(ObsGroup):
         velocity_commands = ObsTerm(
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
@@ -567,8 +660,10 @@ class CoptObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
-    privilegedObs: PrivligedObsCfg = PrivligedObsCfg()
-    # obsHistory: HistoryObsCfg = HistoryObsCfg()
+    morphologyObs: MorphologyCfg = MorphologyCfg()
+    predictedMorphologyObs: PredictedMorphologyCfg = PredictedMorphologyCfg()
+    predictedPrivilegedObs: PredictedPrivilegedCfg = PredictedPrivilegedCfg()
+    obsHistory: HistoryObsCfg = HistoryObsCfg()
 
 
 @configclass
@@ -1396,6 +1491,8 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
+
+
 
 # @configclass
 # class SFHIMEnvCfg(SFEnvCfg):
