@@ -1,1 +1,2 @@
-from co_optimisation.modules.copt_actor_critic import CoptActorCritic
+from co_optimisation.modules.copt_actor_critic import CoptActorCritic, CoptLearnedModelActorCritic
+from co_optimisation.modules.copt_estimator import CoptEstimator

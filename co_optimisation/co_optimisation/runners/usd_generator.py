@@ -62,6 +62,7 @@ from __future__ import annotations
 
 import numpy as np
 import os
+import pickle
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -714,7 +715,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
         if es_state_path is not None:
             with open(es_state_path, "rb") as fh:
-                self._es = cma.CMAEvolutionStrategy.pickle_loads(fh.read())
+                self._es = pickle.loads(fh.read())
             assert self._es.N == self.num_params, (
                 f"Checkpoint dimension mismatch: "
                 f"pickled {self._es.N}, expected {self.num_params}"
@@ -835,7 +836,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
     def load_state(self, state: dict) -> None:
         """Restore the search state produced by :meth:`get_state`."""
-        self._es = cma.CMAEvolutionStrategy.pickle_loads(state["es"])
+        self._es = pickle.loads(state["es"])
         assert self._es.N == self.num_params, (
             f"CMA-ES dimension mismatch on resume: "
             f"pickled {self._es.N}, expected {self.num_params}"

@@ -27,8 +27,8 @@ from rsl_rl.env import VecEnv
 from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.runners import OnPolicyRunner
 
-from co_optimisation.algorithms import CoptPPO
-from co_optimisation.modules import CoptActorCritic
+from co_optimisation.algorithms import CoptLearnedModelPPO, CoptPPO
+from co_optimisation.modules import CoptActorCritic, CoptLearnedModelActorCritic
 from co_optimisation.runners.usd_generator import (
     DesignGeneratorBase,
     Population,
@@ -123,6 +123,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             self._num_individuals, dtype=torch.long, device=device
         )
         self.encoder_cfg = train_cfg["encoder"]
+        self.decoder_cfg: dict | None = train_cfg.get("decoder", None)
         self._copt_started = False
 
         super().__init__(env, train_cfg, log_dir=log_dir, device=device)
@@ -469,13 +470,23 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
         # Initialize the policy
         actor_critic_class = eval(self.policy_cfg.pop("class_name"))
-        actor_critic: CoptActorCritic = actor_critic_class(
-            obs,
-            self.cfg["obs_groups"],
-            self.env.num_actions,
-            self.encoder_cfg,
-            **self.policy_cfg,
-        ).to(self.device)
+        if self.decoder_cfg is not None:
+            actor_critic: CoptActorCritic = actor_critic_class(
+                obs,
+                self.cfg["obs_groups"],
+                self.env.num_actions,
+                self.encoder_cfg,
+                self.decoder_cfg,
+                **self.policy_cfg,
+            ).to(self.device)
+        else:
+            actor_critic: CoptActorCritic = actor_critic_class(
+                obs,
+                self.cfg["obs_groups"],
+                self.env.num_actions,
+                self.encoder_cfg,
+                **self.policy_cfg,
+            ).to(self.device)
 
         # Initialize the algorithm
         alg_class = eval(self.alg_cfg.pop("class_name"))
@@ -585,12 +596,15 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
         if self._ea_late_start <= it:
             if not self._copt_started:
+                self.alg.reinit_learning_rate()
                 self._design_generator.sample_batch()
                 self._copt_started = True
             else:
                 fitness = self._compute_individual_fitness()
                 print("Updating Design Population")
                 self._design_generator.update_with_fitness(fitness)
+        else:
+            self.alg.reinit_learning_rate()
         self.current_population = self._design_generator.generate_population(
             self.generation
         )
