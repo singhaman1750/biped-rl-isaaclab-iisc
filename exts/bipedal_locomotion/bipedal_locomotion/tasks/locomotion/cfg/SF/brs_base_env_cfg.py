@@ -706,10 +706,6 @@ class RewardsCfg:
             # without this the term returns its maximum of 1 whenever both feet are planted,
             # paying a standing bonus that opposes the stepping objective
             "require_airborne": True,
-            # index 0 pairs with 1, giving the current-or-previous debounce the Isaac Gym
-            # ancestor expresses as contact_filt = contact OR last_contacts. The default of
-            # -1 pairs with -2, the two oldest samples. See section 5.2.6.
-            "history_index": 0,
         },
     )
     # Phase A2 of NATURAL_GAIT_PLAN.md, swing-phase knee flexion, gated to swing so the
