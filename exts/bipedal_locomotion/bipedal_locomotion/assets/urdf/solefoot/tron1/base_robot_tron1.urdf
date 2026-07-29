@@ -41,7 +41,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/base_Link.STL"/>
+                    filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/base_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -94,7 +94,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/abad_L_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/abad_L_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -137,7 +137,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/hip_L_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/hip_L_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -180,7 +180,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/knee_L_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/knee_L_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -223,7 +223,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/ankle_L_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/ankle_L_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -237,7 +237,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/ankle_L_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/ankle_L_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -277,7 +277,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/abad_R_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/abad_R_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -320,7 +320,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/hip_R_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/hip_R_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -363,7 +363,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/knee_R_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/knee_R_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -406,7 +406,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/ankle_R_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/ankle_R_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -420,7 +420,7 @@
                     rpy="0 0 0"/>
             <geometry>
                 <mesh
-                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes/ankle_R_Link.STL"/>
+                        filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes/ankle_R_Link.STL"/>
             </geometry>
             <material
                     name="">
@@ -456,7 +456,7 @@
         <visual>
             <origin rpy="1.5707963267948966 0 1.5707963267948966" xyz="0.0149 -0.0175 0"/>
             <geometry>
-                <mesh filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/meshes_camera/d435.dae"/>
+                <mesh filename="file:///ws/tron1-rl-isaaclab-cozum/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/meshes_camera/d435.dae"/>
             </geometry>
         </visual>
         <collision>
