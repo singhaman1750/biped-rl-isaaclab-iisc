@@ -193,17 +193,17 @@ def main():
         agent_cfg.policy.class_name = "HIMActorCritic"
         agent_cfg.algorithm.class_name = "HIMPPO"
     runner = None
-    if args_cli.policy_type == "COPT":
+    if args_cli.policy_type in ("COPT", "COPT-LEARNED"):
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
         )
-        _num_individuals = 64
-        # ea_update_interval * num_steps_per_env (50 * 24 = 1200) should be more
+        _num_individuals = 256
+        # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
         # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
-        ea_update_interval = 120
-        ea_late_start = 8000
+        ea_update_interval = 240
+        ea_late_start = 12000
         param_ranges = {
             "thigh_length_scale": (0.75, 1.25),
             "shank_length_scale": (0.75, 1.25),
@@ -219,8 +219,15 @@ def main():
             max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
             / ea_update_interval,
         )
-        agent_cfg.policy.class_name = "CoptActorCritic"
-        agent_cfg.algorithm.class_name = "CoptPPO"
+        if args_cli.policy_type == "COPT-LEARNED":
+            agent_cfg.policy.class_name = "CoptLearnedModelActorCritic"
+            agent_cfg.algorithm.class_name = "CoptLearnedModelPPO"
+        elif args_cli.policy_type == "COPT-LEARNED-2":
+            agent_cfg.policy.class_name = "CoptLearnedModelV2ActorCritic"
+            agent_cfg.algorithm.class_name = "CoptLearnedModelV2PPO"
+        else:
+            agent_cfg.policy.class_name = "CoptActorCritic"
+            agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
             "ea_update_interval": ea_update_interval,

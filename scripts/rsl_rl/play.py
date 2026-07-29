@@ -329,6 +329,40 @@ def main():
             log_dir=log_dir,
             device=agent_cfg.device,
         )
+    elif args_cli.policy_type == "COPT-LEARNED":
+
+        _base_urdf = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+        )
+        _num_individuals = 256
+        param_ranges = {}
+        params = ["thigh_length_scale", "shank_length_scale"]
+        for param in params:
+            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
+        design_generator = CMAESDesignGenerator(
+            base_urdf_path=_base_urdf,
+            num_individuals=_num_individuals,
+            param_ranges=param_ranges,
+            sigma0=0.1,
+            seed=42,
+            late_start=False,
+        )
+        agent_cfg.policy.class_name = "CoptLearnedModelActorCritic"
+        agent_cfg.algorithm.class_name = "CoptLearnedModelPPO"
+        agent_cfg_dict = agent_cfg.to_dict()
+        agent_cfg_dict["copt"] = {
+            "ea_update_interval": 50,
+            "ea_late_start": -1,
+            "num_individuals": _num_individuals,
+        }
+        ppo_runner = CoptOnPolicyRunner(
+            env,
+            design_generator,
+            agent_cfg_dict,
+            log_dir=log_dir,
+            device=agent_cfg.device,
+        )
     else:
         ppo_runner = OnPolicyRunner(
             env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device
