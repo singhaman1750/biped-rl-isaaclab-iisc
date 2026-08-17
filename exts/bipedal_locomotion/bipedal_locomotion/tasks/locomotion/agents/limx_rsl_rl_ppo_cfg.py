@@ -8,6 +8,7 @@ from isaaclab_rl.rsl_rl import (
 )
 
 from bipedal_locomotion.utils.wrappers.rsl_rl.rl_mlp_cfg import (
+    DecoderCfg,
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
 )
@@ -90,7 +91,7 @@ class PF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 # -----------------------------------------------------------------
 @configclass
 class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
+    num_steps_per_env = 25
     max_iterations = 30000
     save_interval = 500
     experiment_name = "sf_tron_1a_flat"
@@ -120,7 +121,7 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     encoder = EncoderCfg(
         output_detach=True,
         num_output_dim=19,
-        hidden_dims=[128, 64, 16],
+        hidden_dims=[1024, 512, 256, 128],
         activation="elu",
         orthogonal_init=False,
     )
@@ -130,7 +131,28 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SFCoptPPORunnerCfg(SF_TRON1AFlatPPORunnerCfg):
     experiment_name: str = "sf_copt"
-    max_iterations: int = 30000
+    max_iterations: int = 45000
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "morphologyObs"],
+        "critic": ["critic"],
+    }
+
+
+# -----------------------------------------------------------------
+@configclass
+class SFCoptLearnedModelPPORunnerCfg(SFCoptPPORunnerCfg):
+    experiment_name: str = "sf_copt_learned"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+    }
+    decoder = DecoderCfg(
+        output_detach=False,
+        num_output_dim=3,
+        hidden_dims=[128, 256, 512],
+        activation="elu",
+        orthogonal_init=False,
+    )
 
 
 # -----------------------------------------------------------------
@@ -175,7 +197,7 @@ class WF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 # -----------------------------------------------------------------
 @configclass
 class SF_Berkeley_PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 96
+    num_steps_per_env = 24
     max_iterations = 30000
     save_interval = 500
     experiment_name = "sf_tron_berkeley_mimic"

@@ -148,7 +148,8 @@ def modify_push_force(
     interval: int,
     starting_step: float = 0.0,
     increment_rate: float = 1.1,
-    decrement_rate: float = 0.25,
+    decrement_rate: float = 0.9,
+    minimum_velocity: float = 0.2
 ):
     """Curriculum that modifies the maximum push (perturbation) velocity over some intervals.
 
@@ -180,12 +181,12 @@ def modify_push_force(
             # update term settings
             curr_setting = term_cfg.params["velocity_range"]["x"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting * increment_rate), 0.0, max_velocity[0]
+                torch.tensor(curr_setting * increment_rate), minimum_velocity, max_velocity[0]
             ).item()
             term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
             curr_setting = term_cfg.params["velocity_range"]["y"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting * increment_rate), 0.0, max_velocity[1]
+                torch.tensor(curr_setting * increment_rate), minimum_velocity, max_velocity[1]
             ).item()
             term_cfg.params["velocity_range"]["y"] = (-curr_setting, curr_setting)
             env.event_manager.set_term_cfg("push_robot", term_cfg)
@@ -199,12 +200,80 @@ def modify_push_force(
             # update term settings
             curr_setting = term_cfg.params["velocity_range"]["x"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting - decrement_rate), 0.0, max_velocity[0]
+                torch.tensor(curr_setting * decrement_rate), minimum_velocity, max_velocity[0]
             ).item()
             term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
             curr_setting = term_cfg.params["velocity_range"]["y"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting - decrement_rate), 0.0, max_velocity[1]
+                torch.tensor(curr_setting * decrement_rate), minimum_velocity, max_velocity[1]
+            ).item()
+            term_cfg.params["velocity_range"]["y"] = (-curr_setting, curr_setting)
+            env.event_manager.set_term_cfg("push_robot", term_cfg)
+
+    return curr_setting
+
+def modify_push_force_v2(
+    env: ManagerBasedRLEnv,
+    env_ids: Sequence[int],
+    term_name: str,
+    max_velocity: Sequence[float],
+    interval: int,
+    starting_step: float = 0.0,
+    increment_rate: float = 1.1,
+    decrement_rate: float = 0.9,
+):
+    """Curriculum that modifies the maximum push (perturbation) velocity over some intervals. This takes into account the low height termination penalty as well.
+
+    Args:
+        env: The learning environment.
+        env_ids: Not used since all environments are affected.
+        term_name: The name of the event term.
+        max_velocity: The maximum velocity of the push.
+        interval: The number of steps after which the condition is checked again
+        starting_step: The number of steps after which the curriculum is applied.
+        increment_rate: The multiplicative rate of increment of push force velocity
+        decrement_rate: The multiplicative rate of decrement of push force velocity
+    """
+    try:
+        term_cfg = env.event_manager.get_term_cfg("push_robot")
+    except:
+        # print("No push_robot term found in the event manager")
+        return 0.0
+    curr_setting = term_cfg.params["velocity_range"]["x"][1]
+    if env.common_step_counter < starting_step:
+        return curr_setting
+    if env.common_step_counter % interval == 0:
+        if (
+            torch.sum(env.termination_manager.get_term("base_contact") + env.termination_manager.get_term("low_height")) < torch.sum(env.termination_manager.get_term("time_out")) * 2
+        ):
+            # obtain term settings
+            term_cfg = env.event_manager.get_term_cfg("push_robot")
+            # update term settings
+            curr_setting = term_cfg.params["velocity_range"]["x"][1]
+            curr_setting = torch.clamp(
+                torch.tensor(curr_setting * increment_rate), 0.0, max_velocity[0]
+            ).item()
+            term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
+            curr_setting = term_cfg.params["velocity_range"]["y"][1]
+            curr_setting = torch.clamp(
+                torch.tensor(curr_setting * increment_rate), 0.0, max_velocity[1]
+            ).item()
+            term_cfg.params["velocity_range"]["y"] = (-curr_setting, curr_setting)
+            env.event_manager.set_term_cfg("push_robot", term_cfg)
+        elif (
+            torch.sum(env.termination_manager.get_term("base_contact") + env.termination_manager.get_term("low_height")) > torch.sum(env.termination_manager.get_term("time_out")) / 2
+        ):
+            # obtain term settings
+            term_cfg = env.event_manager.get_term_cfg("push_robot")
+            # update term settings
+            curr_setting = term_cfg.params["velocity_range"]["x"][1]
+            curr_setting = torch.clamp(
+                torch.tensor(curr_setting * decrement_rate), 0.0, max_velocity[0]
+            ).item()
+            term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
+            curr_setting = term_cfg.params["velocity_range"]["y"][1]
+            curr_setting = torch.clamp(
+                torch.tensor(curr_setting * decrement_rate), 0.0, max_velocity[1]
             ).item()
             term_cfg.params["velocity_range"]["y"] = (-curr_setting, curr_setting)
             env.event_manager.set_term_cfg("push_robot", term_cfg)
@@ -400,6 +469,11 @@ def terrain_levels_vel_delayed(
     Returns:
         The mean terrain level for the given environment ids.
     """
+    # When a morphology swap or a checkpoint restore drives a full reset, the
+    # episodes are truncated and the distance-walked signal is meaningless, so skip
+    # the promotion / demotion and leave the terrain levels and env_origins untouched.
+    if getattr(env, "_suppress_terrain_curriculum", False):
+        return torch.mean(env.scene.terrain.terrain_levels.float())
     asset: Articulation = env.scene[asset_cfg.name]
     terrain: TerrainImporter = env.scene.terrain
     command = env.command_manager.get_command("base_velocity")

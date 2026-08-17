@@ -84,6 +84,136 @@ def feet_slide(env, sensor_cfg: SceneEntityCfg, asset_cfg: SceneEntityCfg = Scen
     reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
     return reward
 
+def foot_clearance_reward(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    target_height: float,
+    std: float,
+    tanh_mult: float,
+    sensor_cfg: SceneEntityCfg | None = None,
+    force_threshold: float = 1.0,
+) -> torch.Tensor:
+    """Reward the swinging feet for clearing a specified height off the ground.
+
+    Each foot contributes a Gaussian kernel on its height error, exp(-(h - target)^2 / std^2),
+    gated multiplicatively by a tanh of its horizontal speed. The reward is zero for a
+    stationary foot, near zero for a foot far from the target height, and maximal for a fast
+    swinging foot at the target clearance.
+
+    The height is that of the body frame origin, which equals the sole clearance only for a
+    point foot or a foot held level. On a sole foot the frame sits at the ankle, so tilting
+    the foot about the ankle raises the frame while the sole edge stays on the ground, and
+    the term cannot by itself distinguish a lifted foot from a tilted one. Passing
+    ``sensor_cfg`` removes that ambiguity by paying nothing for a foot that is in contact.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Configuration for the robot asset, resolving the feet bodies.
+        target_height: Desired body frame height at swing apex (m).
+        std: Width of the Gaussian height kernel (m).
+        tanh_mult: Scaling applied to the horizontal foot speed inside the tanh gate.
+        sensor_cfg: Optional contact sensor configuration. When given, a foot in contact
+            with the ground earns nothing whatever its measured height, which prevents the
+            term from being collected by rocking a grounded foot onto its edge. Its bodies
+            must resolve in the same order as those of ``asset_cfg``. Defaults to None,
+            preserving the original ungated behaviour.
+        force_threshold: Contact force magnitude (N) above which a foot counts as grounded.
+            Only used when ``sensor_cfg`` is given.
+
+    Returns:
+        The computed reward tensor, summed over the feet.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    foot_z_target_error = torch.square(asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height)
+    foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2))
+    reward = torch.exp(-foot_z_target_error / std**2) * foot_velocity_tanh
+    if sensor_cfg is not None:
+        contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+        # history max, as in feet_slide, so contact chatter cannot flicker a grounded foot into earning
+        in_contact = (
+            contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0]
+            > force_threshold
+        )
+        reward = reward * ~in_contact
+    return torch.sum(reward, dim=1)
+
+def foot_clearance_reward_v2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    target_height: float,
+    std: float,
+    tanh_mult: float,
+    sole_offsets: list[list[float]],
+    sensor_cfg: SceneEntityCfg | None = None,
+    force_threshold: float = 1.0,
+) -> torch.Tensor:
+    """Reward the swinging feet for clearing a specified height, measured at the sole.
+
+    Unlike :func:`foot_clearance_reward`, which uses the body frame origin height as a proxy
+    for clearance, this term transforms a set of sole points through the foot's world
+    orientation and takes their lowest world height. That quantity is the true clearance of
+    the foot above the ground and is invariant to how the foot is tilted, which closes the
+    exploit whereby a sole footed robot rocks a grounded foot onto its edge to raise the
+    frame to the target while never lifting the foot. Consequently ``target_height`` here is
+    the desired SOLE clearance, not a body frame height, and is a different quantity from the
+    ``target_height`` of v1.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Configuration for the robot asset, resolving the feet bodies.
+        target_height: Desired sole clearance above the ground at swing apex (m).
+        std: Width of the Gaussian clearance kernel (m).
+        tanh_mult: Scaling applied to the horizontal foot speed inside the tanh gate.
+        sole_offsets: Points on the sole, in the foot body frame, whose lowest world height
+            defines the clearance. Supply the support set of the foot's contact geometry, it
+            suffices to cover the points that can ever be the lowest under the reachable foot
+            orientations. For SD_BRS1 the sole face lies at z -0.124 spanning x -0.1091 to
+            0.1521 and y +/-0.0970, with chamfered fore and aft edges rising to z -0.1144 at
+            x -0.1262 and 0.1692, and the twelve point table in the environment config
+            reproduces the collision mesh to within 0.85 mm over the reachable range.
+        sensor_cfg: Optional contact sensor configuration. When given, a foot in contact
+            earns nothing. This is redundant with the sole measurement and is retained as
+            defence in depth against geometry not covered by ``sole_offsets``. Its bodies
+            must resolve in the same order as those of ``asset_cfg``. Defaults to None.
+        force_threshold: Contact force magnitude (N) above which a foot counts as grounded.
+            Only used when ``sensor_cfg`` is given.
+
+    Returns:
+        The computed reward tensor, summed over the feet.
+
+    Note:
+        The clearance is an absolute world height, which equals the height above the terrain
+        only on flat ground. On generated terrain it must be referenced to the terrain height
+        beneath the foot, as the TODO in :func:`feet_regulation` also records.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids]  # (N, F, 3)
+    foot_quat = asset.data.body_quat_w[:, asset_cfg.body_ids]  # (N, F, 4)
+    num_envs, num_feet = foot_quat.shape[0], foot_quat.shape[1]
+
+    offsets = torch.as_tensor(sole_offsets, dtype=foot_pos.dtype, device=foot_pos.device)  # (P, 3)
+    num_pts = offsets.shape[0]
+    # rotate every sole point by its foot's orientation, then offset by the foot position
+    quat = foot_quat.unsqueeze(2).expand(num_envs, num_feet, num_pts, 4)
+    pts = offsets.view(1, 1, num_pts, 3).expand(num_envs, num_feet, num_pts, 3)
+    pts_w = math_utils.quat_apply(quat.reshape(-1, 4), pts.reshape(-1, 3)).view(num_envs, num_feet, num_pts, 3)
+    pts_w = pts_w + foot_pos.unsqueeze(2)
+    sole_clearance = pts_w[..., 2].min(dim=2)[0]  # (N, F)
+
+    clearance_error = torch.square(sole_clearance - target_height)
+    foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2))
+    reward = torch.exp(-clearance_error / std**2) * foot_velocity_tanh
+    if sensor_cfg is not None:
+        contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+        # history max, as in feet_slide, so contact chatter cannot flicker a grounded foot into earning
+        in_contact = (
+            contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0]
+            > force_threshold
+        )
+        reward = reward * ~in_contact
+    return torch.sum(reward, dim=1)
+
+
 def joint_powers_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize joint powers on the articulation using L1-kernel"""
 
@@ -205,13 +335,42 @@ def same_feet_x_position(env: ManagerBasedRLEnv,
     # return torch.exp(-feet_x_distance / 0.2)
     return feet_x_distance
 
-def no_fly(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float = 1.0) -> torch.Tensor:
-    """Reward if only one foot is in contact with the ground."""
+def no_fly(
+    env: ManagerBasedRLEnv,
+    sensor_cfg: SceneEntityCfg,
+    threshold: float = 1.0,
+    history_index: int = -1,
+) -> torch.Tensor:
+    """Reward if only one foot is in contact with the ground.
+
+    Args:
+        env: The environment object.
+        sensor_cfg: Configuration for the contact force sensor.
+        threshold: Contact force magnitude (N) above which a foot counts as grounded.
+        history_index: Which slot of the contact sensor's rolling history supplies the
+            contact test. The sensor writes the NEWEST sample to index 0 and the oldest to
+            the tail, as its own docstring states, so 0 is the current frame and the
+            default of -1 is the OLDEST of the four buffered samples, roughly 15 ms stale.
+            Defaults to -1, preserving the original behaviour for existing callers exactly.
+            Pass 0 for the current frame.
+
+    Returns:
+        The computed reward tensor.
+
+    Note:
+        DEFECT left standing in the default. Reading the tail is a porting error, not a
+        design. The Isaac Gym ancestor of this term has no history axis at all and tests
+        contact instantaneously, no first-party IsaacLab code reads a trailing index, and
+        this function itself read index 0 correctly until an unrelated commit regressed it.
+        The default is retained only so that callers which have not opted in keep their
+        behaviour bit for bit. Set ``history_index=0`` deliberately. Full provenance in
+        /ws/NATURAL_GAIT_PLAN.md section 5.2.6.
+    """
 
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     latest_contact_forces = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids]
 
-    contacts = torch.norm(latest_contact_forces[:, -1], dim = -1) > threshold
+    contacts = torch.norm(latest_contact_forces[:, history_index], dim = -1) > threshold
     single_contact = torch.sum(contacts.float(), dim=1) == 1
     no_contact = torch.sum(contacts.float(), dim=1) == 0
 
@@ -222,7 +381,8 @@ def keep_ankle_pitch_zero_in_air(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", joint_names=["ankle_L_Joint", "ankle_R_Joint"]),
     sensor_cfg: SceneEntityCfg = SceneEntityCfg("contact_sensor", body_names=["ankle_[LR]_Link"]),
     force_threshold: float = 2.0,
-    pitch_scale: float = 0.2
+    pitch_scale: float = 0.2,
+    require_airborne: bool = False,
 ) -> torch.Tensor:
     """Reward for keeping ankle pitch angle close to zero when foot is in the air.
 
@@ -233,9 +393,15 @@ def keep_ankle_pitch_zero_in_air(
         sensor_cfg: Configuration for the contact force sensor.
         force_threshold: Threshold value for contact detection (in Newtons).
         pitch_scale: Scaling factor for the exponential reward.
+        require_airborne: If True, the reward is zero unless at least one foot is airborne.
+            The pitch sum below runs only over airborne feet, so with every foot in contact
+            it is empty and the exponential saturates at its maximum of 1, paying a standing
+            bonus for keeping both feet planted. Defaults to False, preserving that original
+            behaviour for existing callers.
 
     Returns:
         The computed reward tensor.
+
     """
     asset = env.scene[asset_cfg.name]
     contact_forces_history = env.scene.sensors[sensor_cfg.name].data.net_forces_w_history[:, :, sensor_cfg.body_ids]
@@ -245,7 +411,115 @@ def keep_ankle_pitch_zero_in_air(
     # Use resolved joint_ids (shape: num_envs x num_ankle_joints) instead of hardcoded indices
     ankle_pitch = torch.abs(asset.data.joint_pos[:, asset_cfg.joint_ids])  # (N, 2)
     weighted_ankle_pitch = torch.sum(ankle_pitch * ~contact_filt, dim=1)
-    return torch.exp(-weighted_ankle_pitch / (pitch_scale + 1e-6))
+    reward = torch.exp(-weighted_ankle_pitch / (pitch_scale + 1e-6))
+    if require_airborne:
+        reward = reward * torch.any(~contact_filt, dim=1).float()
+    return reward
+
+def knee_flexion_in_swing(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    target: float = 0.6,
+    std: float = 0.2,
+    force_threshold: float = 1.0,
+) -> torch.Tensor:
+    """Reward the swing leg's knee for approaching a flexed target while the foot is airborne.
+
+    A straight stance knee transmits load efficiently and is left untouched, so this term is
+    gated to swing and shapes only the airborne knee, supplying the swing flexion signal that
+    no other reward provides. The knee joints resolved by ``asset_cfg`` must appear in the same
+    order as the feet bodies resolved by ``sensor_cfg``, left before right, so each knee is
+    paired with its own foot.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Robot asset, ``joint_names`` resolving the two knee pitch joints.
+        sensor_cfg: Contact sensor, ``body_names`` resolving the two feet in the same order.
+        target: Swing knee flexion target (rad), inside the knee range [0, 1.483].
+        std: Width of the Gaussian flexion kernel (rad).
+        force_threshold: Contact force magnitude (N) above which a foot counts as grounded.
+
+    Returns:
+        The reward tensor, summed over the two legs, in the interval [0, 2].
+
+    Note:
+        DEFECT, recorded for anyone tempted to reuse this form. Trained as run
+        2026-07-23_11-31-57 with target 1.1, std 0.2 and weight 10, this term produced
+        NOTHING. Its logged value never exceeded 1.05e-6 against a saturation of 10,
+        because the policy's swing knee sits near 0.22 rad and the kernel placed the target
+        0.88 rad away with a tolerance of 0.2, i.e. 4.4 tolerances into the tail, so the
+        gradient at the operating point was 1.7e-6 per radian against 11.1 for a monotone
+        reward of the same weight. A peaked kernel only instructs where it has a
+        derivative, and this one had none anywhere the policy stood. Prefer
+        :func:`knee_flexion_in_swing_v2`, whose gradient is constant over its whole active
+        range. Full post-mortem in /ws/NATURAL_GAIT_PLAN.md section 2.6.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    contact_history = env.scene.sensors[sensor_cfg.name].data.net_forces_w_history[:, :, sensor_cfg.body_ids]
+    current_contact = torch.norm(contact_history[:, -1], dim=-1) > force_threshold
+    last_contact = torch.norm(contact_history[:, -2], dim=-1) > force_threshold
+    airborne = ~torch.logical_or(current_contact, last_contact)  # (N, F), True while swinging
+    knee = asset.data.joint_pos[:, asset_cfg.joint_ids]          # (N, F)
+    reward = torch.exp(-torch.square(knee - target) / std**2) * airborne.float()
+    return torch.sum(reward, dim=1)
+
+
+def knee_flexion_in_swing_v2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    nominal: float = 0.4814,
+    cap: float = 0.9,
+    force_threshold: float = 1.0,
+) -> torch.Tensor:
+    """Reward the swing leg's knee for flexing beyond its stance nominal, monotonically.
+
+    A straight stance knee transmits load efficiently and is left untouched, so this term
+    is gated to swing and shapes only the airborne knee. Unlike
+    :func:`knee_flexion_in_swing`, which places a Gaussian at a fixed target and therefore
+    vanishes wherever the policy is not already near it, this term is a monotone ramp from
+    ``nominal`` to ``cap``. Its derivative is the constant ``1 / (cap - nominal)`` over that
+    whole interval, so it carries usable gradient from the moment training begins, which is
+    the property the v1 form lacked. It is a DIFFERENT quantity from v1, rewarding flexion
+    RELATIVE to the stance pose rather than proximity to an absolute angle, which is why it
+    is a new function rather than an optional argument.
+
+    The knee joints resolved by ``asset_cfg`` must appear in the same order as the feet
+    bodies resolved by ``sensor_cfg``, left before right, so each knee is paired with its
+    own foot.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Robot asset, ``joint_names`` resolving the two knee pitch joints.
+        sensor_cfg: Contact sensor, ``body_names`` resolving the two feet in the same order.
+        nominal: Knee angle (rad) below which no reward is paid, normally the stance
+            nominal carried by the default pose, so the term asks only for flexion beyond
+            the posture the robot already holds.
+        cap: Knee angle (rad) at which the ramp saturates, a natural swing flexion.
+        force_threshold: Contact force magnitude (N) above which a foot counts as grounded.
+
+    Returns:
+        The reward tensor, summed over the two legs, in the interval [0, 2].
+
+    Note:
+        The airborne gate reads indices 0 and 1 of the contact history, the two NEWEST
+        samples, giving the current-or-previous debounce that the Isaac Gym ancestor of
+        this family expresses as ``contact_filt = contact OR last_contacts``. It takes no
+        ``history_index`` argument because, unlike :func:`no_fly` and
+        :func:`keep_ankle_pitch_zero_in_air`, this function is SD_BRS1 exclusive and has no
+        prior run whose behaviour must be preserved, so the correct indexing is simply the
+        only one it has ever had. Provenance in /ws/NATURAL_GAIT_PLAN.md section 5.2.6.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    contact_history = env.scene.sensors[sensor_cfg.name].data.net_forces_w_history[:, :, sensor_cfg.body_ids]
+    current_contact = torch.norm(contact_history[:, 0], dim=-1) > force_threshold
+    last_contact = torch.norm(contact_history[:, 1], dim=-1) > force_threshold
+    airborne = ~torch.logical_or(current_contact, last_contact)  # (N, F), True while swinging
+    knee = asset.data.joint_pos[:, asset_cfg.joint_ids]          # (N, F)
+    ramp = torch.clamp((knee - nominal) / (cap - nominal), min=0.0, max=1.0)
+    return torch.sum(ramp * airborne.float(), dim=1)
+
 
 def no_contact(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """
@@ -325,14 +599,37 @@ def feet_regulation(env: ManagerBasedRLEnv,
     asset_cfg: SceneEntityCfg,
     foot_radius: float,
     base_height_target: float,
+    height_decay_scale: float | None = None,
 ) -> torch.Tensor:
+    """Penalise horizontal foot speed, gated by an exponential in the foot's ground clearance.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Configuration for the robot asset, resolving the feet bodies.
+        foot_radius: Distance from the measured body frame origin down to the sole, used to
+            convert the body height into a ground clearance. This is a per robot geometric
+            constant, for SD_BRS1 the sole sits 0.124 m below the Link6 frame.
+        base_height_target: Target base height, used as the height gate length scale when
+            ``height_decay_scale`` is not given.
+        height_decay_scale: Length scale (m) of the exponential height gate. Defaults to
+            None, which reproduces the original behaviour of using ``base_height_target``,
+            a scale an order of magnitude larger than the swing height band that leaves the
+            gate near unity throughout and so penalises a swinging foot almost as heavily as
+            a grounded one. A value near 0.025 * base_height_target, the ratio of the
+            original formulation, confines the penalty to feet at ground level.
+
+    Returns:
+        The computed penalty tensor.
+    """
     asset: RigidObject = env.scene[asset_cfg.name]
     feet_height = torch.clip(
         asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - foot_radius, 0, 1
     )  # TODO: change to the height relative to the vertical projection of the terrain
     feet_vel_xy = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
 
-    height_scale = torch.exp(-feet_height / (base_height_target + 1e-6))
+    if height_decay_scale is None:
+        height_decay_scale = base_height_target
+    height_scale = torch.exp(-feet_height / (height_decay_scale + 1e-6))
     reward = torch.sum(height_scale * torch.square(torch.norm(feet_vel_xy, dim=-1)), dim=1)
     return reward
 
@@ -607,3 +904,37 @@ class ActionSmoothnessPenalty(ManagerTermBase):
 
         # Return the penalty scaled by the configured weight
         return penalty
+
+
+class JointTorqueRatePenalty(ManagerTermBase):
+    """
+    A reward term for penalizing large instantaneous changes in joint torques.
+    This penalty encourages smoother actuation and reduces joint torque chattering.
+    """
+
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.asset_cfg = cfg.params.get("asset_cfg", SceneEntityCfg("robot"))
+        self.asset: Articulation = env.scene[self.asset_cfg.name]
+        self.prev_torque = None
+
+    def reset(self, env_ids=None) -> None:
+        if env_ids is None:
+            env_ids = slice(None)
+        if self.prev_torque is not None:
+            self.prev_torque[env_ids] = 0.0
+
+    def __call__(self, env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+        current_torque = self.asset.data.applied_torque[:, self.asset_cfg.joint_ids].clone()
+        if self.prev_torque is None:
+            self.prev_torque = current_torque
+            return torch.zeros(current_torque.shape[0], device=current_torque.device)
+
+        penalty = torch.sum(torch.square(current_torque - self.prev_torque), dim=1)
+        self.prev_torque = current_torque
+
+        startup_env_mask = env.episode_length_buf < 2
+        penalty[startup_env_mask] = 0
+
+        return penalty
+

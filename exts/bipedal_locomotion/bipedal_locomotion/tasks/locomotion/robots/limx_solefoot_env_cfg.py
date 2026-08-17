@@ -7,10 +7,9 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as GaussianNoise
 
 from bipedal_locomotion.assets.config.solefoot_cfg import SOLEFOOT_CFG, SOLEFOOT_CFG_URDF
-from bipedal_locomotion.assets.config.solefoot_identified_cfg import (
+from bipedal_locomotion.assets.config.solefoot_identified_cfg import (  # SOLEFOOT_IDENTIFIED_MULTIUSD_CFG,
     SOLEFOOT_IDENTIFIED_CFG,
     SOLEFOOT_IDENTIFIED_CFG_URDF,
-    SOLEFOOT_IDENTIFIED_MULTIUSD_CFG,
 )
 from bipedal_locomotion.tasks.locomotion import mdp
 from bipedal_locomotion.tasks.locomotion.cfg.SF.limx_base_env_cfg import (
@@ -143,7 +142,7 @@ class SFCoptBaseEnvCfg(SFCoptEnvCfg):
         super().__post_init__()
         self.scene.replicate_physics = False
 
-        self.scene.robot = SOLEFOOT_IDENTIFIED_MULTIUSD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.robot.init_state.joint_pos = {
             "abad_L_Joint": 0.0,
             "abad_R_Joint": 0.0,
@@ -1045,7 +1044,7 @@ class SFIdentifiedBlindRoughCoptEnvUrdfCfg(SFIdentifiedBlindRoughEnvUrdfCfg):
         # This one is without privileged observations
         super().__post_init__()
         self.scene.replicate_physics = False
-        self.scene.robot = SOLEFOOT_IDENTIFIED_MULTIUSD_CFG.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {

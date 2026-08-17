@@ -15,6 +15,8 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.sim.utils.stage import get_current_stage
+from pxr import Usd
 
 
 class respawn_robots:

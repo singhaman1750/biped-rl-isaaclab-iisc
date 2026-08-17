@@ -203,10 +203,10 @@ STAIRS_TERRAINS_PLAY_CFG = TerrainGeneratorCfg(
 
 
 BERKELEY_MIMIC_TERRAINS_CFG = TerrainGeneratorCfg(
-    size=(8.0, 8.0),
-    border_width=20.0,
-    num_rows=15,
-    num_cols=25,  # Wider grid for more variety
+    size=(15.0, 15.0),
+    border_width=5.0,
+    num_rows=6,
+    num_cols=64,  # Wider grid for more variety
     horizontal_scale=0.1,
     vertical_scale=0.005,
     slope_threshold=0.75,

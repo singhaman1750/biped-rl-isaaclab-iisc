@@ -94,10 +94,12 @@ from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
 # Import extensions to set up environment tasks
 from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
+from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
     CMAESDesignGenerator,
+    GrowingDesignDistCMAESDesignGenerator,
     RandomDesignGenerator,
 )
 from himloco.runners import HIMOnPolicyRunner
@@ -129,14 +131,12 @@ def main():
         task_name=args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs
     )
     env_cfg.sim.log_dir = "/root/logs"
-    env_cfg.sim.render.rendering_mode = "performance"
-    env_cfg.sim.render.enable_shadows = True
+    env_cfg.sim.render.rendering_mode = "balanced"
     env_cfg.sim.render.dlss_mode = 0
     # env_cfg.viewer.resolution = (640, 480)
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(
         args_cli.task, args_cli
     )
-    # agent_cfg.resume = True
 
     if args_cli.max_iterations is not None:
         agent_cfg.max_iterations = args_cli.max_iterations
@@ -193,31 +193,48 @@ def main():
         agent_cfg.policy.class_name = "HIMActorCritic"
         agent_cfg.algorithm.class_name = "HIMPPO"
     runner = None
-    if args_cli.policy_type == "COPT":
+    if args_cli.policy_type in ("COPT", "COPT-LEARNED"):
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/base_robot.urdf",
         )
         _num_individuals = 256
-        param_ranges = {}
-        params = ["thigh_length_scale", "shank_length_scale"]
-        for param in params:
-            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
-        design_generator = CMAESDesignGenerator(
+        # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
+        # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
+        ea_update_interval = 240
+        ea_late_start = 12000
+        param_ranges = {
+            "thigh_length_scale": (0.75, 1.25),
+            "shank_length_scale": (0.75, 1.25),
+        }
+        design_generator = GrowingDesignDistCMAESDesignGenerator(
             base_urdf_path=_base_urdf,
             num_individuals=_num_individuals,
             param_ranges=param_ranges,
-            sigma0=0.1,
+            output_dir=os.path.join(log_dir, "copt_usds"),
+            sigma0=0.25,
             seed=42,
-            late_start=False,
+            late_start=True,
+            late_start_it=int(ea_late_start / ea_update_interval),
+            max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
+            / ea_update_interval,
         )
-        agent_cfg.policy.class_name = "CoptActorCritic"
+        if args_cli.policy_type == "COPT-LEARNED":
+            agent_cfg.policy.class_name = "CoptLearnedModelActorCritic"
+            agent_cfg.algorithm.class_name = "CoptLearnedModelPPO"
+        elif args_cli.policy_type == "COPT-LEARNED-2":
+            agent_cfg.policy.class_name = "CoptLearnedModelV2ActorCritic"
+            agent_cfg.algorithm.class_name = "CoptLearnedModelV2PPO"
+        else:
+            agent_cfg.policy.class_name = "CoptActorCritic"
+            agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
-            "ea_update_interval": 10,
-            "ea_late_start": -1,
+            "ea_update_interval": ea_update_interval,
+            "ea_late_start": ea_late_start,
             "num_individuals": _num_individuals,
+            "randomise_before_late_start": True,
         }
         runner = CoptOnPolicyRunner(
             env,

@@ -4,6 +4,7 @@ from bipedal_locomotion.tasks.locomotion.agents.limx_rsl_rl_ppo_cfg import (
     PF_TRON1AFlatPPORunnerCfg,
     SF_Berkeley_PPORunnerCfg,
     SF_TRON1AFlatPPORunnerCfg,
+    SFCoptLearnedModelPPORunnerCfg,
     SFCoptPPORunnerCfg,
     WF_TRON1AFlatPPORunnerCfg,
 )
@@ -28,6 +29,7 @@ limx_sf_berkeley_mimic_runner_cfg = SF_Berkeley_PPORunnerCfg()
 
 limx_sf_copt_runner_cfg = SFCoptPPORunnerCfg()
 
+limx_sf_copt_learned_runner_cfg = SFCoptLearnedModelPPORunnerCfg()
 
 ##
 # Register Gym environments
@@ -385,5 +387,48 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
         "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+    },
+)
+
+#############################
+# SF Co-Optimisation Learned-Model Environment
+#############################
+gym.register(
+    id="Isaac-Limx-SF-Copt-Learned-Flat-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Copt-Learned-Flat-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Copt-Learned-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Copt-Learned-Rough-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
     },
 )

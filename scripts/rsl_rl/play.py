@@ -5,7 +5,7 @@
 import argparse
 from typing import Union
 
-import visualise
+# import visualise
 from isaaclab.app import AppLauncher
 
 # local imports
@@ -85,6 +85,7 @@ from bipedal_locomotion.utils.wrappers.rsl_rl import (
     export_mlp_as_onnx,
     export_policy_as_jit,
 )
+from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
@@ -206,20 +207,20 @@ class DataLogger:
     def log_latent(self, latent):
         self.data["latent_space_output"].append(latent.cpu())
 
-    def plot(self):
-        data = {}
-        write_data = {}
-        for key, item in self.data.items():
-            if "commanded" not in key:
-                data[key] = [self.data[key]]
-            else:
-                data[key] = self.data[key]
-            if len(self.data[key]) > 0:
-                write_data[key] = torch.stack(self.data[key]).numpy()
-        visualise.visualise(data, self.log_dir, self.num_envs, self.seed)
-        data_path = os.path.join(self.log_dir, "data", f"{self.seed}")
-        os.makedirs(data_path, exist_ok=True)
-        np.save(os.path.join(data_path, "dump.npy"), data)
+    # def plot(self):
+    #     data = {}
+    #     write_data = {}
+    #     for key, item in self.data.items():
+    #         if "commanded" not in key:
+    #             data[key] = [self.data[key]]
+    #         else:
+    #             data[key] = self.data[key]
+    #         if len(self.data[key]) > 0:
+    #             write_data[key] = torch.stack(self.data[key]).numpy()
+    #     visualise.visualise(data, self.log_dir, self.num_envs, self.seed)
+    #     data_path = os.path.join(self.log_dir, "data", f"{self.seed}")
+    #     os.makedirs(data_path, exist_ok=True)
+    #     np.save(os.path.join(data_path, "dump.npy"), data)
 
 
 def main():
@@ -314,6 +315,41 @@ def main():
             late_start=False,
         )
         agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg.algorithm.class_name = "CoptPPO"
+        agent_cfg_dict = agent_cfg.to_dict()
+        agent_cfg_dict["copt"] = {
+            "ea_update_interval": 50,
+            "ea_late_start": -1,
+            "num_individuals": _num_individuals,
+        }
+        ppo_runner = CoptOnPolicyRunner(
+            env,
+            design_generator,
+            agent_cfg_dict,
+            log_dir=log_dir,
+            device=agent_cfg.device,
+        )
+    elif args_cli.policy_type == "COPT-LEARNED":
+
+        _base_urdf = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+        )
+        _num_individuals = 256
+        param_ranges = {}
+        params = ["thigh_length_scale", "shank_length_scale"]
+        for param in params:
+            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
+        design_generator = CMAESDesignGenerator(
+            base_urdf_path=_base_urdf,
+            num_individuals=_num_individuals,
+            param_ranges=param_ranges,
+            sigma0=0.1,
+            seed=42,
+            late_start=False,
+        )
+        agent_cfg.policy.class_name = "CoptLearnedModelActorCritic"
+        agent_cfg.algorithm.class_name = "CoptLearnedModelPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
             "ea_update_interval": 50,
@@ -375,7 +411,7 @@ def main():
                 break
 
     # plot data
-    data_logger.plot()
+    # data_logger.plot()
 
     # close the simulator
     env.close()
