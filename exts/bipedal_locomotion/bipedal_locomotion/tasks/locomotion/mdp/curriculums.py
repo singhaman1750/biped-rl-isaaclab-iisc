@@ -221,6 +221,7 @@ def modify_push_force_v2(
     starting_step: float = 0.0,
     increment_rate: float = 1.1,
     decrement_rate: float = 0.9,
+    minimum_velocity: float = 0.2
 ):
     """Curriculum that modifies the maximum push (perturbation) velocity over some intervals. This takes into account the low height termination penalty as well.
 
@@ -251,12 +252,12 @@ def modify_push_force_v2(
             # update term settings
             curr_setting = term_cfg.params["velocity_range"]["x"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting * increment_rate), 0.0, max_velocity[0]
+                torch.tensor(curr_setting * increment_rate), minimum_velocity, max_velocity[0]
             ).item()
             term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
             curr_setting = term_cfg.params["velocity_range"]["y"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting * increment_rate), 0.0, max_velocity[1]
+                torch.tensor(curr_setting * increment_rate), minimum_velocity, max_velocity[1]
             ).item()
             term_cfg.params["velocity_range"]["y"] = (-curr_setting, curr_setting)
             env.event_manager.set_term_cfg("push_robot", term_cfg)
@@ -268,12 +269,12 @@ def modify_push_force_v2(
             # update term settings
             curr_setting = term_cfg.params["velocity_range"]["x"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting * decrement_rate), 0.0, max_velocity[0]
+                torch.tensor(curr_setting * decrement_rate), minimum_velocity, max_velocity[0]
             ).item()
             term_cfg.params["velocity_range"]["x"] = (-curr_setting, curr_setting)
             curr_setting = term_cfg.params["velocity_range"]["y"][1]
             curr_setting = torch.clamp(
-                torch.tensor(curr_setting * decrement_rate), 0.0, max_velocity[1]
+                torch.tensor(curr_setting * decrement_rate), minimum_velocity, max_velocity[1]
             ).item()
             term_cfg.params["velocity_range"]["y"] = (-curr_setting, curr_setting)
             env.event_manager.set_term_cfg("push_robot", term_cfg)

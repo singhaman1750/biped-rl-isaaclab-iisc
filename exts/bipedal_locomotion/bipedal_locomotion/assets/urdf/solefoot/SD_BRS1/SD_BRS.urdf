@@ -1,0 +1,465 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simplified collision/visual model of SD_BRS1_Assembly2.
+     Inertials, joint origins, axes, types and limits are copied verbatim from that file, so this
+     model is dynamically identical and a policy trained here transfers to the original asset.
+     Mesh geometry is replaced by primitives chosen so that no two non-adjacent links of the same
+     leg overlap at any reachable joint configuration, which the original mesh model violated
+     (Link4 penetrated Link6 permanently, producing spurious contact forces). -->
+<robot name="SD_BRS">
+  <link name="Part_Torso">
+    <inertial>
+      <origin xyz="-0.02569 9E-05 0.01032" rpy="0 0 0" />
+      <mass value="8.2464" />
+      <inertia ixx="0.153336048" ixy="0.00011776" ixz="0.000278663" iyy="0.032638157" iyz="3.7103E-07" izz="0.153374618" />
+    </inertial>
+    <visual>
+      <origin xyz="-0.0186 0 0.01467" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1622 0.4604 0.155" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0186 0 0.01467" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1622 0.4604 0.155" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="HipYawR" type="fixed">
+    <origin xyz="0 -0.129996282070585 -0.181076979804151" rpy="0 0 0" />
+    <parent link="Part_Torso" />
+    <child link="Link1R" />
+  </joint>
+  <joint name="HipYawL" type="fixed">
+    <origin xyz="0 0.13 -0.18108" rpy="0 0 0" />
+    <parent link="Part_Torso" />
+    <child link="Link1L" />
+  </joint>
+  <link name="Link1R">
+    <inertial>
+      <origin xyz="-0.10278 -9E-05 0.0219" rpy="0 0 0" />
+      <mass value="2.726" />
+      <inertia ixx="0.0071575" ixy="3.5304E-05" ixz="0.006078" iyy="0.021413" iyz="5.1364E-06" izz="0.017154" />
+    </inertial>
+    <visual>
+      <origin xyz="-0.2024 0 0.0049" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0928 0.085 0.0948" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.2024 0 0.0049" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0928 0.085 0.0948" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="HipRollR" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="Link1R" />
+    <child link="Link2R" />
+    <axis xyz="1 0 0" />
+    <limit lower="-0.349" upper="0.349" effort="0" velocity="0" />
+  </joint>
+  <link name="Link2R">
+    <inertial>
+      <origin xyz="-0.00055 0.01004 9E-05" rpy="0 0 0" />
+      <mass value="3.8609" />
+      <inertia ixx="0.0097704" ixy="-1.4503E-05" ixz="-6.9912E-06" iyy="0.0071475" iyz="3.4683E-05" izz="0.011053" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0.0906 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.0505" length="0.0428" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.0906 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.0505" length="0.0428" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="HipPitchR" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="Link2R" />
+    <child link="Link3R" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.75" upper="1.25" effort="0" velocity="0" />
+  </joint>
+  <link name="Link3R">
+    <inertial>
+      <origin xyz="-0.01444 -0.00023 -0.24157" rpy="0 0 0" />
+      <mass value="9.645" />
+      <inertia ixx="0.187910197" ixy="-0.000570862" ixz="-0.001894601" iyy="0.177697306" iyz="0.000778493" izz="0.052826815" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0.0041 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.068" length="0.1396" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.0041 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.068" length="0.1396" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0011 0 -0.23" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1382 0.21 0.29" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0011 0 -0.23" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1382 0.21 0.29" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0.0032 -0.44" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.065" length="0.2285" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.0032 -0.44" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.065" length="0.2285" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="KneePitchR" type="revolute">
+    <origin xyz="0 0.00045 -0.44" rpy="0 0 0" />
+    <parent link="Link3R" />
+    <child link="Link4R" />
+    <axis xyz="0 1 0" />
+    <limit lower="0" upper="1.483" effort="0" velocity="0" />
+  </joint>
+  <link name="Link4R">
+    <inertial>
+      <origin xyz="0.00346 -1E-05 -0.19188" rpy="0 0 0" />
+      <mass value="5.805" />
+      <inertia ixx="0.098359" ixy="2.8794E-05" ixz="0.010111" iyy="0.10544" iyz="1.7428E-05" izz="0.018624" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.1206" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.1206" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.01125 0 -0.221" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1425 0.125 0.306" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.01125 0 -0.221" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1425 0.125 0.306" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="AnkleRollR" type="revolute">
+    <origin xyz="0 0 -0.43" rpy="0 0 0" />
+    <parent link="Link4R" />
+    <child link="Link5R" />
+    <axis xyz="-1 0 0" />
+    <limit lower="-0.349" upper="0.349" effort="0" velocity="0" />
+  </joint>
+  <link name="Link5R">
+    <inertial>
+      <origin xyz="-0.01599 0 0" rpy="0 0 0" />
+      <mass value="0.0722" />
+      <inertia ixx="3.2188E-06" ixy="0" ixz="0" iyy="7.7148E-05" iyz="0" izz="7.7003E-05" />
+    </inertial>
+  </link>
+  <joint name="AnklePitchR" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="Link5R" />
+    <child link="Link6R" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.454" upper="0.454" effort="0" velocity="0" />
+  </joint>
+  <link name="Link6R">
+    <inertial>
+      <origin xyz="0.01069 -0.00375 -0.06865" rpy="0 0 0" />
+      <mass value="3.691" />
+      <inertia ixx="0.015197" ixy="7.8646E-05" ixz="-0.0023923" iyy="0.0212" iyz="-0.00093291" izz="0.025119" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.032" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.14" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.032" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.14" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0202 0 -0.101" rpy="0 0 0" />
+      <geometry>
+        <box size="0.3156 0.19 0.046" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0202 0 -0.101" rpy="0 0 0" />
+      <geometry>
+        <box size="0.3156 0.19 0.046" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="Link1L">
+    <inertial>
+      <origin xyz="-0.10278 -9E-05 0.0219" rpy="0 0 0" />
+      <mass value="2.726" />
+      <inertia ixx="0.0071575" ixy="3.5304E-05" ixz="0.006078" iyy="0.021413" iyz="5.1364E-06" izz="0.017154" />
+    </inertial>
+    <visual>
+      <origin xyz="-0.2024 0 0.0049" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0928 0.085 0.0948" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.2024 0 0.0049" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0928 0.085 0.0948" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="HipRollL" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="Link1L" />
+    <child link="Link2L" />
+    <axis xyz="1 0 0" />
+    <limit lower="-0.349" upper="0.349" effort="0" velocity="0" />
+  </joint>
+  <link name="Link2L">
+    <inertial>
+      <origin xyz="-0.00055 -0.01004 -9E-05" rpy="0 0 0" />
+      <mass value="3.86" />
+      <inertia ixx="0.0097704" ixy="1.4503E-05" ixz="6.9912E-06" iyy="0.0071475" iyz="3.4683E-05" izz="0.011053" />
+    </inertial>
+    <visual>
+      <origin xyz="0 -0.0906 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.0505" length="0.0428" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0.0906 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.0505" length="0.0428" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="HipPitchL" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="Link2L" />
+    <child link="Link3L" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.25" upper="0.75" effort="0" velocity="0" />
+  </joint>
+  <link name="Link3L">
+    <inertial>
+      <origin xyz="-0.01487 0.00133 -0.24243" rpy="0 0 0" />
+      <mass value="9.6512" />
+      <inertia ixx="0.18977" ixy="0.00044871" ixz="-0.0023007" iyy="0.17967" iyz="-0.00042822" izz="0.053261" />
+    </inertial>
+    <visual>
+      <origin xyz="0 -0.0041 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.068" length="0.1396" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0.0041 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.068" length="0.1396" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0011 0 -0.23" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1382 0.21 0.29" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0011 0 -0.23" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1382 0.21 0.29" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 -0.0032 -0.44" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.065" length="0.2285" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 -0.0032 -0.44" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.065" length="0.2285" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="KneePitchL" type="revolute">
+    <origin xyz="0 -0.00045 -0.44" rpy="0 0 0" />
+    <parent link="Link3L" />
+    <child link="Link4L" />
+    <axis xyz="0 1 0" />
+    <limit lower="0" upper="1.483" effort="0" velocity="0" />
+  </joint>
+  <link name="Link4L">
+    <inertial>
+      <origin xyz="0.00346 -1E-05 -0.19188" rpy="0 0 0" />
+      <mass value="5.8054" />
+      <inertia ixx="0.098359" ixy="2.8794E-05" ixz="0.010111" iyy="0.10544" iyz="1.7428E-05" izz="0.018624" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.1206" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.1206" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.01125 0 -0.221" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1425 0.125 0.306" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.01125 0 -0.221" rpy="0 0 0" />
+      <geometry>
+        <box size="0.1425 0.125 0.306" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="AnkleRollL" type="revolute">
+    <origin xyz="0 0 -0.43" rpy="0 0 0" />
+    <parent link="Link4L" />
+    <child link="Link5L" />
+    <axis xyz="-1 0 0" />
+    <limit lower="-0.359" upper="0.359" effort="0" velocity="0" />
+  </joint>
+  <link name="Link5L">
+    <inertial>
+      <origin xyz="-0.01599 0 0" rpy="0 0 0" />
+      <mass value="0.0722" />
+      <inertia ixx="3.2188E-06" ixy="0" ixz="0" iyy="7.7148E-05" iyz="0" izz="7.7003E-05" />
+    </inertial>
+  </link>
+  <joint name="AnklePitchL" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="Link5L" />
+    <child link="Link6L" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.454" upper="0.454" effort="0" velocity="0" />
+  </joint>
+  <link name="Link6L">
+    <inertial>
+      <origin xyz="0.01055 0.00393 -0.06866" rpy="0 0 0" />
+      <mass value="3.691" />
+      <inertia ixx="0.015182935" ixy="-0.000222543" ixz="-0.002416782" iyy="0.021211984" iyz="0.000980965" izz="0.025128119" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.032" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.14" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.032" rpy="1.5707963268 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.14" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0202 0 -0.101" rpy="0 0 0" />
+      <geometry>
+        <box size="0.3156 0.19 0.046" />
+      </geometry>
+      <material name="steel_blue">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0202 0 -0.101" rpy="0 0 0" />
+      <geometry>
+        <box size="0.3156 0.19 0.046" />
+      </geometry>
+    </collision>
+  </link>
+</robot>

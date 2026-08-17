@@ -8,7 +8,7 @@ from bipedal_locomotion.actuators import IdentifiedActuatorCfg
 
 current_dir = os.path.dirname(__file__)
 usd_path = os.path.join(current_dir, "../usd/SF_TRON1A/SF_TRON1A.usd")
-urdf_path = os.path.join(current_dir, "../urdf/solefoot/base_robot.urdf")
+urdf_path = os.path.join(current_dir, "../urdf/solefoot/tron1/base_robot.urdf")
 usd_path_sf = os.path.join(current_dir, "../usd/SF_TRON1A/SF_TRON1A.usd")
 usd_path_pf = os.path.join(current_dir, "../usd/PF_TRON1A/PF_TRON1A.usd")
 usd_path_wf = os.path.join(current_dir, "../usd/WF_TRON1A/WF_TRON1A.usd")

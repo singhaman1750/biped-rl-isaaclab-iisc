@@ -345,3 +345,46 @@ def randomize_joint_friction_model(
                 actuator.dynamic_friction[env_ids[:, None], actuator_joint_ids] = (
                     friction[:, actuator_joint_ids]
                 )
+
+
+def reset_joint_by_offset(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    joint_name: str,
+    position_range: tuple[float, float],
+    velocity_range: tuple[float, float],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
+    """Reset the joints matching ``joint_name`` by adding a random offset to their default state.
+
+    Unlike the stock ``reset_joints_by_offset``, this operates only on the specified joints, allowing
+    joint-specific position and velocity ranges (e.g. derived from the URDF joint limits). The sampled
+    positions and velocities are clamped to the soft joint limits before being written to the simulation.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+    # resolve the joint indices from the joint name (regex supported)
+    joint_ids, _ = asset.find_joints(joint_name)
+
+    # get default joint state for the selected joints
+    joint_pos = asset.data.default_joint_pos[env_ids][:, joint_ids].clone()
+    joint_vel = asset.data.default_joint_vel[env_ids][:, joint_ids].clone()
+
+    # bias these values randomly
+    joint_pos += math_utils.sample_uniform(
+        *position_range, joint_pos.shape, joint_pos.device
+    )
+    joint_vel += math_utils.sample_uniform(
+        *velocity_range, joint_vel.shape, joint_vel.device
+    )
+
+    # clamp joint pos and vel to limits
+    joint_pos_limits = asset.data.soft_joint_pos_limits[env_ids][:, joint_ids]
+    joint_pos = joint_pos.clamp_(joint_pos_limits[..., 0], joint_pos_limits[..., 1])
+    joint_vel_limits = asset.data.soft_joint_vel_limits[env_ids][:, joint_ids]
+    joint_vel = joint_vel.clamp_(-joint_vel_limits, joint_vel_limits)
+
+    # set into the physics simulation
+    asset.write_joint_state_to_sim(
+        joint_pos, joint_vel, joint_ids=joint_ids, env_ids=env_ids
+    )
