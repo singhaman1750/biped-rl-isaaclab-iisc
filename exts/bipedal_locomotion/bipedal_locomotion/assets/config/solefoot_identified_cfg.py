@@ -129,37 +129,37 @@ SOLEFOOT_IDENTIFIED_CFG_URDF = ArticulationCfg(
     actuators=actuators,
 )
 
-usd_path_all = []
-usd_out_dir = "/tmp/usd"
-if not os.path.exists(usd_out_dir):
-    os.mkdir(usd_out_dir)
-
-for idx in range(256):
-    usd_file_name = f"biped_{idx}.usd"
-    cfg = UrdfConverterCfg(
-        asset_path=urdf_path,
-        usd_dir=usd_out_dir,
-        usd_file_name=usd_file_name,
-        link_density=0.0,
-        merge_fixed_joints=False,
-        fix_base=False,
-        self_collision=False,
-        collider_type="convex_hull",
-        joint_drive=None,
-        force_usd_conversion=True,
-    )
-    converter = UrdfConverter(cfg)
-    usd_path_all.append(converter.usd_path)
-
-SOLEFOOT_IDENTIFIED_MULTIUSD_CFG = ArticulationCfg(
-    spawn=sim_utils.MultiUsdFileCfg(
-        usd_path=usd_path_all,
-        random_choice=False,
-        rigid_props=rigid_props,
-        articulation_props=articulation_props,
-        activate_contact_sensors=activate_contact_sensors,
-    ),
-    init_state=init_state,
-    soft_joint_pos_limit_factor=soft_joint_pos_limit_factor,
-    actuators=actuators,
-)
+# usd_path_all = []
+# usd_out_dir = "/tmp/usd"
+# if not os.path.exists(usd_out_dir):
+#     os.mkdir(usd_out_dir)
+#
+# for idx in range(256):
+#     usd_file_name = f"biped_{idx}.usd"
+#     cfg = UrdfConverterCfg(
+#         asset_path=urdf_path,
+#         usd_dir=usd_out_dir,
+#         usd_file_name=usd_file_name,
+#         link_density=0.0,
+#         merge_fixed_joints=False,
+#         fix_base=False,
+#         self_collision=False,
+#         collider_type="convex_hull",
+#         joint_drive=None,
+#         force_usd_conversion=True,
+#     )
+#     converter = UrdfConverter(cfg)
+#     usd_path_all.append(converter.usd_path)
+#
+# SOLEFOOT_IDENTIFIED_MULTIUSD_CFG = ArticulationCfg(
+#     spawn=sim_utils.MultiUsdFileCfg(
+#         usd_path=usd_path_all,
+#         random_choice=False,
+#         rigid_props=rigid_props,
+#         articulation_props=articulation_props,
+#         activate_contact_sensors=activate_contact_sensors,
+#     ),
+#     init_state=init_state,
+#     soft_joint_pos_limit_factor=soft_joint_pos_limit_factor,
+#     actuators=actuators,
+# )

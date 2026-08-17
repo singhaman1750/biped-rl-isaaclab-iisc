@@ -82,7 +82,7 @@ class HIMEstimator(nn.Module):
         return vel, z
 
     def update(self, obs, next_obs, lr=None):
-        # Refer to HIM.md for more information regarding mathematics
+        # Refer to context/HIM.md for more information regarding mathematics
         obs_history = torch.flatten(
             self.actor_obs_normalizer(obs["obsHistory"]), start_dim=1
         )

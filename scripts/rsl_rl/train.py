@@ -197,7 +197,7 @@ def main():
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/base_robot.urdf",
         )
         _num_individuals = 256
         # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
@@ -212,6 +212,7 @@ def main():
             base_urdf_path=_base_urdf,
             num_individuals=_num_individuals,
             param_ranges=param_ranges,
+            output_dir=os.path.join(log_dir, "copt_usds"),
             sigma0=0.25,
             seed=42,
             late_start=True,

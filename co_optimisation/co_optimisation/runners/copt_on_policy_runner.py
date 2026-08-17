@@ -241,9 +241,20 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 # Resume: re-spawn the checkpointed population and restore the env,
                 # manager, curriculum, and RNG state instead of generating a fresh
                 # generation-zero population.
+                assert self._restored_population is not None, (
+                    "resume checkpoint carries no design population, so the run "
+                    "cannot re-establish one USD prototype per design and every "
+                    "environment would silently share a single morphology"
+                )
+                self._respawn_population(self._restored_population)
                 self._apply_restored_state()
             else:
-                self._update_morphology(0)
+                # Bootstrap generation zero through the respawn path, so that each
+                # design receives its own USD reference arc and therefore its own
+                # instancing prototype. This is done as SOLEFOOT_IDENTIFIED_CFG_URDF
+                # is used to spawn the base environment which contains only a single 
+                # prototype
+                self._reload_morphology()
 
         obs = self.env.get_observations().to(self.device)
         self.train_mode()
@@ -513,6 +524,36 @@ class CoptOnPolicyRunner(OnPolicyRunner):
     # COPT helpers
     # ------------------------------------------------------------------
 
+    def _respawn_population(self, population: Population) -> None:
+        """Spawn one USD per design, with the terrain curriculum suppressed.
+
+        This is the only pathway that gives each design its own USD reference arc and
+        therefore its own USD instancing prototype.  ``apply_link_length_params`` edits
+        prototypes rather than composed prims, so where a single asset backs every
+        environment the whole population resolves to one prototype and the per-design
+        writes overwrite one another, leaving every environment on the design authored
+        last.  Establishing the prototypes here is what makes the in-place path correct
+        for every generation that follows.
+
+        The terrain curriculum is suppressed across the reset that ``respawn_robots``
+        performs at its step 11, because the episodes are truncated by the spawn and
+        the walked-distance signal ``terrain_levels_vel`` reads is meaningless at that
+        boundary.  This mirrors the guard :meth:`_update_morphology` already applies
+        around its own reset, and is applied here rather than inside ``respawn_robots``
+        so that the behaviour of that shared utility is unchanged for any other caller.
+
+        Args:
+            population: The population whose ``get_usd_files()`` supplies one USD path
+                per individual.  Environments are assigned round-robin by
+                ``env_idx % num_individuals``.
+        """
+        unwrapped_env = self.env.unwrapped
+        unwrapped_env._suppress_terrain_curriculum = True
+        try:
+            self.respawn_robots(unwrapped_env, population.get_usd_files())
+        finally:
+            unwrapped_env._suppress_terrain_curriculum = False
+
     def _reload_morphology(self) -> None:
         """Run one EA cycle: evaluate fitness, generate new population, respawn."""
         if self.current_population is not None :
@@ -533,7 +574,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             # Respawn robots with new USD files
             unwrapped_env = self.env.unwrapped  # ManagerBasedRLEnv
             print("Spawning sampled population")
-            self.respawn_robots(unwrapped_env, self.current_population.get_usd_files())
+            self._respawn_population(self.current_population)
 
             # Patch actuator params
             print("Applying Sampled Actuator Parameters")
