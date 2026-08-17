@@ -111,7 +111,7 @@ articulation_props = sim_utils.ArticulationRootPropertiesCfg(
 init_state = ArticulationCfg.InitialStateCfg(
     # Standing crouch solved from the sagittal 2-link closed chain, placing the ankle
     # directly beneath the hip so the stance is balanced, with the ankle pitch absorbing
-    # the shank tilt so the sole stays flat. Derived in /ws/NATURAL_GAIT_PLAN.md section
+    # the shank tilt so the sole stays flat. Derived in /ws/plans/NATURAL_GAIT_PLAN.md section
     # 2.9 for a standing torso height of 1.15 m:
     #   d = H - 0.305077,  k = arccos((d^2 - l1^2 - l2^2) / (2*l1*l2)),
     #   beta = atan2(l2*sin(k), l1 + l2*cos(k)),  ankle = k - beta

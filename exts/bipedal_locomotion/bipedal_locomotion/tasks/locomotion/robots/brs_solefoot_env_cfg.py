@@ -18,16 +18,6 @@ from bipedal_locomotion.tasks.locomotion.cfg.SF.terrains_cfg import (
     BLIND_ROUGH_TERRAINS_PLAY_CFG,
 )
 
-# Standing crouch at a torso height of 1.15 m, derived from the sagittal closed chain in
-# /ws/NATURAL_GAIT_PLAN.md section 2.9 and kept identical to the init_state carried by
-# sd_brs1_identified_cfg.py, which this dict overwrites at every use below.
-#
-# The all-zero pose this replaces put the knee on its mechanical extension stop, which is
-# also outside its soft limit band, so it cost 0.297 reward/s in pen_joint_pos_limits
-# before the policy acted at all, and it made the zero-action fixed point of the position
-# action a straight leg, pricing every degree of sustained flexion in exploration sigmas.
-# Section 2.6 of that document records why a flexion reward alone could not overcome it.
-#
 # Signs follow the URDF axes. Only HipPitch is mirrored between the legs, so the two hips
 # take opposite signs, while KneePitch and AnklePitch share an axis across legs and take
 # the same sign on both.
@@ -81,7 +71,10 @@ class SDBRS1BaseEnvCfg_PLAY(SDBRS1BaseEnvCfg):
         self.curriculum.modify_command_velocity_lin_x = None
         self.curriculum.modify_command_velocity_lin_y = None
         self.curriculum.modify_command_velocity_ang_z = None
-        self.commands.base_velocity.ranges.lin_vel_x = (-1.35, 1.35)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.5, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.2, 0.2)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.9, 0.9)
+        self.episode_length_s = 30.0
 
 
 @configclass
@@ -115,7 +108,10 @@ class SDBRS1BaseEnv2Cfg_PLAY(SDBRS1BaseEnv2Cfg):
         self.curriculum.modify_command_velocity_lin_x = None
         self.curriculum.modify_command_velocity_lin_y = None
         self.curriculum.modify_command_velocity_ang_z = None
-        self.commands.base_velocity.ranges.lin_vel_x = (-1.35, 1.35)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.5, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.2, 0.2)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.9, 0.9)
+        self.episode_length_s = 30.0
 
 
 ######################
@@ -154,6 +150,9 @@ class SDBRS1HIMBaseEnvCfg_PLAY(SDBRS1HIMBaseEnvCfg):
         self.curriculum.modify_command_velocity_lin_y = None
         self.curriculum.modify_command_velocity_ang_z = None
         self.commands.base_velocity.ranges.lin_vel_x = (-1.35, 1.35)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.2, 0.2)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.9, 0.9)
+        self.episode_length_s = 30.0
 
 
 ######################

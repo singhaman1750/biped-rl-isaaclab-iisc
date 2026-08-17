@@ -107,31 +107,13 @@ class CommandsCfg:
         ),
     )
 
-    # Periodic walking clock, consumed by rew_gait in RewardsCfg and observed through
-    # ObservationsCfg.PolicyCfg.gait_phase. Added 2026-07-20, see /ws/GAIT_STRATEGY.md section 2.7.
-    # Run 2026-07-20_07-52-14 converged onto a one legged hold, single support occupancy at least
-    # 0.909 with single support phases near 2.5 s against a human 0.4 s, because every gait term in
-    # the reward set is maximised by holding and not one has a value that depends on the number of
-    # steps taken. The clock family (Siekmann arXiv:2011.01387, Walk These Ways arXiv:2212.03238,
-    # Humanoid-Gym arXiv:2404.05695) is the only surveyed construction that states WHEN each foot
-    # should be down, so it cannot be farmed by holding, holding being off schedule by definition.
-    #
-    # frequency 1.0 Hz with stance duration 0.6 and anti phase offset 0.5 gives, per 1.0 s cycle
-    # and per foot, a 0.4 s swing, a 0.4 s single support phase and a 0.1 s double support phase on
-    # each side, which is exactly the reference walk the hold was priced against. The ranges are
-    # degenerate on purpose, a fixed clock removes a confound from this experiment, and widening
-    # them is the follow up once alternation is established. If they are ever widened, add
-    # mdp.get_gait_command to the observation groups, the parameters carry no information while
-    # they are constant.
     gait_command = mdp.UniformGaitCommandCfg(
         resampling_time_range=(10.0, 10.0),
         debug_vis=False,
         ranges=mdp.UniformGaitCommandCfg.Ranges(
             frequencies=(1.0, 1.0),
             offsets=(0.5, 0.5),
-            durations=(0.6, 0.6),
-            # unused by GaitReward, carried because GaitCommand samples four parameters, set to
-            # the clearance target of rew_foot_clearance so the two agree if it is ever read
+            durations=(0.62, 0.62),
             swing_height=(0.08, 0.08),
         ),
     )
@@ -595,8 +577,6 @@ class EventsCfg:
             },
         },
     )
-    # joint-specific position randomisation, ranges taken from the URDF joint limits
-    # (SD_BRS1_Assembly2.urdf), clamped to the soft joint limits inside the event term
     reset_hip_roll_joints = EventTerm(
         func=mdp.reset_joint_by_offset,
         mode="reset",
@@ -611,8 +591,6 @@ class EventsCfg:
         mode="reset",
         params={
             "joint_name": "HipPitchR",
-            # recentred on the crouch nominal, see NATURAL_GAIT_PLAN.md 5.2.3. The offset is
-            # ADDED to the default, so a symmetric range straddles the new pose.
             "position_range": (-0.24, 0.24),
             "velocity_range": (-0.5, 0.5),
         },
@@ -631,8 +609,6 @@ class EventsCfg:
         mode="reset",
         params={
             "joint_name": "KneePitch[RL]",
-            # was (0.0, 0.475), one-sided because the old default sat on the extension stop.
-            # About the 0.4814 nominal this samples [0.241, 0.721], inside the soft band.
             "position_range": (-0.24, 0.24),
             "velocity_range": (-0.5, 0.5),
         },
@@ -651,8 +627,6 @@ class EventsCfg:
         mode="reset",
         params={
             "joint_name": "AnklePitch[RL]",
-            # narrower than the others because the ankle keeps only 0.165 rad of soft-limit
-            # margin at the nominal, so a wider sample would clamp. Gives [0.094, 0.394].
             "position_range": (-0.15, 0.15),
             "velocity_range": (-0.5, 0.5),
         },
@@ -665,6 +639,22 @@ class EventsCfg:
             "velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)},
         },
     )
+
+
+SD_BRS1_SOLE_OFFSETS = [
+    [-0.1091, -0.0970, -0.1240],
+    [-0.1091, 0.0970, -0.1240],
+    [0.1521, -0.0970, -0.1240],
+    [0.1521, 0.0970, -0.1240],
+    [-0.1206, -0.0970, -0.1203],
+    [-0.1206, 0.0970, -0.1203],
+    [0.1636, -0.0970, -0.1203],
+    [0.1636, 0.0970, -0.1203],
+    [-0.1262, -0.0970, -0.1144],
+    [-0.1262, 0.0970, -0.1144],
+    [0.1692, -0.0970, -0.1144],
+    [0.1692, 0.0970, -0.1144],
+]
 
 
 @configclass
@@ -684,17 +674,17 @@ class RewardsCfg:
         params={"command_name": "base_velocity", "std": math.sqrt(0.16)},
     )
     rew_no_fly = RewTerm(
-        func=mdp.no_fly,
+        func=mdp.NoFlyWithGrace,
         weight=15,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="Link6[LR]"),
             "threshold": 1.0,
             # Read the CURRENT contact frame. The sensor writes the newest sample to index
-            # 0, so the function's default of -1 reads the OLDEST of the four buffered
-            # samples, roughly 15 ms stale, which a provenance survey established to be a
-            # porting error rather than a design. See NATURAL_GAIT_PLAN.md section 5.2.6.
-            # Set here only, so the TRON1 SF caller keeps its behaviour bit for bit.
+            # 0, so the free function's default of -1 reads the OLDEST of the four buffered
+            # samples, roughly 15 ms stale
             "history_index": 0,
+            # 0.2 s at this task's 0.01 s control period, the van Marum window
+            "grace_steps": 20,
         },
     )
     rew_keep_ankle_pitch_zero_in_air = RewTerm(
@@ -706,20 +696,27 @@ class RewardsCfg:
             # without this the term returns its maximum of 1 whenever both feet are planted,
             # paying a standing bonus that opposes the stepping objective
             "require_airborne": True,
+            # Read the CURRENT contact frame, pairing index 0 against index 1. The function's
+            # default of -1 reads the OLDEST of the four buffered samples against -2, roughly
+            # 15 ms stale
+            "history_index": 0,
+            "force_threshold": 1.0,
+            "pitch_scale": 0.2,
+            "use_default_offset": False,
         },
     )
-    # Phase A2 of NATURAL_GAIT_PLAN.md, swing-phase knee flexion, gated to swing so the
-    # efficient extended stance knee is left untouched.
-    #
-    # This is the v2 MONOTONE form. The v1 Gaussian was trained as run 2026-07-23_11-31-57
-    # and produced literally nothing, never exceeding 1.05e-6 against a saturation of 10,
-    # because its target sat 4.4 tolerances from the policy's actual swing knee of 0.22 rad
-    # and so carried no usable gradient anywhere the policy stood. See section 2.6. The ramp
-    # instead pays for flexion BEYOND the stance nominal and has the constant gradient
-    # 1 / (cap - nominal) across its whole active range.
-    #
-    # Comment this term out to run the ablation against the pose change alone, which is how
-    # every surveyed humanoid (G1, H1, Go1) obtains knee flexion, with no knee reward at all.
+    rew_keep_ankle_roll_zero_in_air = RewTerm(
+        func=mdp.keep_ankle_pitch_zero_in_air,
+        weight=0.25,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=["AnkleRollL", "AnkleRollR"]),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="Link6[LR]"),
+            "require_airborne": True,
+            "history_index": 0,
+            "force_threshold": 1.0,
+            "pitch_scale": 0.2,
+        },
+    )
     # rew_knee_flexion = RewTerm(
     #     func=mdp.knee_flexion_in_swing_v2,
     #     weight=10.0,
@@ -733,56 +730,31 @@ class RewardsCfg:
     #         "force_threshold": 1.0,
     #     },
     # )
-    # Section 5.2.5. The established remedy for a limb escaping into an off-axis degree of
-    # freedom, mirroring the IsaacLab G1 recipe which applies joint_deviation_l1 to hip roll
-    # and hip yaw at -0.1 and deliberately NOT to hip pitch or the knee, the two joints that
-    # must swing freely. HipYaw is a fixed joint on this robot, so hip roll is the whole
-    # off-axis set. Also discharges the dead joint_deviation_l1 import noted in section 2.4.
     pen_hip_deviation = RewTerm(
         func=mdp.joint_deviation_l1,
         weight=-0.1,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["HipRoll[LR]"])},
     )
-    # Penalise ankle joints deviating from the nominal crouch pose. This serves the same
-    # purpose as pen_hip_deviation but for the ankle complex, discouraging the policy from
-    # driving the ankle into extreme positions where the shank motor housing (Link4) and
-    # the foot yoke (Link6) interpenetrate. Link4 and Link6 are grandparent-grandchild
-    # (separated by the collision-less Link5) so PhysX does not filter their contacts, but
-    # with enabled_self_collisions=False the simulator generates no contact forces at all,
-    # leaving the policy free to drive the ankle through the shank. This soft penalty
-    # provides the missing gradient. Mirrors the G1 recipe which applies joint_pos_limits
-    # at -1.0 specifically to ankle joints (rough_env_cfg.py lines 51-55) and
-    # joint_deviation_l1 at -0.1 to hip roll/yaw.
-    pen_ankle_deviation = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.1,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=["AnklePitch[LR]", "AnkleRoll[LR]"]
-            )
-        },
-    )
+    # pen_ankle_deviation = RewTerm(
+    #     func=mdp.joint_deviation_l1,
+    #     weight=-0.2,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot", joint_names=["AnklePitch[LR]", "AnkleRoll[LR]"]
+    #         )
+    #     },
+    # )
 
     pen_base_height = RewTerm(
         func=mdp.base_height_rough_l2,
         params={
-            # The previous 1.0 m target is KINEMATICALLY UNREACHABLE. For a balanced,
-            # flat-footed, vertical-torso stance the ankle pitch limit of 0.454 rad binds
-            # first and puts the floor at 1.0891 m; 1.0 m would need 0.654 rad of ankle,
-            # 44 percent past the stop. See NATURAL_GAIT_PLAN.md section 2.8. The penalty
-            # could therefore never be discharged by bending the knee and was instead
-            # discharged by trunk pitch and leg splay, which is to say the -300 weight was
-            # buying the forward lean that pen_flat_orientation pays to prevent.
-            # 1.15 m is the standing height of the new crouched nominal pose.
             "target_height": 1.15,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
-        # The crouch is now carried by the default pose, so this term reverts to
-        # discouraging collapse and hyperextension rather than forcing a posture.
         weight=-30.0,
     )
     pen_lin_vel_z = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)
-    pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-5)
+    pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-5.0)
     pen_joint_torque = RewTerm(func=mdp.joint_torques_l2, weight=-0.00001)
     pen_joint_accel = RewTerm(func=mdp.joint_acc_l2, weight=-1e-7)
     pen_action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
@@ -808,7 +780,7 @@ class RewardsCfg:
     pen_feet_distance = RewTerm(
         func=mdp.feet_distance,
         weight=-100,
-        params={"min_feet_distance": 0.21, "feet_links_name": ["Link6[RL]"]},
+        params={"min_feet_distance": 0.25, "feet_links_name": ["Link6[RL]"]},
     )
     pen_feet_regulation = RewTerm(
         func=mdp.feet_regulation,
@@ -817,10 +789,7 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names=["Link6[RL]"]),
             # kept in step with pen_base_height's target_height above
             "base_height_target": 1.15,
-            # the Link6 frame sits at the ankle and the sole plate extends 0.124 m below it,
-            # verified against the collision mesh; the previous 0.03 is TRON1 point-foot geometry
             "foot_radius": 0.124,
-            # ~0.025 * base_height_target, so only ground-level foot speed is penalised
             "height_decay_scale": 0.03,
         },
     )
@@ -843,35 +812,42 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names="Link6[LR]"),
         },
     )
+    # v2 places a Gaussian at a single set point and multiplies by foot speed, so it pays for
+    # being at 0.08 m at any moment of swing whatever, and its maximiser is therefore the
+    # trajectory that arrives soonest and leaves latest. v3 tracks a raised cosine reference
+    # indexed by the clock's swing phase, so a foot that is high at the wrong moment is
+    # penalised exactly as one that is low at the wrong moment, and the plateau stops being the
+    # maximiser rather than merely becoming expensive.
+    # rew_foot_clearance = RewTerm(
+    #     func=mdp.foot_clearance_reward_v2,
+    #     weight=20.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="Link6[LR]"),
+    #         # true sole clearance above the ground, not a body frame height (see v2 docstring).
+    #         # 0.08 m matches the intent of the previous frame target of 0.20 m, which for a
+    #         # level foot was 0.20 - 0.124 = 0.076 m of sole clearance.
+    #         "target_height": 0.08,
+    #         "std": 0.035,
+    #         "tanh_mult": 1.0,
+    #         # Support set of the Link6 sole, taken from the collision mesh. The sole face is
+    #         # at z=-0.124 over x -0.1091..0.1521, y +/-0.0970, with chamfered fore and aft
+    #         # edges rising to z=-0.1144. Reproduces the mesh's lowest point to within 0.85 mm
+    #         # over pitch +/-50 deg and roll +/-30 deg. Same table serves both feet.
+    #         "sole_offsets": SD_BRS1_SOLE_OFFSETS,
+    #         # redundant with the sole measurement, kept as defence in depth
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="Link6[LR]"),
+    #         "force_threshold": 1.0,
+    #     },
+    # )
     rew_foot_clearance = RewTerm(
-        func=mdp.foot_clearance_reward_v2,
-        weight=20.0,
+        func=mdp.foot_clearance_reward_v3,
+        weight=10.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="Link6[LR]"),
-            # true sole clearance above the ground, not a body frame height (see v2 docstring).
-            # 0.08 m matches the intent of the previous frame target of 0.20 m, which for a
-            # level foot was 0.20 - 0.124 = 0.076 m of sole clearance.
-            "target_height": 0.08,
-            "std": 0.035,
-            "tanh_mult": 1.0,
-            # Support set of the Link6 sole, taken from the collision mesh. The sole face is
-            # at z=-0.124 over x -0.1091..0.1521, y +/-0.0970, with chamfered fore and aft
-            # edges rising to z=-0.1144. Reproduces the mesh's lowest point to within 0.85 mm
-            # over pitch +/-50 deg and roll +/-30 deg. Same table serves both feet.
-            "sole_offsets": [
-                [-0.1091, -0.0970, -0.1240],
-                [-0.1091, 0.0970, -0.1240],
-                [0.1521, -0.0970, -0.1240],
-                [0.1521, 0.0970, -0.1240],
-                [-0.1206, -0.0970, -0.1203],
-                [-0.1206, 0.0970, -0.1203],
-                [0.1636, -0.0970, -0.1203],
-                [0.1636, 0.0970, -0.1203],
-                [-0.1262, -0.0970, -0.1144],
-                [-0.1262, 0.0970, -0.1144],
-                [0.1692, -0.0970, -0.1144],
-                [0.1692, 0.0970, -0.1144],
-            ],
+            # the same clock rew_gait grades contact against, so the two cannot drift apart
+            "command_name": "gait_command",
+            "std": 0.03,
+            "sole_offsets": SD_BRS1_SOLE_OFFSETS,
             # redundant with the sole measurement, kept as defence in depth
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="Link6[LR]"),
             "force_threshold": 1.0,
@@ -881,26 +857,7 @@ class RewardsCfg:
     # Periodic phase reward, Siekmann's construction (arXiv:2011.01387) in the Walk These Ways
     # form (arXiv:2212.03238). Penalises foot force during scheduled swing and foot velocity
     # during scheduled stance against the clock in CommandsCfg.gait_command, so it is zero for a
-    # gait that matches the schedule and negative otherwise. Added 2026-07-20 to answer the one
-    # legged hold of run 2026-07-20_07-52-14, see /ws/GAIT_STRATEGY.md section 2.7 and phase 1b.
-    #
-    # Weight arithmetic, computed by reimplementing compute_contact_targets and both reward halves
-    # over one cycle rather than estimated. With both scales at -1.0 the function lies in [-2, 0].
-    # The observed hold scores -0.208 on the force half, since the planted foot carries load
-    # through the 40 percent of the cycle the clock assigns to its swing, and -0.280 on the
-    # velocity half, since the raised foot is waved at 0.86 m/s through the 60 percent assigned to
-    # its stance, totalling -0.488. A walk matching the clock scores -0.079, not zero, because the
-    # kappa smoothing makes the scheduled transitions soft while real contact switches are hard.
-    # The discriminating gap is therefore 0.408, not the 0.5 first estimated by hand. The barrier
-    # the hold enjoys over a real walk is 13.3 per second, so a weight of 40 turns the gap into
-    # 16.3 per second and overturns it with a margin near a quarter, whereas 30 would have given
-    # 12.3 and fallen short. Raise to 50 if alternation still does not appear, lower to 30 if early
-    # training destabilises, accepting that 30 alone will not overturn the hold.
-    #
-    # Known property. GaitReward carries no zero command gate, so the roughly twenty percent of
-    # commands below the 0.1 m/s threshold ask the robot to march in place. That is acceptable
-    # here, it is still alternation, and it is van Marum's first objection to clocks
-    # (arXiv:2404.19173). Set the weight to 0.0 to disable the term without removing the wiring.
+    # gait that matches the schedule and negative otherwise.
     rew_gait = RewTerm(
         func=mdp.GaitReward,
         weight=40.0,
@@ -919,6 +876,27 @@ class RewardsCfg:
         },
     )
 
+    pen_foot_landing_vel = RewTerm(
+        func=mdp.foot_landing_vel_v2,
+        weight=-30.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="Link6[LR]"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="Link6[LR]"),
+            "sole_offsets": SD_BRS1_SOLE_OFFSETS,
+            "about_landing_threshold": 0.06,
+            "force_threshold": 1.0,
+        },
+    )
+
+    pen_feet_impact = RewTerm(
+        func=mdp.feet_impact_force,
+        weight=-3.0e-2,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="Link6[LR]"),
+            "force_threshold": 850.0,
+        },
+    )
+
 
 @configclass
 class TerminationsCfg:
@@ -934,11 +912,6 @@ class TerminationsCfg:
     )
     low_height = DoneTerm(
         func=mdp.root_height_below_minimum,
-        # Lowered from 0.65. This term stands in for a fall detector because the base of
-        # this robot may never contact the ground even when it falls, so base_contact alone
-        # is insufficient. At 0.65 against a 1.15 m stance it also truncated exactly the
-        # low excursions in which knee flexion would be discovered, and no IsaacLab
-        # humanoid reference config uses a height termination at all. See section 3.7.
         params={"minimum_height": 0.4},
     )
 

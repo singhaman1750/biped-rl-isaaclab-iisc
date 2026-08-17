@@ -240,7 +240,7 @@ class SF_Berkeley_PPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class SD_BRS1FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 15000
+    max_iterations = 30000
     save_interval = 500
     experiment_name = "sd_brs1_flat"
     empirical_normalization = False
@@ -268,7 +268,7 @@ class SD_BRS1FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
         symmetry_cfg=RslRlSymmetryCfg(
             use_data_augmentation=True,
-            use_mirror_loss=False,
+            use_mirror_loss=True,
             data_augmentation_func=compute_symmetric_states,
             mirror_loss_coeff=0.0,
         ),
