@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This document presents a rigorous, physics-grounded analysis of the stiffness and damping gains configured for the SD_BRS1 bipedal robot, as defined in `exts/bipedal_locomotion/bipedal_locomotion/assets/config/sd_brs1_identified_cfg.py`. The analysis draws its physical data exclusively from the robot URDF at `assets/urdf/solefoot/SD_BRS1/SD_BRS1_Assembly2.urdf` and compares the existing gains against values derived from first principles, covering second-order system dynamics, effective inertia calculation via the parallel-axis theorem, gravitational torque estimation, and cross-referencing against the co-resident TRON1 robot configuration.
+This document presents a rigorous, physics-grounded analysis of the stiffness and damping gains configured for the SD_BRS1 bipedal robot, as defined in `environments/environments/assets/config/sd_brs1_identified_cfg.py`. The analysis draws its physical data exclusively from the robot URDF at `assets/urdf/solefoot/SD_BRS1/SD_BRS1_Assembly2.urdf` and compares the existing gains against values derived from first principles, covering second-order system dynamics, effective inertia calculation via the parallel-axis theorem, gravitational torque estimation, and cross-referencing against the co-resident TRON1 robot configuration.
 
 The central thesis is that the proximal joints of the BRS robot (hip pitch, hip roll, and knee pitch) are configured with stiffness values that are significantly below what the robot's mass and geometry demands, while the distal ankle joints sit in a reasonable range. The document works through every step of reasoning, beginning from the most elementary mechanical concepts, before arriving at recommended gain ranges.
 

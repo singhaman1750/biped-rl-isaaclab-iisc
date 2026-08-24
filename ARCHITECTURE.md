@@ -7,11 +7,11 @@ This project utilizes a modular, inheritance-based configuration system to defin
 | Directory/File | Responsibility |
 | :--- | :--- |
 | [`scripts/rsl_rl/train.py`](scripts/rsl_rl/train.py) | **Entry Point:** Parses `--task`, initializes the simulator, and invokes the RL Runner. |
-| [`exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/mdp/`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/mdp/) | **MDP Logic:** Definition of Reward functions, Observation terms, and Events. |
-| [`exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/cfg/SF/limx_base_env_cfg.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/cfg/SF/limx_base_env_cfg.py) | **MDP Templates:** Defines the robot-specific observation, reward, and action spaces. |
-| [`exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/limx_solefoot_env_cfg.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/limx_solefoot_env_cfg.py) | **Scenario & Asset Config:** Defines USD asset paths, joint positions, and terrain scenarios (Flat, Rough, etc.). |
-| [`exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/agents/limx_rsl_rl_ppo_cfg.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/agents/limx_rsl_rl_ppo_cfg.py) | **RL Hyperparameters:** Configures PPO algorithm settings and Actor-Critic network dimensions. |
-| [`exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/__init__.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/__init__.py) | **The Registry:** Maps Task IDs to environment and agent configuration classes. |
+| [`environments/environments/tasks/locomotion/mdp/`](environments/environments/tasks/locomotion/mdp/) | **MDP Logic:** Definition of Reward functions, Observation terms, and Events. |
+| [`environments/environments/tasks/locomotion/cfg/SF/limx_base_env_cfg.py`](environments/environments/tasks/locomotion/cfg/SF/limx_base_env_cfg.py) | **MDP Templates:** Defines the robot-specific observation, reward, and action spaces. |
+| [`environments/environments/tasks/locomotion/robots/limx_solefoot_env_cfg.py`](environments/environments/tasks/locomotion/robots/limx_solefoot_env_cfg.py) | **Scenario & Asset Config:** Defines USD asset paths, joint positions, and terrain scenarios (Flat, Rough, etc.). |
+| [`environments/environments/tasks/locomotion/agents/limx_rsl_rl_ppo_cfg.py`](environments/environments/tasks/locomotion/agents/limx_rsl_rl_ppo_cfg.py) | **RL Hyperparameters:** Configures PPO algorithm settings and Actor-Critic network dimensions. |
+| [`environments/environments/tasks/locomotion/robots/__init__.py`](environments/environments/tasks/locomotion/robots/__init__.py) | **The Registry:** Maps Task IDs to environment and agent configuration classes. |
 | [`scripts/rsl_rl/play.py`](scripts/rsl_rl/play.py) | **Evaluation:** Script to load a trained checkpoint and visualize the policy. |
 | [`scripts/rsl_rl/cli_args.py`](scripts/rsl_rl/cli_args.py) | **Arguments:** Centralized definition of command-line arguments for training and playback. |
 
@@ -21,13 +21,26 @@ The configuration follows a hierarchical structure using Isaac Lab's `@configcla
 
 ### Environment Configuration Chain (Sole-Foot)
 1.  **`ManagerBasedRLEnvCfg`** (external: `isaaclab.envs`): Foundation class.
-2.  **`SFEnvCfg`** ([`limx_base_env_cfg.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/cfg/SF/limx_base_env_cfg.py)): Robot-specific MDP template (Scene, Rewards, Observations, Actions).
-3.  **`SFBaseEnvCfg`** ([`limx_solefoot_env_cfg.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/limx_solefoot_env_cfg.py)): Foundation for scenarios. Defines `SOLEFOOT_CFG` asset and default joint positions.
-4.  **`SFBlindFlatEnvCfg`** ([`limx_solefoot_env_cfg.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/limx_solefoot_env_cfg.py)): Final leaf class. Overrides parent to disable height scanners and set "plane" terrain.
+2.  **`SFEnvCfg`** ([`limx_base_env_cfg.py`](environments/environments/tasks/locomotion/cfg/SF/limx_base_env_cfg.py)): Robot-specific MDP template (Scene, Rewards, Observations, Actions).
+3.  **`SFBaseEnvCfg`** ([`limx_solefoot_env_cfg.py`](environments/environments/tasks/locomotion/robots/limx_solefoot_env_cfg.py)): Foundation for scenarios. Defines `SOLEFOOT_CFG` asset and default joint positions.
+4.  **`SFBlindFlatEnvCfg`** ([`limx_solefoot_env_cfg.py`](environments/environments/tasks/locomotion/robots/limx_solefoot_env_cfg.py)): Final leaf class. Overrides parent to disable height scanners and set "plane" terrain.
+
+### Environment Configuration Chain (Quadruped)
+
+The quadruped mirrors the chain above at two levels beneath each base class rather than four, having no USD variant and therefore needing no layer to switch between URDF and USD. Every class carries a `Quadruped` prefix, because the names the chain would otherwise take are already held by the LimX TRON1 pointfoot biped and `cfg/__init__.py` flattens every family's public names into one namespace.
+
+1.  `ManagerBasedRLEnvCfg` (external, `isaaclab.envs`), the foundation class.
+2.  `QuadrupedPFEnvCfg`, `QuadrupedPFHIMEnvCfg` and `QuadrupedPFCoptEnvCfg` ([`base_env_cfg.py`](environments/environments/tasks/locomotion/cfg/quadruped/base_env_cfg.py)), one MDP template per runner, differing only in their observation class.
+3.  `QuadrupedPFBaseEnvCfg` and its two siblings ([`quadruped_pointfoot_env_cfg.py`](environments/environments/tasks/locomotion/robots/quadruped_pointfoot_env_cfg.py)), which attach `QUADRUPED_IDENTIFIED_CFG`, the nominal crouch, and a viewer framing scaled to a 0.292 metre robot.
+4.  `QuadrupedPFBlindFlatEnvCfg` and `QuadrupedPFBlindRoughEnvCfg`, with their `_PLAY` counterparts, the leaf classes that select the terrain.
+
+The star import in `cfg/__init__.py` places `quadruped` first rather than last. Nine classes in each family module carry generic names that already collide three ways among the biped families, and placing the quadruped first leaves every existing resolution exactly as it stood, adding six names and displacing none.
+
+The physical parameterisation, the derived actuator gains and the reward configuration are recorded in [context/quadruped.md](context/quadruped.md), [context/joint_control_analysis_quadruped.md](context/joint_control_analysis_quadruped.md) and [context/quadruped_xml_to_urdf_conversion.md](context/quadruped_xml_to_urdf_conversion.md).
 
 ## 3. Reward Definition and Formulation
 
-The reward functions are defined in `exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/mdp/rewards.py`. The total reward is a weighted sum of several terms, designed to encourage stable and efficient locomotion.
+The reward functions are defined in `environments/environments/tasks/locomotion/mdp/rewards.py`. The total reward is a weighted sum of several terms, designed to encourage stable and efficient locomotion.
 
 ### Key Reward Terms:
 
@@ -70,7 +83,7 @@ The project uses a "Manager-Based" architecture within the `ManagerBasedRLEnv` t
 
 ## 5. Environment Registration
 
-Tasks are registered in [`robots/__init__.py`](exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/robots/__init__.py) using `gym.register`.
+Tasks are registered in [`robots/__init__.py`](environments/environments/tasks/locomotion/robots/__init__.py) using `gym.register`.
 
 ```python
 gym.register(
@@ -82,6 +95,22 @@ gym.register(
     },
 )
 ```
+
+### The Quadruped Task Registry
+
+Twelve identifiers, written as explicit `gym.register` blocks in the same style as the biped tasks.
+
+| Identifier | Configuration class | Runner |
+|---|---|---|
+| `Isaac-Quadruped-Blind-Flat-v0`, `-Play-v0` | `QuadrupedPFBlindFlatEnvCfg` | vanilla |
+| `Isaac-Quadruped-Blind-Rough-v0`, `-Play-v0` | `QuadrupedPFBlindRoughEnvCfg` | vanilla |
+| `Isaac-Quadruped-HIM-Blind-Flat-v0`, `-Play-v0` | `QuadrupedPFHIMBlindFlatEnvCfg` | `HIMOnPolicyRunner` |
+| `Isaac-Quadruped-HIM-Blind-Rough-v0`, `-Play-v0` | `QuadrupedPFHIMBlindRoughEnvCfg` | `HIMOnPolicyRunner` |
+| `Isaac-Quadruped-Copt-Flat-v0` | `QuadrupedPFCoptBlindFlatEnvCfg` | `CoptOnPolicyRunner` |
+| `Isaac-Quadruped-Copt-Rough-v0`, `-Play-v0` | `QuadrupedPFCoptBlindRoughEnvCfg` | `CoptOnPolicyRunner` |
+| `Isaac-Quadruped-Copt-Learned-Rough-v0` | `QuadrupedPFCoptBlindRoughEnvCfg` | `CoptOnPolicyRunner`, learned model |
+
+The four co-optimisation identifiers are registered but must not yet be launched, the design generator not yet accepting this robot and `scripts/rsl_rl/train.py` hardcoding the biped URDF at lines 198 to 210. The vanilla and hybrid internal model identifiers need no change to `train.py` whatever.
 
 ## 6. Steps to Create a New Task
 

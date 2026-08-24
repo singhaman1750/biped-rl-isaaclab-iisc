@@ -92,8 +92,6 @@ from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
-# Import extensions to set up environment tasks
-from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
@@ -102,6 +100,9 @@ from co_optimisation.runners.usd_generator import (
     GrowingDesignDistCMAESDesignGenerator,
     RandomDesignGenerator,
 )
+
+# Import extensions to set up environment tasks
+from environments.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from himloco.runners import HIMOnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -193,16 +194,16 @@ def main():
         agent_cfg.policy.class_name = "HIMActorCritic"
         agent_cfg.algorithm.class_name = "HIMPPO"
     runner = None
-    if args_cli.policy_type in ("COPT", "COPT-LEARNED"):
+    if args_cli.policy_type in ("COPT", "COPT-LEARNED", "COPT-LEARNED-2"):
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/base_robot.urdf",
+            "/workspace/isaaclab/biped/environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf",
         )
         _num_individuals = 256
         # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
         # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
-        ea_update_interval = 240
+        ea_update_interval = 480
         ea_late_start = 12000
         param_ranges = {
             "thigh_length_scale": (0.75, 1.25),
@@ -217,6 +218,7 @@ def main():
             seed=42,
             late_start=True,
             late_start_it=int(ea_late_start / ea_update_interval),
+            late_start_prior_pop_size=int(env.num_envs / 4),
             max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
             / ea_update_interval,
         )
@@ -235,6 +237,7 @@ def main():
             "ea_late_start": ea_late_start,
             "num_individuals": _num_individuals,
             "randomise_before_late_start": True,
+            "min_fitness_episode_length": 25,
         }
         runner = CoptOnPolicyRunner(
             env,

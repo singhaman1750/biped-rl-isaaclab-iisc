@@ -70,7 +70,7 @@ from pathlib import Path
 import cma
 from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg
 
-from bipedal_locomotion.assets.config.solefoot_identified_cfg import (
+from environments.assets.config.solefoot_identified_cfg import (
     TRON1_ABAD_ACTUATOR_CFG,
     TRON1_ANKLE_ACTUATOR_CFG,
     TRON1_HIP_ACTUATOR_CFG,
@@ -689,6 +689,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         es_state_path: str | None = None,
         late_start: bool = False,
         late_start_it: int = 8000,
+        late_start_prior_pop_size: int = 4096,
         max_cma_iter: int = 10000,
     ) -> None:
         super().__init__(
@@ -697,6 +698,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             param_ranges=param_ranges,
             output_dir=output_dir,
         )
+        self.late_start_prior_num_individual = late_start_prior_pop_size
         # Restrict CMA-ES to only the length scales this generator drives.
         # Caller-supplied param_ranges may tune the bounds of these two keys
         # but cannot add new dimensions (any extras would be inert).
@@ -772,7 +774,9 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         print("Generating New Designs using CMAES output")
         if self.late_start:
             print("late start enabled sampling random designs")
-        pop = self._build_population(generation, range(self.num_individuals))
+            pop = self._build_population(generation, range(self.late_start_prior_num_individual))
+        else:
+            pop = self._build_population(generation, range(self.num_individuals))
         self._last_solutions = self._pending_solutions
         self._pending_solutions = None
         return pop
@@ -859,6 +863,7 @@ class GrowingDesignDistCMAESDesignGenerator(CMAESDesignGenerator):
         es_state_path: str | None = None,
         late_start: bool = False,
         late_start_it: int = 8000,
+        late_start_prior_pop_size: int = 4096,
         max_cma_iter: int = 10000,
     ) -> None:
         super().__init__(
@@ -871,6 +876,7 @@ class GrowingDesignDistCMAESDesignGenerator(CMAESDesignGenerator):
             es_state_path=es_state_path,
             late_start=late_start,
             late_start_it=late_start_it,
+            late_start_prior_pop_size=late_start_prior_pop_size,
             max_cma_iter=max_cma_iter,
         )
 

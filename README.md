@@ -43,10 +43,10 @@ Running an example training to see if everything works:
 ```
 The training should create `logs/rsl_rl/anymal_c_rough/<timestamp>` in IsaacLab folder. And the `.pt` file can be found under that directory.
 
-### bipedal_locomotion
-Running `train.py` script requires `exts/bidepal_locomotion`, `co_optimisation` and `himloco` packages.
+### environments
+Running `train.py` script requires `environments`, `co_optimisation` and `himloco` packages.
 ```zsh
-pip install -e exts/bipedal_locomotion co_optimisation himloco
+pip install -e environments co_optimisation himloco
 ```
 
 ## Running train.py
@@ -73,7 +73,7 @@ Do not forget to activate the environment in every new shell session:
 ```zsh
 conda activate limx_env
 ```
-After activating the environment, proceed with the Isaac Sim, Isaac Lab, `bipedal_locomotion`, and RSL-RL installation steps as described above and below.
+After activating the environment, proceed with the Isaac Sim, Isaac Lab, `environments`, and RSL-RL installation steps as described above and below.
 
 ### RSL-RL Package Installation
 This repository includes a custom fork of `rsl_rl` with Hybrid Internal Model (HIM) support, as well as the `himloco` package. Install both as editable packages from the repository root:

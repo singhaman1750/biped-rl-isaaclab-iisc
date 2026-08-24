@@ -110,6 +110,15 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._randomise_before_late_start: bool = copt_cfg.get(
             "randomise_before_late_start", False
         )
+        # Minimum step count a completed episode must reach before its return
+        # contributes to individual fitness. Defaults to 0, which reproduces the
+        # original behaviour of counting every completed episode, since a completed
+        # episode always has length >= 1. Set explicitly in the calling
+        # configuration to exclude the spurious short episodes a freshly
+        # randomised phase produces (context/copt_ppo_nonstationarity.md, section 12).
+        self._min_fitness_episode_length: int = copt_cfg.get(
+            "min_fitness_episode_length", 0
+        )
         self._design_generator = design_generator
         # Per-generation state
         self.generation: int = 0
@@ -224,10 +233,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # Initialise logging writer
         self._prepare_logging_writer()
 
-        if init_at_random_ep_len:
-            self.env.episode_length_buf = torch.randint_like(
-                self.env.episode_length_buf, high=int(self.env.max_episode_length)
-            )
+
 
         # Generate initial population before the first rollout and start learning
         # print("[respawn] Logging prototype and instance info...")
@@ -255,6 +261,10 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 # is used to spawn the base environment which contains only a single 
                 # prototype
                 self._reload_morphology()
+        if init_at_random_ep_len:
+            self.env.episode_length_buf = torch.randint_like(
+                self.env.episode_length_buf, high=int(self.env.max_episode_length)
+            )
 
         obs = self.env.get_observations().to(self.device)
         self.train_mode()
@@ -298,6 +308,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             # immediately instead of repeating the random phase. On a fresh run
             # ``start_iter == 0`` so the two forms coincide.
             is_late_start_toggle_time = self._ea_late_start <= (it + 1)
+            late_start_toggled=False
             is_morph_update_time = (
                 (it + 1) % self._ea_update_interval == 0
             ) and (is_late_start_toggle_time or self._randomise_before_late_start)
@@ -343,6 +354,14 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                             # ---- COPT: accumulate per-individual fitness --------
                             completed_env_ids = new_ids[:, 0]
                             for env_idx in completed_env_ids.tolist():
+                                if (
+                                    cur_episode_length[env_idx]
+                                    < self._min_fitness_episode_length
+                                ):
+                                    # Spurious short episode, most likely a freshly
+                                    # randomised phase timing out within a few steps.
+                                    # Excluded from fitness rather than counted.
+                                    continue
                                 ind_idx = self._env_to_individual[env_idx]
                                 self._individual_fitness[ind_idx] += cur_reward_sum[
                                     env_idx
@@ -400,8 +419,12 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                         f"toggling late start at absolute iteration {it + 1} with configured threshold at {self._ea_late_start} iterations"
                     )
                     self._design_generator.toggle_late_start()
+                    late_start_toggled = True
                 with torch.inference_mode():
-                    self._update_morphology(it + 1)
+                    self._update_morphology(it + 1, respawn=late_start_toggled)
+                    self.env.episode_length_buf = torch.randint_like(
+                        self.env.episode_length_buf, high=int(self.env.max_episode_length)
+                    )
                 # Refresh observations after in-place update
                 obs = self.env.get_observations().to(self.device)
                 if self.log_dir is not None:
@@ -625,8 +648,24 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._restored_population = None
         self._restored_env_state = None
 
-    def _update_morphology(self, it: int) -> None:
-        """In-place EA cycle: no delete/respawn, no manager re-binding."""
+    def _update_morphology(self, it: int, respawn: bool = False) -> None:
+        """In-place EA cycle: no delete/respawn, no manager re-binding.
+
+        Args:
+            it: Absolute iteration number used to gate the late-start transition.
+            respawn: When True, apply the new population through the multi-USD
+                :meth:`_respawn_population` pathway instead of the in-place
+                :func:`apply_link_length_params` edit. Defaults to False, which
+                reproduces the original in-place-only behaviour exactly. Must be
+                set on any call where the new population's size differs from the
+                size last given to :meth:`_respawn_population`, since the in-place
+                edit only reaches as many environments as were given their own USD
+                instancing prototype at that call, editing the first
+                ``len(population)`` environments and relying on the rest sharing
+                those same prototypes. A population-size change with the in-place
+                path silently orphans every environment beyond the new, smaller
+                size at whatever design it last had.
+        """
         unwrapped_env = self.env.unwrapped
         sim = unwrapped_env.sim
 
@@ -651,19 +690,23 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         )
         self.generation += 1
         if self.current_population is not None:
-            print(
-                "Applying link length parameters in place"
-            )  # 4. author + sim.reset() (inside)
-            apply_link_length_params(
-                unwrapped_env, self.current_population.get_link_length_params()
-            )
+            if respawn:
+                print("Respawning population (prototype count is changing)")
+                self._respawn_population(self.current_population)  # includes reset
+            else:
+                print(
+                    "Applying link length parameters in place"
+                )  # 4. author + sim.reset() (inside)
+                apply_link_length_params(
+                    unwrapped_env, self.current_population.get_link_length_params()
+                )
 
-            # 5. reset episodes — suppress terrain promotion/demotion because the
-            # episodes are truncated by the morphology swap and the walked-distance
-            # signal is meaningless at this boundary.
-            unwrapped_env._suppress_terrain_curriculum = True
-            unwrapped_env.reset()
-            unwrapped_env._suppress_terrain_curriculum = False
+                # 5. reset episodes — suppress terrain promotion/demotion because the
+                # episodes are truncated by the morphology swap and the walked-distance
+                # signal is meaningless at this boundary.
+                unwrapped_env._suppress_terrain_curriculum = True
+                unwrapped_env.reset()
+                unwrapped_env._suppress_terrain_curriculum = False
 
             print("Applying Sampled Actuator Parameters")  # 6. actuators AFTER reset
             apply_actuator_params(

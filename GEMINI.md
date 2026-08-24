@@ -9,7 +9,7 @@ This document provides a high-level overview of the `tron1-rl-isaaclab-cozum` re
 
 The repository is organized into three main functional areas:
 
--   **`exts/`**: Contains the `bipedal_locomotion` extension, defining robot assets, environments, and Markov Decision Processes (MDPs).
+-   **`environments/`**: Contains the `environments` extension, defining robot assets, environments, and Markov Decision Processes (MDPs).
 -   **`scripts/`**: Entry-point scripts for training (`train.py`) and evaluation (`play.py`).
 -   **`himloco/`**: Implementation of the History Information Model (HIM) architecture, including specialized algorithms and runners.
 
