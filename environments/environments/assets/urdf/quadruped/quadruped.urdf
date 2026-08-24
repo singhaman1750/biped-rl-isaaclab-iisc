@@ -1,0 +1,709 @@
+<?xml version="1.0" ?>
+<robot name="quadruped">
+  <link name="base_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.674397"/>
+      <inertia ixx="0.002635000" ixy="0" ixz="0" iyy="0.002100000" iyz="0" izz="0.003783000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.170000 0.196000 0.092000"/>
+      </geometry>
+      <material name="trunk">
+        <color rgba="0.20 0.20 0.25 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.170000 0.196000 0.092000"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="abad_FR_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.001088000" ixy="0" ixz="0" iyy="0.000681000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="abad">
+        <color rgba="0.85 0.35 0.10 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_FR_fixed_joint" type="fixed">
+    <origin xyz="0.105000 -0.052000 0.000000" rpy="0 0 0"/>
+    <parent link="base_Link"/>
+    <child link="abad_FR_actuator_Link"/>
+  </joint>
+  <link name="hip_FR_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.000681000" ixy="0" ixz="0" iyy="0.001088000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="hip">
+        <color rgba="0.15 0.45 0.85 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_FR_Joint" type="revolute">
+    <origin xyz="0.071000 0.000000 0.000000" rpy="0 0 0"/>
+    <parent link="abad_FR_actuator_Link"/>
+    <child link="hip_FR_actuator_Link"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-1.0" upper="1.0" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="knee_FR_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.434746"/>
+      <inertia ixx="0.000950000" ixy="0" ixz="0" iyy="0.001518000" iyz="0" izz="0.000950000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="knee">
+        <color rgba="0.15 0.75 0.30 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_FR_Joint" type="revolute">
+    <origin xyz="0.000000 -0.050000 0.000000" rpy="0 0 0"/>
+    <parent link="hip_FR_actuator_Link"/>
+    <child link="knee_FR_actuator_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.2" upper="3.5" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="hip_FR_thigh_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.187365"/>
+      <inertia ixx="0.000727000" ixy="0" ixz="0" iyy="0.000727000" iyz="0" izz="0.000037000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+      <material name="thigh">
+        <color rgba="0.6 0.6 0.6 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_FR_thigh_joint" type="fixed">
+    <origin xyz="0.000000 -0.030000 0.000000" rpy="0 0 0"/>
+    <parent link="knee_FR_actuator_Link"/>
+    <child link="hip_FR_thigh_Link"/>
+  </joint>
+  <link name="knee_FR_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.091809"/>
+      <inertia ixx="0.000352000" ixy="0" ixz="0" iyy="0.000352000" iyz="0" izz="0.000009000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+      <material name="calf">
+        <color rgba="0.45 0.45 0.45 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="knee_FR_Joint" type="revolute">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="hip_FR_thigh_Link"/>
+    <child link="knee_FR_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.9" upper="-0.5" effort="35.238" velocity="20.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="foot_FR_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.020000"/>
+      <inertia ixx="0.000004000" ixy="0" ixz="0" iyy="0.000004000" iyz="0" izz="0.000004000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+      <material name="foot">
+        <color rgba="0.05 0.05 0.05 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="foot_FR_joint" type="fixed">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="knee_FR_Link"/>
+    <child link="foot_FR_Link"/>
+  </joint>
+  <link name="abad_FL_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.001088000" ixy="0" ixz="0" iyy="0.000681000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="abad">
+        <color rgba="0.85 0.35 0.10 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_FL_fixed_joint" type="fixed">
+    <origin xyz="0.105000 0.052000 0.000000" rpy="0 0 0"/>
+    <parent link="base_Link"/>
+    <child link="abad_FL_actuator_Link"/>
+  </joint>
+  <link name="hip_FL_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.000681000" ixy="0" ixz="0" iyy="0.001088000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="hip">
+        <color rgba="0.15 0.45 0.85 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_FL_Joint" type="revolute">
+    <origin xyz="0.071000 0.000000 0.000000" rpy="0 0 0"/>
+    <parent link="abad_FL_actuator_Link"/>
+    <child link="hip_FL_actuator_Link"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.0" upper="1.0" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="knee_FL_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.434746"/>
+      <inertia ixx="0.000950000" ixy="0" ixz="0" iyy="0.001518000" iyz="0" izz="0.000950000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="knee">
+        <color rgba="0.15 0.75 0.30 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_FL_Joint" type="revolute">
+    <origin xyz="0.000000 0.050000 0.000000" rpy="0 0 0"/>
+    <parent link="hip_FL_actuator_Link"/>
+    <child link="knee_FL_actuator_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.2" upper="3.5" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="hip_FL_thigh_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.187365"/>
+      <inertia ixx="0.000727000" ixy="0" ixz="0" iyy="0.000727000" iyz="0" izz="0.000037000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+      <material name="thigh">
+        <color rgba="0.6 0.6 0.6 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_FL_thigh_joint" type="fixed">
+    <origin xyz="0.000000 0.030000 0.000000" rpy="0 0 0"/>
+    <parent link="knee_FL_actuator_Link"/>
+    <child link="hip_FL_thigh_Link"/>
+  </joint>
+  <link name="knee_FL_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.091809"/>
+      <inertia ixx="0.000352000" ixy="0" ixz="0" iyy="0.000352000" iyz="0" izz="0.000009000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+      <material name="calf">
+        <color rgba="0.45 0.45 0.45 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="knee_FL_Joint" type="revolute">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="hip_FL_thigh_Link"/>
+    <child link="knee_FL_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.9" upper="-0.5" effort="35.238" velocity="20.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="foot_FL_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.020000"/>
+      <inertia ixx="0.000004000" ixy="0" ixz="0" iyy="0.000004000" iyz="0" izz="0.000004000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+      <material name="foot">
+        <color rgba="0.05 0.05 0.05 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="foot_FL_joint" type="fixed">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="knee_FL_Link"/>
+    <child link="foot_FL_Link"/>
+  </joint>
+  <link name="abad_RR_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.001088000" ixy="0" ixz="0" iyy="0.000681000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="abad">
+        <color rgba="0.85 0.35 0.10 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_RR_fixed_joint" type="fixed">
+    <origin xyz="-0.105000 -0.052000 0.000000" rpy="0 0 0"/>
+    <parent link="base_Link"/>
+    <child link="abad_RR_actuator_Link"/>
+  </joint>
+  <link name="hip_RR_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.000681000" ixy="0" ixz="0" iyy="0.001088000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="hip">
+        <color rgba="0.15 0.45 0.85 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_RR_Joint" type="revolute">
+    <origin xyz="-0.071000 0.000000 0.000000" rpy="0 0 0"/>
+    <parent link="abad_RR_actuator_Link"/>
+    <child link="hip_RR_actuator_Link"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-1.0" upper="1.0" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="knee_RR_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.434746"/>
+      <inertia ixx="0.000950000" ixy="0" ixz="0" iyy="0.001518000" iyz="0" izz="0.000950000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="knee">
+        <color rgba="0.15 0.75 0.30 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_RR_Joint" type="revolute">
+    <origin xyz="0.000000 -0.050000 0.000000" rpy="0 0 0"/>
+    <parent link="hip_RR_actuator_Link"/>
+    <child link="knee_RR_actuator_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.2" upper="3.5" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="hip_RR_thigh_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.187365"/>
+      <inertia ixx="0.000727000" ixy="0" ixz="0" iyy="0.000727000" iyz="0" izz="0.000037000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+      <material name="thigh">
+        <color rgba="0.6 0.6 0.6 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_RR_thigh_joint" type="fixed">
+    <origin xyz="0.000000 -0.030000 0.000000" rpy="0 0 0"/>
+    <parent link="knee_RR_actuator_Link"/>
+    <child link="hip_RR_thigh_Link"/>
+  </joint>
+  <link name="knee_RR_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.091809"/>
+      <inertia ixx="0.000352000" ixy="0" ixz="0" iyy="0.000352000" iyz="0" izz="0.000009000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+      <material name="calf">
+        <color rgba="0.45 0.45 0.45 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="knee_RR_Joint" type="revolute">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="hip_RR_thigh_Link"/>
+    <child link="knee_RR_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.9" upper="-0.5" effort="35.238" velocity="20.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="foot_RR_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.020000"/>
+      <inertia ixx="0.000004000" ixy="0" ixz="0" iyy="0.000004000" iyz="0" izz="0.000004000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+      <material name="foot">
+        <color rgba="0.05 0.05 0.05 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="foot_RR_joint" type="fixed">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="knee_RR_Link"/>
+    <child link="foot_RR_Link"/>
+  </joint>
+  <link name="abad_RL_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.001088000" ixy="0" ixz="0" iyy="0.000681000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="abad">
+        <color rgba="0.85 0.35 0.10 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5707963267948966 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_RL_fixed_joint" type="fixed">
+    <origin xyz="-0.105000 0.052000 0.000000" rpy="0 0 0"/>
+    <parent link="base_Link"/>
+    <child link="abad_RL_actuator_Link"/>
+  </joint>
+  <link name="hip_RL_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.028375"/>
+      <inertia ixx="0.000681000" ixy="0" ixz="0" iyy="0.001088000" iyz="0" izz="0.000681000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="hip">
+        <color rgba="0.15 0.45 0.85 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="abad_RL_Joint" type="revolute">
+    <origin xyz="-0.071000 0.000000 0.000000" rpy="0 0 0"/>
+    <parent link="abad_RL_actuator_Link"/>
+    <child link="hip_RL_actuator_Link"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.0" upper="1.0" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="knee_RL_actuator_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.434746"/>
+      <inertia ixx="0.000950000" ixy="0" ixz="0" iyy="0.001518000" iyz="0" izz="0.000950000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+      <material name="knee">
+        <color rgba="0.15 0.75 0.30 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+      <geometry>
+        <cylinder radius="0.046000" length="0.040000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_RL_Joint" type="revolute">
+    <origin xyz="0.000000 0.050000 0.000000" rpy="0 0 0"/>
+    <parent link="hip_RL_actuator_Link"/>
+    <child link="knee_RL_actuator_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.2" upper="3.5" effort="23.622511" velocity="30.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="hip_RL_thigh_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.187365"/>
+      <inertia ixx="0.000727000" ixy="0" ixz="0" iyy="0.000727000" iyz="0" izz="0.000037000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+      <material name="thigh">
+        <color rgba="0.6 0.6 0.6 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.020000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="hip_RL_thigh_joint" type="fixed">
+    <origin xyz="0.000000 0.030000 0.000000" rpy="0 0 0"/>
+    <parent link="knee_RL_actuator_Link"/>
+    <child link="hip_RL_thigh_Link"/>
+  </joint>
+  <link name="knee_RL_Link">
+    <inertial>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <mass value="0.091809"/>
+      <inertia ixx="0.000352000" ixy="0" ixz="0" iyy="0.000352000" iyz="0" izz="0.000009000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+      <material name="calf">
+        <color rgba="0.45 0.45 0.45 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.106500" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.014000" length="0.213000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="knee_RL_Joint" type="revolute">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="hip_RL_thigh_Link"/>
+    <child link="knee_RL_Link"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.9" upper="-0.5" effort="35.238" velocity="20.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+  <link name="foot_RL_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.020000"/>
+      <inertia ixx="0.000004000" ixy="0" ixz="0" iyy="0.000004000" iyz="0" izz="0.000004000"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+      <material name="foot">
+        <color rgba="0.05 0.05 0.05 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.022000"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="foot_RL_joint" type="fixed">
+    <origin xyz="0.000000 0.000000 -0.213000" rpy="0 0 0"/>
+    <parent link="knee_RL_Link"/>
+    <child link="foot_RL_Link"/>
+  </joint>
+</robot>

@@ -81,8 +81,8 @@ from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from rsl_rl.runners import OnPolicyRunner
 
 # Import extensions to set up environment tasks
-import bipedal_locomotion  # noqa: F401
-from bipedal_locomotion.utils.wrappers.rsl_rl import (
+import environments  # noqa: F401
+from environments.utils.wrappers.rsl_rl import (
     RslRlPpoAlgorithmMlpCfg,
     export_mlp_as_onnx,
     export_policy_as_jit,
@@ -655,7 +655,7 @@ def main():
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+            "/workspace/isaaclab/biped/environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf",
         )
         _num_individuals = 256
         param_ranges = {}
@@ -689,7 +689,7 @@ def main():
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/base_robot.urdf",
+            "/workspace/isaaclab/biped/environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf",
         )
         _num_individuals = 256
         param_ranges = {}

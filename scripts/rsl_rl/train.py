@@ -92,8 +92,6 @@ from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
-# Import extensions to set up environment tasks
-from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
@@ -102,6 +100,9 @@ from co_optimisation.runners.usd_generator import (
     GrowingDesignDistCMAESDesignGenerator,
     RandomDesignGenerator,
 )
+
+# Import extensions to set up environment tasks
+from environments.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from himloco.runners import HIMOnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -197,7 +198,7 @@ def main():
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/exts/bipedal_locomotion/bipedal_locomotion/assets/urdf/solefoot/tron1/base_robot.urdf",
+            "/workspace/isaaclab/biped/environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf",
         )
         _num_individuals = 256
         # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
