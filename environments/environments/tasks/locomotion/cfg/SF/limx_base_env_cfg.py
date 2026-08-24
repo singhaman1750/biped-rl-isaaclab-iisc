@@ -1485,6 +1485,13 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
         # simulation settings
         self.sim.dt = 0.005
         self.seed = 42
+        # PhysX GPU rigid contact patch buffer. Default (5 * 2**15 = 163840) is too
+        # small at num_envs=4096 with the population-wide resets this task performs
+        # at every design swap, observed overflowing with "please increase its size
+        # to at least 167741". Set with headroom above that observed minimum rather
+        # than matched to it, since a transient spike from a synchronised reset can
+        # exceed any single observed value.
+        self.sim.physx.gpu_max_rigid_patch_count = 2**19  # 524288
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.height_scanner is not None:
