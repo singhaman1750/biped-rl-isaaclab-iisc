@@ -1102,6 +1102,54 @@ def no_contact(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tens
     return (torch.sum(contacts.float(), dim=1) == 0).float()
 
 
+def filtered_contacts(
+    env: ManagerBasedRLEnv,
+    sensor_cfg: SceneEntityCfg,
+    threshold: float,
+) -> torch.Tensor:
+    """Penalise contacts between a sensor's own bodies and the bodies it filters against.
+
+    This is the pairwise counterpart of :func:`isaaclab.envs.mdp.rewards.undesired_contacts`,
+    which reads ``net_forces_w_history`` and therefore sees only the total force on a body,
+    with no record of what that body touched. A foot is in periodic contact with the terrain,
+    so the net force never distinguishes a foot resting on the ground from a foot struck by
+    the other foot, and the term cannot be applied to the feet at all. Reading
+    ``force_matrix_w_history`` instead resolves the force per sensor body and per filtered
+    body, which separates the two cases.
+
+    The sensor named by ``sensor_cfg`` must declare a non empty
+    :attr:`~isaaclab.sensors.ContactSensorCfg.filter_prim_paths_expr`, and its ``prim_path``
+    must resolve to exactly one prim per environment, PhysX supporting filtered reporting
+    only as one to many. The filter axis is ordered by those expressions and is summed over
+    in full, ``sensor_cfg`` selecting bodies along the sensor axis alone.
+
+    Args:
+        env: The environment object.
+        sensor_cfg: Configuration resolving the filtered contact sensor and its bodies.
+        threshold: Force norm (N) above which a pair counts as being in contact.
+
+    Returns:
+        The number of body and filter pairs in contact, per environment.
+
+    Note:
+        PhysX reports no contact between two links of one articulation unless
+        ``enabled_self_collisions`` is set on its articulation root, so this term is
+        identically zero for an intra robot filter while that flag is off.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # shape (N, T, B, M, 3), None whenever the sensor carries no filter expressions
+    force_matrix = contact_sensor.data.force_matrix_w_history
+    if force_matrix is None:
+        raise ValueError(
+            f"Contact sensor '{sensor_cfg.name}' reports no filtered contacts. Set"
+            " 'filter_prim_paths_expr' on its ContactSensorCfg to enable pairwise reporting."
+        )
+    # max over the history window, matching the semantics of undesired_contacts
+    is_contact = torch.max(torch.norm(force_matrix[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0] > threshold
+    # sum over the sensor body axis and the filter axis together
+    return torch.sum(is_contact, dim=(1, 2))
+
+
 def stand_still(
     env, lin_threshold: float = 0.05, ang_threshold: float = 0.05, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:

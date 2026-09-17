@@ -23,6 +23,10 @@ from environments.tasks.locomotion.mdp.curriculums import reduce_tracking_reward
 
 _LEG_LINKS_NO_FOOT = "kd_d_102[rl]_6061|kd_d_201r_6061|rs03|kd_d_301[rl]_6061|kd_d_401[rl]_6061|arb_uj111_cross_bearing.*"
 _FOOT_LINKS = "foot_6061.*"
+_FOOT_LINK_RIGHT = "foot_6061"
+_FOOT_LINK_LEFT = "foot_6061_2"
+_SHANK_LINK_RIGHT = "kd_d_401r_6061"
+_SHANK_LINK_LEFT = "kd_d_401l_6061"
 _TORSO_LINK = "assy_formfg___kd_b_102b_torso_btm"
 
 KSCALE_SOLE_OFFSETS = [
@@ -100,6 +104,22 @@ class KscaleSceneCfg(InteractiveSceneCfg):
         update_period=0.0,
     )
 
+    foot_pair_contact_right = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/" + _FOOT_LINK_RIGHT,
+        filter_prim_paths_expr=[
+            "{ENV_REGEX_NS}/Robot/" + _FOOT_LINK_LEFT,
+            "{ENV_REGEX_NS}/Robot/" + _SHANK_LINK_LEFT,
+        ],
+        history_length=4,
+        update_period=0.0,
+    )
+
+    foot_pair_contact_left = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/" + _FOOT_LINK_LEFT,
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Robot/" + _SHANK_LINK_RIGHT],
+        history_length=4,
+        update_period=0.0,
+    )
 
 ##############
 # MDP settings
@@ -145,7 +165,7 @@ class ActionsCfg:
     joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
-        scale=0.25,
+        scale=0.4,
         use_default_offset=True,
     )
 
@@ -693,7 +713,7 @@ class RewardsCfg:
             "history_index": 0,
             "force_threshold": 1.0,
             "pitch_scale": 0.2,
-            "use_default_offset": False,
+            "use_default_offset": True,
         },
     )
     rew_keep_ankle_roll_zero_in_air = RewTerm(
@@ -708,6 +728,7 @@ class RewardsCfg:
             "history_index": 0,
             "force_threshold": 1.0,
             "pitch_scale": 0.2,
+            "use_default_offset": True
         },
     )
     # rew_keep_hip_yaw_zero_in_air = RewTerm(
@@ -735,7 +756,7 @@ class RewardsCfg:
     )
     pen_hip_yaw_deviation = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-1.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=["(right|left)_hip_yaw_03"]
@@ -760,7 +781,8 @@ class RewardsCfg:
     pen_base_height = RewTerm(
         func=mdp.base_height_rough_l2,
         params={
-            "target_height": 0.772,
+            # 0.76633 m standing height of the nominal pose supplied 2026-09-17.
+            "target_height": 0.766,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
         weight=-30.0,
@@ -782,6 +804,22 @@ class RewardsCfg:
             "threshold": 10.0,
         },
     )
+    pen_foot_cross_contact_right = RewTerm(
+        func=mdp.filtered_contacts,
+        weight=-2.5,
+        params={
+            "sensor_cfg": SceneEntityCfg("foot_pair_contact_right"),
+            "threshold": 1.0,
+        },
+    )
+    pen_foot_cross_contact_left = RewTerm(
+        func=mdp.filtered_contacts,
+        weight=-2.5,
+        params={
+            "sensor_cfg": SceneEntityCfg("foot_pair_contact_left"),
+            "threshold": 1.0,
+        },
+    )
     pen_action_smoothness = RewTerm(func=mdp.ActionSmoothnessPenalty, weight=-0.075)
     pen_joint_torque_rate = RewTerm(
         func=mdp.JointTorqueRatePenalty,
@@ -793,7 +831,12 @@ class RewardsCfg:
         func=mdp.feet_distance,
         weight=-100,
         params={
-            "min_feet_distance": 0.14,
+            # The nominal pose supplied 2026-09-17 places the ankle frames 0.1992 m apart,
+            # the mirrored hip roll having drawn them 53 mm closer than the 0.2520 m every
+            # earlier pose held. 0.24 stood 0.012 m below the old nominal and 0.19 stands
+            # 0.0092 m below the new one, so the floor keeps its clearance below the pose
+            # rather than firing at every reset, which at 0.24 it now would.
+            "min_feet_distance": 0.19,
             "feet_links_name": [_FOOT_LINKS],
             "lateral_only": False,
         },
@@ -803,7 +846,8 @@ class RewardsCfg:
         weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=[_FOOT_LINKS]),
-            "base_height_target": 0.772,
+            # The same standing height as pen_base_height above.
+            "base_height_target": 0.766,
             "foot_radius": 0.043,
             "height_decay_scale": 0.03,
         },
@@ -986,7 +1030,7 @@ class CurriculumCfg:
 class KscaleEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the kscale standard PPO environment"""
 
-    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=4096, env_spacing=env_spacing)
+    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=7000, env_spacing=env_spacing)
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
@@ -996,6 +1040,7 @@ class KscaleEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
+        self.sim.physx.gpu_max_rigid_patch_count = 2**19 
         self.decimation = 2
         self.episode_length_s = 20.0
         self.sim.render_interval = 2 * self.decimation
@@ -1005,13 +1050,17 @@ class KscaleEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
+        if self.scene.foot_pair_contact_right is not None:
+            self.scene.foot_pair_contact_right.update_period = self.sim.dt
+        if self.scene.foot_pair_contact_left is not None:
+            self.scene.foot_pair_contact_left.update_period = self.sim.dt
 
 
 @configclass
 class KscaleHIMEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the kscale HIM environment"""
 
-    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=4096, env_spacing=env_spacing)
+    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=7000, env_spacing=env_spacing)
     observations: HIMObservationsCfg = HIMObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
@@ -1021,6 +1070,7 @@ class KscaleHIMEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
+        self.sim.physx.gpu_max_rigid_patch_count = 2**19 
         self.decimation = 4
         self.episode_length_s = 20.0
         self.sim.render_interval = 2 * self.decimation
@@ -1030,3 +1080,7 @@ class KscaleHIMEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
+        if self.scene.foot_pair_contact_right is not None:
+            self.scene.foot_pair_contact_right.update_period = self.sim.dt
+        if self.scene.foot_pair_contact_left is not None:
+            self.scene.foot_pair_contact_left.update_period = self.sim.dt

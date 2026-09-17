@@ -62,13 +62,18 @@ from kscale_sole_analysis import (  # noqa: E402
 # The pose closes the sagittal chain, hip_pitch + knee + ankle_pitch summing to zero about the
 # world +y on both legs under the anti-parallel hip pitch axes, so the sole lies flat. The check
 # is that the reported ankle origin height equals the 0.0430 m sole depth exactly.
+# Updated 2026-09-16 to the published K-Scale K-Bot standing posture adopted by
+# environments/environments/assets/config/kscale_identified_cfg.py on that date, per section 9.1
+# of plans/kscale_actuator_limits_fix.md. It replaces the shallower knee 0.4 and ankle -0.3, and
+# it closes the sagittal chain exactly as that pose did, the standing height falling from
+# 0.77161 m to 0.73540 m. Mirror any further change here and in the asset configuration together.
 NOMINAL_POSE = {
-    "right_hip_pitch_04": -0.1,
-    "left_hip_pitch_04": 0.1,
-    "right_knee_04": 0.4,
-    "left_knee_04": 0.4,
-    "right_foot_pitch_02": -0.3,
-    "left_foot_pitch_02": -0.3,
+    "right_hip_pitch_04": -0.20369, "left_hip_pitch_04": 0.20369,
+    "right_hip_roll_03": 0.042951, "left_hip_roll_03": -0.042951,
+    "right_hip_yaw_03": 0.0, "left_hip_yaw_03": 0.0,
+    "right_knee_04": 0.51239, "left_knee_04": 0.51239,
+    "right_foot_pitch_02": -0.3087, "left_foot_pitch_02": -0.3087,
+    "right_foot_roll_02": 0.041254, "left_foot_roll_02": -0.041254,
 }
 
 # The configured gains, likewise mirrored from the asset configuration, as stiffness, damping,
@@ -78,12 +83,17 @@ NOMINAL_POSE = {
 # At the distal joints of this robot the armature exceeds the link inertia several times over, so
 # omitting it does not merely refine the answer, it changes which regime the joint is in.
 CONFIGURED_GAINS = {
-    "hip_pitch": (200.0, 50.0, 0.010, 60.0),
-    "hip_roll": (150.0, 45.0, 0.010, 60.0),
-    "hip_yaw": (40.0, 5.0, 0.010, 60.0),
-    "knee": (200.0, 22.0, 0.015, 60.0),
-    "foot_pitch": (50.0, 4.0, 0.005, 17.0),
-    "foot_roll": (20.0, 4.0, 0.005, 17.0),
+    # Refreshed 2026-09-17 from environments/environments/assets/config/kscale_identified_cfg.py.
+    # (stiffness, damping, armature, effort_limit). The effort limits are the published K-Scale
+    # robstride SOFT limits, the peak torque living in saturation_effort and not appearing here.
+    # The figures this replaced, hip pitch 200/50, hip roll 150/45, hip yaw 40/5, knee 200/22,
+    # ankle pitch 50/4 and ankle roll 20/4 at 60 and 17 Nm, had been stale since 2026-09-03.
+    "hip_pitch": (200.0, 21.5, 0.010, 84.0),
+    "hip_roll": (250.0, 28.0, 0.010, 42.0),
+    "hip_yaw": (100.0, 3.5, 0.010, 42.0),
+    "knee": (300.0, 12.0, 0.015, 84.0),
+    "foot_pitch": (120.0, 5.0, 0.005, 11.9),
+    "foot_roll": (120.0, 4.0, 0.005, 11.9),
 }
 
 GRAVITY = 9.80665
