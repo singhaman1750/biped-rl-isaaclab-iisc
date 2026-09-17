@@ -211,3 +211,173 @@ def apply_reward_cfg(env_cfg, env_params: dict, strict: bool = False) -> dict:
         setattr(env_cfg.rewards, name, None)
         report["removed"].append(name)
     return report
+
+
+# Fields of a dumped actuator configuration that describe the class it was built from or
+# the joints it binds to, rather than the drive behaviour. They are reported when they
+# disagree and never written, since a joint expression or an actuator class taken from an
+# older run may not match the robot the tree now spawns.
+_ACTUATOR_STRUCTURAL = ("__class__", "class_type", "joint_names_expr")
+
+
+def actuator_groups(env_params: dict) -> dict[str, dict]:
+    """The actuator configuration of the run, group by group, as parsed mappings.
+
+    Isaac Lab dumps these under scene.robot.actuators, one entry per actuator group, each
+    carrying the stiffness, damping, armature, friction and limit fields the group was
+    configured with. Returns an empty mapping where the dump predates the block or the
+    run configured no articulation, which the caller should treat as nothing to apply.
+    """
+    robot = ((env_params.get("scene") or {}).get("robot") or {})
+    groups = robot.get("actuators") or {}
+    return {name: group for name, group in groups.items() if isinstance(group, dict)}
+
+
+def apply_actuator_cfg(env_cfg, env_params: dict, strict: bool = False) -> dict:
+    """Restore the run's actuator gains onto env_cfg, group by group and field by field.
+
+    The drive fields are written onto the configuration object the tree already built,
+    rather than the dumped object being revived whole. Reviving whole would carry the
+    run's actuator CLASS into the replay, and a class the tree has since altered would
+    then be constructed from fields that no longer describe it, so the safe operation is
+    to leave the object and its class alone and to overwrite the numbers it holds. Fields
+    the tree's actuator class does not declare are skipped rather than invented, and the
+    structural fields of _ACTUATOR_STRUCTURAL are compared and reported but never written.
+
+    Returns a report the caller should print. The `changed` entry names every field whose
+    dumped value differs from the tree's, which is the evidence that the replay would
+    otherwise have run the policy on gains it was never trained against.
+
+    Only env_cfg.scene.robot.actuators is touched. A caller that does not invoke this
+    function sees no change whatever, which is the backwards compatibility condition of
+    ../CLAUDE.md.
+    """
+    report = {"applied": [], "changed": {}, "missing": [], "extra": [], "structural": {}}
+    parsed = actuator_groups(env_params)
+    if not parsed:
+        return report
+    robot = getattr(getattr(env_cfg, "scene", None), "robot", None)
+    live = getattr(robot, "actuators", None) or {}
+    for name, group in parsed.items():
+        target = live.get(name)
+        if target is None:
+            report["missing"].append(name)
+            continue
+        for field in _ACTUATOR_STRUCTURAL:
+            if field not in group:
+                continue
+            dumped = group[field]
+            if field == "__class__":
+                current = f"{type(target).__module__}.{type(target).__name__}"
+            elif field == "class_type":
+                current = getattr(target, field, None)
+                current = (
+                    f"{current.__module__}.{current.__name__}" if current else None
+                )
+                dumped = dumped.get("__ref__") if isinstance(dumped, dict) else dumped
+            else:
+                current = getattr(target, field, None)
+            if current is not None and dumped is not None and current != dumped:
+                report["structural"].setdefault(name, {})[field] = (current, dumped)
+        changed = {}
+        for field, value in group.items():
+            if field in _ACTUATOR_STRUCTURAL or not hasattr(target, field):
+                continue
+            try:
+                revived = _revive(value)
+            except Exception as error:  # noqa: BLE001
+                # A field naming something the tree no longer carries. Recorded rather
+                # than raised, so that one stale field does not make a run unevaluable.
+                report["structural"].setdefault(name, {})[field] = ("unimportable", repr(error))
+                if strict:
+                    raise
+                continue
+            current = getattr(target, field, None)
+            if current != revived:
+                changed[field] = (current, revived)
+            setattr(target, field, revived)
+        report["applied"].append(name)
+        if changed:
+            report["changed"][name] = changed
+    report["extra"] = sorted(set(live) - set(parsed))
+    return report
+
+
+# Fields of a dumped action term that define the mapping from a policy output to a joint
+# target. Restoring these is what makes a replayed action mean what it meant in training.
+_ACTION_TRANSFORM = ("scale", "offset", "use_default_offset", "clip")
+
+# Fields naming the class or the joints the term binds to. Reported when they disagree and
+# never written, for the reason given at _ACTUATOR_STRUCTURAL.
+_ACTION_STRUCTURAL = ("__class__", "class_type", "asset_name", "joint_names", "preserve_order")
+
+
+def action_terms(env_params: dict) -> dict[str, dict]:
+    """The action configuration of the run, term by term, as parsed mappings."""
+    actions = env_params.get("actions") or {}
+    return {
+        name: term for name, term in actions.items()
+        if isinstance(term, dict) and not name.startswith("__")
+    }
+
+
+def apply_action_cfg(env_cfg, env_params: dict, strict: bool = False) -> dict:
+    """Restore the run's action transform onto env_cfg, term by term.
+
+    The action scale converts a policy output into a joint position offset, so a replay at a
+    scale the policy was not trained under commands a different posture for the same output.
+    The defect is silent, the policy running and the rewards restoring normally while every
+    commanded offset is wrong by the ratio of the two scales.
+
+    Only the fields of _ACTION_TRANSFORM are written, onto the configuration object the tree
+    already built, for the reasons given at apply_actuator_cfg. Returns a report the caller
+    should print, whose `changed` entry names every field that disagreed.
+
+    Only env_cfg.actions is touched. A caller that does not invoke this function sees no
+    change whatever, which is the backwards compatibility condition of ../CLAUDE.md.
+    """
+    report = {"applied": [], "changed": {}, "missing": [], "extra": [], "structural": {}}
+    parsed = action_terms(env_params)
+    if not parsed:
+        return report
+    actions = getattr(env_cfg, "actions", None)
+    live = {n for n in vars(actions) if not n.startswith("_")} if actions else set()
+    for name, term in parsed.items():
+        target = getattr(actions, name, None)
+        if target is None:
+            report["missing"].append(name)
+            continue
+        for field in _ACTION_STRUCTURAL:
+            if field not in term:
+                continue
+            dumped = term[field]
+            if field == "__class__":
+                current = f"{type(target).__module__}.{type(target).__name__}"
+            elif field == "class_type":
+                current = getattr(target, field, None)
+                current = f"{current.__module__}.{current.__name__}" if current else None
+                dumped = dumped.get("__ref__") if isinstance(dumped, dict) else dumped
+            else:
+                current = getattr(target, field, None)
+            if current is not None and dumped is not None and current != dumped:
+                report["structural"].setdefault(name, {})[field] = (current, dumped)
+        changed = {}
+        for field in _ACTION_TRANSFORM:
+            if field not in term or not hasattr(target, field):
+                continue
+            try:
+                revived = _revive(term[field])
+            except Exception as error:  # noqa: BLE001
+                report["structural"].setdefault(name, {})[field] = ("unimportable", repr(error))
+                if strict:
+                    raise
+                continue
+            current = getattr(target, field, None)
+            if current != revived:
+                changed[field] = (current, revived)
+            setattr(target, field, revived)
+        report["applied"].append(name)
+        if changed:
+            report["changed"][name] = changed
+    report["extra"] = sorted(live - set(parsed))
+    return report

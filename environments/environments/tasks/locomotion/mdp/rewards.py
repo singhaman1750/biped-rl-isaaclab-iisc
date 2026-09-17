@@ -579,35 +579,133 @@ def feet_distance(env: ManagerBasedRLEnv,
 def feet_yaw_alignment(
     env: ManagerBasedRLEnv,
     asset_cfg: SceneEntityCfg,
+    forward_axis: tuple[float, float, float] | None = None,
+    common_mode: str = "sum",
+    tolerance: float = 0.0,
+    differential_scale: float = 0.0,
+    sensor_cfg: SceneEntityCfg | None = None,
+    force_threshold: float = 1.0,
+    history_index: int = 0,
+    airborne_only: bool = False,
 ) -> torch.Tensor:
-    """Penalise the squared yaw of each foot relative to the base.
+    """Penalise the yaw of each foot relative to the base.
 
-    The term follows the feet yaw reward of Booster Gym
-    (arXiv:2506.15132), which carries it at twice the linear tracking weight.
+    The term follows the feet yaw rewards of Booster Gym (arXiv:2506.15132). That work's
+    Table II tabulates a single squared norm at minus 1.0, but its released implementation
+    and configuration carry TWO terms priced separately and equally, `feet_yaw_diff` at
+    minus 1.0 over the two feet against each other and `feet_yaw_mean` at minus 1.0 over the
+    mean foot yaw against the base. Both are reproduced here. The earlier docstring of this
+    function reported the weight as twice the LINEAR tracking weight; against Table II it
+    equals a single linear component's 1.0 and is twice the YAW tracking weight of 0.5.
 
-    The difference is wrapped into the interval from minus pi to pi before squaring, so that a
-    foot yawed just past the wrap point is charged for the small error it has rather than for
-    the large one the raw difference would report.
+    Every difference is wrapped into the interval from minus pi to pi before squaring, so that
+    a foot yawed just past the wrap point is charged for the small error it has rather than
+    for the large one the raw difference would report.
 
     Args:
         env: The environment object.
-        asset_cfg: Robot asset configuration resolving the feet bodies.
+        asset_cfg: Robot asset configuration resolving the feet bodies. Exactly two feet are
+            required whenever differential_scale is non zero or common_mode is "mean".
+        forward_axis: Which axis of the FOOT LINK frame points at the toe. When None, the
+            default, the heading is taken as the yaw component of an Euler decomposition of
+            the foot's world quaternion, which is the original behaviour and is preserved
+            exactly. That path is correct only where the foot link's forward axis is its own
+            x and its vertical is its own z, which is the convention of the SD_BRS1 and of
+            Booster Gym's own T1, and is NOT the KScale convention, whose foot link carries
+            its width on x, its vertical on y pointing downward and its fore and aft length
+            on z. Pass (0.0, 0.0, -1.0) for the KScale. See context/KScale.md section 12 and
+            plans/kscale_integration.md section 5.1.2, which measures the Euler path's error
+            on that robot at 70 to 110 degrees, an error that would INVERT the term rather
+            than blur it, driving the feet towards the very splay it is meant to remove.
+        common_mode: How the per foot errors against the base are combined. "sum", the
+            default, sums their squares, which is the original behaviour and is preserved
+            exactly. "mean" squares the error of their circular MEAN against the base, which
+            is Booster Gym's `_reward_feet_yaw_mean` and is the form that makes the common and
+            differential modes ORTHOGONAL. Under "sum" a pure splay of plus and minus e
+            registers 2 e squared on the common mode, so the two modes cannot be varied or
+            ablated independently. Under "mean" it registers exactly zero. Prefer "mean"
+            wherever differential_scale is non zero.
+        tolerance: Half width of a dead band, in radians, applied to each mode's error before
+            it is squared. Defaults to 0.0, which is Booster Gym's own behaviour and is
+            preserved as the default. The human foot progression angle has a standard
+            deviation of 5.6 degrees about a mean toe out of 3.3 degrees, so a tolerance near
+            0.10 rad demands no more than natural walking does.
+        differential_scale: Weight of the differential mode, being the squared wrapped
+            difference between the two feet's headings, RELATIVE to the common mode. Defaults
+            to 0.0, preserving the original behaviour. Pass 1.0 for Booster Gym's own equal
+            pricing of the two modes.
+        sensor_cfg: Contact sensor resolving the same feet, in the same order as asset_cfg.
+            Required only when airborne_only is True. Defaults to None.
+        force_threshold: Contact force, in newtons, above which a foot counts as planted.
+        history_index: Which slot of the contact sensor's rolling history supplies the
+            contact test. The sensor writes the NEWEST sample to index 0. Defaults to 0.
+        airborne_only: When True the COMMON mode is evaluated only over airborne feet, the
+            mean under common_mode "mean" being taken over those feet alone and the term
+            being zero when none is airborne. The differential mode is never gated, both feet
+            being required for it to be defined. Defaults to False, which is Booster Gym's
+            own behaviour and is preserved as the default.
+
+    Note:
+            The gate exists to support the ablation of plans/kscale_integration.md section
+            5.1.2 and is NOT recommended as a shipping default. Under common_mode "mean" a
+            well executed turn moves both feet together and the mean tracks the base, so the
+            common mode's time averaged value during a steady turn is zero to four decimal
+            places at every commanded yaw rate in the KScale curriculum, and the gate has
+            nothing to protect. It was necessary only under the summed form, whose mode mixing
+            makes a turning stance foot register on the common mode.
 
     Returns:
-        The computed penalty tensor, summed over the feet.
+        The computed penalty tensor.
     """
     asset: Articulation = env.scene[asset_cfg.name]
+    base_yaw = math_utils.euler_xyz_from_quat(asset.data.root_link_quat_w)[2].unsqueeze(1)
+
     foot_quat = asset.data.body_quat_w[:, asset_cfg.body_ids]           # (N, F, 4)
-    base_quat = asset.data.root_link_quat_w                             # (N, 4)
+    if forward_axis is None:
+        foot_yaw = math_utils.euler_xyz_from_quat(foot_quat.reshape(-1, 4))[2].view(
+            foot_quat.shape[0], foot_quat.shape[1]
+        )
+    else:
+        axis = torch.tensor(forward_axis, device=foot_quat.device, dtype=foot_quat.dtype)
+        toe_w = math_utils.quat_apply(foot_quat, axis.expand_as(foot_quat[..., :3]))
+        foot_yaw = torch.atan2(toe_w[..., 1], toe_w[..., 0])            # (N, F)
 
-    foot_yaw = math_utils.euler_xyz_from_quat(foot_quat.reshape(-1, 4))[2].view(
-        foot_quat.shape[0], foot_quat.shape[1]
-    )
-    base_yaw = math_utils.euler_xyz_from_quat(base_quat)[2].unsqueeze(1)
+    def _band(err: torch.Tensor) -> torch.Tensor:
+        if tolerance <= 0.0:
+            return err
+        return torch.sign(err) * torch.clamp(torch.abs(err) - tolerance, min=0.0)
 
-    yaw_error = math_utils.wrap_to_pi(foot_yaw - base_yaw)
-    return torch.sum(torch.square(yaw_error), dim=1)
+    if airborne_only:
+        forces = env.scene.sensors[sensor_cfg.name].data.net_forces_w_history
+        airborne = ~(
+            torch.norm(forces[:, history_index, sensor_cfg.body_ids], dim=-1) > force_threshold
+        )
+    else:
+        airborne = torch.ones_like(foot_yaw, dtype=torch.bool)
 
+    if common_mode == "mean":
+        # circular mean of the selected feet, taken on the unit circle so that no branch cut
+        # repair is needed. Booster Gym adds pi to a linear mean where the two feet straddle
+        # the wrap; resolving the mean as an angle is equivalent and has no special case.
+        mask = airborne.to(foot_yaw.dtype)
+        sin_m = torch.sum(torch.sin(foot_yaw) * mask, dim=1)
+        cos_m = torch.sum(torch.cos(foot_yaw) * mask, dim=1)
+        any_sel = torch.sum(mask, dim=1) > 0
+        mean_yaw = torch.atan2(sin_m, cos_m)
+        common = torch.where(
+            any_sel, torch.square(_band(math_utils.wrap_to_pi(mean_yaw - base_yaw.squeeze(1)))),
+            torch.zeros_like(sin_m),
+        )
+    elif common_mode == "sum":
+        err = _band(math_utils.wrap_to_pi(foot_yaw - base_yaw))
+        common = torch.sum(torch.square(err) * airborne.to(err.dtype), dim=1)
+    else:
+        raise ValueError(f"common_mode must be 'sum' or 'mean', got {common_mode!r}")
+
+    if differential_scale <= 0.0:
+        return common
+    differential = _band(math_utils.wrap_to_pi(foot_yaw[:, 1] - foot_yaw[:, 0]))
+    return common + differential_scale * torch.square(differential)
 
 def joint_torque_tiredness(
     env: ManagerBasedRLEnv,
@@ -1002,6 +1100,54 @@ def no_contact(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tens
     contacts = latest_contact_forces > 1.0  # Returns a boolean tensor where True indicates contact
 
     return (torch.sum(contacts.float(), dim=1) == 0).float()
+
+
+def filtered_contacts(
+    env: ManagerBasedRLEnv,
+    sensor_cfg: SceneEntityCfg,
+    threshold: float,
+) -> torch.Tensor:
+    """Penalise contacts between a sensor's own bodies and the bodies it filters against.
+
+    This is the pairwise counterpart of :func:`isaaclab.envs.mdp.rewards.undesired_contacts`,
+    which reads ``net_forces_w_history`` and therefore sees only the total force on a body,
+    with no record of what that body touched. A foot is in periodic contact with the terrain,
+    so the net force never distinguishes a foot resting on the ground from a foot struck by
+    the other foot, and the term cannot be applied to the feet at all. Reading
+    ``force_matrix_w_history`` instead resolves the force per sensor body and per filtered
+    body, which separates the two cases.
+
+    The sensor named by ``sensor_cfg`` must declare a non empty
+    :attr:`~isaaclab.sensors.ContactSensorCfg.filter_prim_paths_expr`, and its ``prim_path``
+    must resolve to exactly one prim per environment, PhysX supporting filtered reporting
+    only as one to many. The filter axis is ordered by those expressions and is summed over
+    in full, ``sensor_cfg`` selecting bodies along the sensor axis alone.
+
+    Args:
+        env: The environment object.
+        sensor_cfg: Configuration resolving the filtered contact sensor and its bodies.
+        threshold: Force norm (N) above which a pair counts as being in contact.
+
+    Returns:
+        The number of body and filter pairs in contact, per environment.
+
+    Note:
+        PhysX reports no contact between two links of one articulation unless
+        ``enabled_self_collisions`` is set on its articulation root, so this term is
+        identically zero for an intra robot filter while that flag is off.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # shape (N, T, B, M, 3), None whenever the sensor carries no filter expressions
+    force_matrix = contact_sensor.data.force_matrix_w_history
+    if force_matrix is None:
+        raise ValueError(
+            f"Contact sensor '{sensor_cfg.name}' reports no filtered contacts. Set"
+            " 'filter_prim_paths_expr' on its ContactSensorCfg to enable pairwise reporting."
+        )
+    # max over the history window, matching the semantics of undesired_contacts
+    is_contact = torch.max(torch.norm(force_matrix[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0] > threshold
+    # sum over the sensor body axis and the filter axis together
+    return torch.sum(is_contact, dim=(1, 2))
 
 
 def stand_still(

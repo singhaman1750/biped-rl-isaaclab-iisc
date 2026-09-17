@@ -1,0 +1,6 @@
+[submodule "environments/environments/assets/urdf/solefoot/SD_BRS1"]
+	path = environments/environments/assets/urdf/solefoot/SD_BRS1
+	url = git@github.com:shandilya1998/BRS_Assets.git
+[submodule "environments/environments/assets/urdf/solefoot/kscale"]
+	path = environments/environments/assets/urdf/solefoot/kscale
+	url = git@github.com:shandilya1998/RBot_Assets.git

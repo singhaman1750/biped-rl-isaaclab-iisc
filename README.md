@@ -49,6 +49,12 @@ Running `train.py` script requires `environments`, `co_optimisation` and `himloc
 pip install -e environments co_optimisation himloco
 ```
 
+### Proprietary asset submodules
+The SD_BRS1 and KScale URDF and mesh assets under `environments/environments/assets/urdf/solefoot/` are proprietary and live in two private repositories, `BRS_Assets` and `RBot_Assets`, checked in here as git submodules at their existing paths. A fresh clone of this repository leaves those two directories empty until the submodules are populated.
+```zsh
+git submodule update --init --recursive
+```
+
 ## Running train.py
 Go to your Isaac Lab root directory, then run:
 ```zsh

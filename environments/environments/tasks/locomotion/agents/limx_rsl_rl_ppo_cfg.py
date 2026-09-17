@@ -9,7 +9,10 @@ from isaaclab_rl.rsl_rl import (
 )
 
 from environments.tasks.locomotion.mdp.symmetry.brs import (
-    compute_symmetric_states,
+    compute_symmetric_states as brs_compute_symmetric_states,
+)
+from environments.tasks.locomotion.mdp.symmetry.kscale import (
+    compute_symmetric_states as kscale_compute_symmetric_states,
 )
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     DecoderCfg,
@@ -269,7 +272,52 @@ class SD_BRS1FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         symmetry_cfg=RslRlSymmetryCfg(
             use_data_augmentation=True,
             use_mirror_loss=True,
-            data_augmentation_func=compute_symmetric_states,
+            data_augmentation_func=brs_compute_symmetric_states,
+            mirror_loss_coeff=0.0,
+        ),
+    )
+    encoder = EncoderCfg(
+        output_detach=True,
+        num_output_dim=19,
+        hidden_dims=[128, 64, 16],
+        activation="elu",
+        orthogonal_init=False,
+    )
+
+
+@configclass
+class KscaleFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 24
+    max_iterations = 30000
+    save_interval = 500
+    experiment_name = "kscale_flat"
+    empirical_normalization = False
+    policy = RslRlPpoActorCriticCfg(
+        init_noise_std=1.0,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+        actor_obs_normalization=True,
+        critic_obs_normalization=True,
+    )
+    algorithm = RslRlPpoAlgorithmMlpCfg(
+        class_name="PPO",
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=False,
+            data_augmentation_func=kscale_compute_symmetric_states,
             mirror_loss_coeff=0.0,
         ),
     )

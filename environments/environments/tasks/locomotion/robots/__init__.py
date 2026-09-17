@@ -1,6 +1,7 @@
 import gymnasium as gym
 
 from environments.tasks.locomotion.agents.limx_rsl_rl_ppo_cfg import (
+    KscaleFlatPPORunnerCfg,
     PF_TRON1AFlatPPORunnerCfg,
     SD_BRS1FlatPPORunnerCfg,
     SF_Berkeley_PPORunnerCfg,
@@ -15,10 +16,11 @@ from environments.tasks.locomotion.agents.quadruped_rsl_rl_ppo_cfg import (
     PFQuadrupedPPORunnerCfg,
 )
 
-from ..cfg.SF import brs_base_env_cfg, limx_berkeley_env_cfg
+from ..cfg.SF import brs_base_env_cfg, kscale_base_env_cfg, limx_berkeley_env_cfg
 from ..envs.him_env import HIMManagerBasedRLEnv
 from . import (
     brs_solefoot_env_cfg,
+    kscale_solefoot_env_cfg,
     limx_pointfoot_env_cfg,
     limx_solefoot_env_cfg,
     limx_wheelfoot_env_cfg,
@@ -50,6 +52,8 @@ quadruped_him_runner_cfg = PFQuadrupedPPORunnerCfg()
 quadruped_copt_runner_cfg = PFQuadrupedCoptPPORunnerCfg()
 
 quadruped_copt_learned_runner_cfg = PFQuadrupedCoptLearnedModelPPORunnerCfg()
+
+limx_kscale_runner_cfg = KscaleFlatPPORunnerCfg()
 
 ##
 # Register Gym environments
@@ -698,5 +702,89 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg,
         "rsl_rl_cfg_entry_point": quadruped_copt_learned_runner_cfg,
+    },
+)
+
+#############################
+# kscale Environments
+#############################
+
+gym.register(
+    id="Isaac-Limx-Kscale-Blind-Flat-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleBlindFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-Blind-Flat-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleBlindFlatEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-Blind-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleBlindRoughEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-Blind-Rough-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-HIM-Blind-Flat-v0",
+    entry_point=HIMManagerBasedRLEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleHIMBlindFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-HIM-Blind-Flat-Play-v0",
+    entry_point=HIMManagerBasedRLEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleHIMBlindFlatEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-HIM-Blind-Rough-v0",
+    entry_point=HIMManagerBasedRLEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleHIMBlindRoughEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-HIM-Blind-Rough-Play-v0",
+    entry_point=HIMManagerBasedRLEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleHIMBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
     },
 )

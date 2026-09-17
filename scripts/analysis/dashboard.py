@@ -1,13 +1,15 @@
 import argparse
 import glob
-import numpy as np
 import os
+import re
+from dataclasses import dataclass
 
 import dash
+import numpy as np
 import pandas as pd
 import plotly.colors as pcolors
 import plotly.graph_objects as go
-from dash import Input, Output, State, dcc, html
+from dash import Input, Output, State, dash_table, dcc, html
 from plotly.subplots import make_subplots
 
 # --- Configuration ---
@@ -34,17 +36,179 @@ METRIC_UNITS = {
     "joint_accelerations": "Acceleration (rad/s²)",
 }
 
-# Joint Names based on Robot Config (Interleaved L/R)
-JOINT_NAMES = [
-    "abad_L_Joint",
-    "abad_R_Joint",
-    "hip_L_Joint",
-    "hip_R_Joint",
-    "knee_L_Joint",
-    "knee_R_Joint",
-    "ankle_L_Joint",
-    "ankle_R_Joint",
-]
+
+@dataclass(frozen=True)
+class RobotProfile:
+    """Everything about a robot that its dump cannot state for itself.
+
+    A dump records the articulation's joint, body and feet names, so the only facts that
+    must be supplied here are the reference levels, which live in the environment
+    configuration, and the fallback name lists for dumps predating that recording.
+    """
+
+    key: str
+    title: str
+    num_legs: int
+    joint_names: tuple = ()
+    feet_names: tuple = ()
+    # Peak of the raised cosine clearance reference, which is the gait command's
+    # swing_height read at mdp/rewards.py:495. None where the robot declares no gait
+    # command, in which case its dump carries no feet_sole_clearances either, play.py
+    # gating that channel on the sole table at play.py:431.
+    sole_clearance_target: float = None
+    contact_force_threshold: float = 1.0
+
+
+# The order is LEFT before RIGHT at every tree depth. IsaacLab enumerates degrees of
+# freedom breadth-first, giving the depth sequence HipRoll, HipPitch, KneePitch,
+# AnkleRoll, AnklePitch, but the within-depth tie-break is NOT the URDF declaration
+# order. SD_BRS.urdf declares the whole right leg chain before the left, and the
+# articulation still yields left first, so the ordering cannot be derived from the asset.
+#
+# CORRECTION, 2026-07-31. This list previously read right before left on exactly that
+# faulty derivation, so every per-joint panel this dashboard had ever drawn carried a
+# transposed side label. Proved three independent ways in the twentieth pass of
+# /ws/context/brs_gait.md. Joint index 2 spans -1.2521 rad and only HipPitchL admits
+# -1.25 while index 3 spans +1.2502 and only HipPitchR admits +1.25. Knee index 4 is
+# near extension exactly when foot index 0 reports contact, on 97.2 percent of steps.
+# And the asymmetric identified masses resolve every body uniquely, Link2L 3.860000
+# against Link2R 3.860900. HipYaw joints are fixed and contribute no DOF.
+_BRS_JOINT_NAMES = (
+    "HipRollL", "HipRollR", "HipPitchL", "HipPitchR", "KneePitchL",
+    "KneePitchR", "AnkleRollL", "AnkleRollR", "AnklePitchL", "AnklePitchR",
+)
+
+# Same provenance and same correction. find_bodies matches on BODY INDEX order rather
+# than regex order, and the body order is likewise left before right.
+_BRS_FEET_NAMES = ("Link6L", "Link6R")
+
+# Carried across from the deleted dashboard.py, which asserted this order as interleaved
+# L/R without the evidence the SD_BRS1 list carries. A dump that records its own order
+# supersedes it and is to be trusted over it.
+_TRON_JOINT_NAMES = (
+    "abad_L_Joint", "abad_R_Joint", "hip_L_Joint", "hip_R_Joint",
+    "knee_L_Joint", "knee_R_Joint", "ankle_L_Joint", "ankle_R_Joint",
+)
+
+# The feet as cfg/SF/limx_base_env_cfg.py:1203 resolves them. NOTE that play.py:176
+# resolves the wider "ankle_.*", which also matches ankle_[LR]_actuator_Link, so a TRON1
+# dump records FOUR feet against these two. The feet windows follow the recorded names,
+# and this list stands only for a dump that records none.
+_TRON_FEET_NAMES = ("ankle_L_Link", "ankle_R_Link")
+
+# The KScale and quadruped profiles carry no fallback names deliberately. Both robots
+# entered the tree after play.py began recording the articulation order on 2026-07-31, so
+# no dump of either can reach a fallback, and neither order is derivable from the asset,
+# the KScale dumps recording their feet as foot_6061_2 before foot_6061.
+ROBOT_PROFILES = {
+    "brs": RobotProfile(
+        key="brs", title="SD_BRS1", num_legs=2,
+        joint_names=_BRS_JOINT_NAMES, feet_names=_BRS_FEET_NAMES,
+        # cfg/SF/brs_base_env_cfg.py:117, contact gate at :853
+        sole_clearance_target=0.08, contact_force_threshold=1.0,
+    ),
+    "kscale": RobotProfile(
+        key="kscale", title="KScale", num_legs=2,
+        # cfg/SF/kscale_base_env_cfg.py:136, contact gate at :849
+        sole_clearance_target=0.05, contact_force_threshold=1.0,
+    ),
+    "tron": RobotProfile(
+        key="tron", title="TRON1 SoleFoot", num_legs=2,
+        joint_names=_TRON_JOINT_NAMES, feet_names=_TRON_FEET_NAMES,
+        # No gait command, commented out at cfg/SF/limx_base_env_cfg.py:102
+        sole_clearance_target=None, contact_force_threshold=1.0,
+    ),
+    "quadruped": RobotProfile(
+        key="quadruped", title="Quadruped", num_legs=4,
+        # No gait command, commented out at cfg/quadruped/base_env_cfg.py:102
+        sole_clearance_target=None, contact_force_threshold=1.0,
+    ),
+}
+
+DEFAULT_PROFILE = ROBOT_PROFILES["brs"]
+
+# Retained under their former names and values so that a consumer importing them is
+# unaffected by the introduction of the registry.
+JOINT_NAMES = list(_BRS_JOINT_NAMES)
+FEET_NAMES = list(_BRS_FEET_NAMES)
+SOLE_CLEARANCE_TARGET = DEFAULT_PROFILE.sole_clearance_target
+CONTACT_FORCE_THRESHOLD = DEFAULT_PROFILE.contact_force_threshold
+
+
+def pretty_joint_name(name):
+    """Split CamelCase joint names into words, e.g. 'HipRollR' -> 'Hip Roll R'."""
+    return re.sub(r"(?<!^)(?=[A-Z])", " ", name)
+
+
+def _names_from_dumps(experiments_dict, key, fallback):
+    """Return the index order recorded in a dump, or the fallback for older dumps.
+
+    play.py records "joint_names", "body_names" and "feet_names" from the live
+    articulation, because the order cannot be derived from the URDF, the within-depth
+    tie-break of the breadth-first enumeration not being the declaration order. Dumps
+    written before that change carry none of these keys, so the hardcoded fallback stands
+    in for them, and the first experiment that does carry the key supplies the order for
+    the whole figure, every experiment in one dashboard being the same robot.
+    """
+    for data in experiments_dict.values():
+        if not isinstance(data, dict):
+            continue
+        names = data.get(key)
+        if names is None:
+            continue
+        names = list(np.asarray(names).ravel())
+        if names:
+            return [str(n) for n in names]
+    return list(fallback)
+
+
+def resolve_joint_names(experiments_dict, profile=DEFAULT_PROFILE):
+    """Joint names in articulation order, preferring what the dump itself recorded."""
+    return _names_from_dumps(experiments_dict, "joint_names", profile.joint_names)
+
+
+def resolve_feet_names(experiments_dict, profile=DEFAULT_PROFILE):
+    """Feet body names in the order the DataLogger resolved them."""
+    return _names_from_dumps(experiments_dict, "feet_names", profile.feet_names)
+
+
+def channel_width(experiments_dict, metric_key, axis=2):
+    """Width of a dump channel along one axis, for labelling a nameless articulation.
+
+    Positional labels are given rather than a borrowed order, the articulation order not
+    being derivable from the asset and a wrong label being worse than an uninformative one.
+    """
+    for data in experiments_dict.values():
+        if not isinstance(data, dict) or metric_key not in data:
+            continue
+        array = np.asarray(data[metric_key])
+        if array.ndim > axis:
+            return int(array.shape[axis])
+    return 0
+
+
+def load_statistics(seed_dir):
+    """Return the statistics record set one play wrote, or None where it wrote none.
+
+    Reads and nothing more. The record set is computed by play.py at the close of a play,
+    from the arrays it holds in memory, so this function's only responsibility is to find
+    the file and hand it on. A dashboard that recomputed would be a second implementation
+    of every statistic, free to disagree with the first, and the point of the pipeline is
+    that a figure has one origin.
+
+    An absent file means the play predates the pipeline or its statistics block failed,
+    and in both cases the remedy is to replay rather than to compute here.
+    """
+    path = os.path.join(seed_dir, "statistics.npy")
+    if not os.path.exists(path):
+        return None
+    try:
+        raw = np.load(path, allow_pickle=True)
+        return raw.item() if raw.ndim == 0 else raw
+    except Exception as error:
+        print(f"[WARN] Failed to load statistics.npy at {path}: {error}")
+        return None
+
 
 def load_experiments(root_dir):
     """
@@ -89,8 +253,21 @@ def load_experiments(root_dir):
             if seed not in data_store:
                 data_store[seed] = {}
             
+            rewards_path = os.path.join(seed_dir, "rewards.npy")
+            if os.path.exists(rewards_path):
+                try:
+                    raw_rewards = np.load(rewards_path, allow_pickle=True)
+                    reward_dict = raw_rewards.item() if raw_rewards.ndim == 0 else raw_rewards
+                    data_dict["_rewards"] = reward_dict
+                    print(f"[LOADED] Rewards keys: {list(reward_dict.keys())}")
+                except Exception as e:
+                    print(f"[WARN] Failed to load rewards.npy for {exp_name}/{seed}: {e}")
+
+            data_dict["_statistics"] = load_statistics(seed_dir)
+
             data_store[seed][exp_name] = data_dict
-            print(f"[LOADED] Seed: {seed} | Exp: {exp_name}")
+            # print(data_dict.keys())
+            # print(f"[LOADED] Seed: {seed} | Exp: {exp_name}")
             
         except Exception as e:
             print(f"[ERROR] Processing {file_path}: {e}")
@@ -102,11 +279,9 @@ def get_env_data(raw_data, env_id):
 
     Every per step channel is a stacked array of shape (Time, Env, ...), so this is a
     slice on the environment axis and nothing more. CHANGED, the previous form also
-    accepted the list of tensors that DataLogger.plot used to write and the singleton
+    accepted the list of arrays that DataLogger.plot used to write and the singleton
     wrap it put in front of most channels. Neither is written any longer, and a dump
     that still carries them predates the pipeline and must be replayed to be read here.
-    The torch dependency went with that branch, the dump having held numpy arrays since
-    long before this change.
 
     Returns: (Time, ...) for the chosen environment, or an empty array where the channel
     is absent, empty, or has too few environments.
@@ -133,17 +308,28 @@ def apply_smoothing(data, weight):
         print(f"[WARN] Smoothing failed: {e}")
         return data
 
-def create_joint_plot(experiments_dict, metric_key, env_id, zoom_range=None, smoothing=0.0, hidden_experiments=None):
-    """
-    Creates a 4x2 grid for a SINGLE joint metric, comparing all experiments.
+def create_joint_plot(experiments_dict, metric_key, env_id, zoom_range=None, smoothing=0.0,
+                      hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
+    """Creates a grid for a SINGLE joint metric, comparing all experiments.
+
+    The grid is two columns wide for a biped and four for a quadruped, twelve panels
+    stacked two abreast being six rows of scrolling where three rows of four is one screen.
     """
     hidden_experiments = hidden_experiments or []
-    
-    clean_titles = [name.replace("_", " ").title() for name in JOINT_NAMES]
+
+    joint_names = resolve_joint_names(experiments_dict, profile)
+    if not joint_names:
+        joint_names = [f"joint {i}" for i in range(channel_width(experiments_dict, metric_key))]
+    num_joints = len(joint_names)
+    if num_joints == 0:
+        return go.Figure().update_layout(title=f"No {metric_key} in any dump for this seed")
+    num_cols = 4 if num_legs >= 4 else 2
+    grid_rows = (num_joints + num_cols - 1) // num_cols
+    clean_titles = [pretty_joint_name(name) for name in joint_names]
 
     fig = make_subplots(
-        rows=4, cols=2,
-        subplot_titles=clean_titles, 
+        rows=grid_rows, cols=num_cols,
+        subplot_titles=clean_titles,
         shared_xaxes="all",
         vertical_spacing=0.08,
         horizontal_spacing=0.08,
@@ -164,17 +350,17 @@ def create_joint_plot(experiments_dict, metric_key, env_id, zoom_range=None, smo
         if metric_data.size == 0:
             continue
             
-        if metric_data.ndim < 2 or metric_data.shape[1] != 8:
+        if metric_data.ndim < 2 or metric_data.shape[1] != num_joints:
             print(f"[WARN] Skipping {metric_key} for {exp_name}, shape mismatch: {metric_data.shape}")
             continue
-        
+
         metric_data = apply_smoothing(metric_data, smoothing)
         color = colors[exp_idx % len(colors)]
         is_visible = 'legendonly' if exp_name in hidden_experiments else True
-        
-        for j in range(8):
-            row = (j // 2) + 1
-            col = (j % 2) + 1
+
+        for j in range(num_joints):
+            row = (j // num_cols) + 1
+            col = (j % num_cols) + 1
             show_leg = (j == 0)
             
             fig.add_trace(
@@ -192,7 +378,7 @@ def create_joint_plot(experiments_dict, metric_key, env_id, zoom_range=None, smo
             )
 
     pretty_name = JOINT_METRICS.get(metric_key, metric_key.replace("_", " ").title())
-    fig.update_layout(height=2000, title_text=f"{pretty_name} (Env {env_id})")
+    fig.update_layout(height=500 * grid_rows, title_text=f"{pretty_name} (Env {env_id})")
     
     # Axis Annotations
     unit_label = METRIC_UNITS.get(metric_key, "Value")
@@ -318,16 +504,191 @@ def create_base_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0, h
         
     return fig
 
-def create_torque_velocity_plot(experiments_dict, env_id, smoothing=0.0, hidden_experiments=None):
+def create_base_position_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0, hidden_experiments=None):
     """
-    Creates a 4x2 grid Scatter plot: Joint Torque (Y) vs Joint Velocity (X).
+    Plots the base centre of mass position in the simulation world frame, three rows
+    (X, Y, Z) and one column, all experiments overlaid on each row. X and Y carry the
+    environment origin offset, so they read as an absolute terrain position and are
+    comparable across experiments only where the terrain layout is shared, whereas Z is
+    the base height above the world plane and reads directly against the nominal stance.
     """
     hidden_experiments = hidden_experiments or []
-    
-    clean_titles = [name.replace("_", " ").title() for name in JOINT_NAMES]
+
+    pos_key = "base_com_position"
+    axis_titles = ["Base CoM X", "Base CoM Y", "Base CoM Z"]
 
     fig = make_subplots(
-        rows=4, cols=2,
+        rows=3, cols=1,
+        subplot_titles=axis_titles,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+    )
+
+    colors = pcolors.qualitative.Plotly + pcolors.qualitative.D3
+    exp_names = sorted(experiments_dict.keys())
+
+    for exp_idx, exp_name in enumerate(exp_names):
+        data = experiments_dict[exp_name]
+        if pos_key not in data:
+            continue
+
+        pos_data = get_env_data(data[pos_key], env_id)
+        if pos_data.size == 0 or pos_data.ndim < 2 or pos_data.shape[1] < 3:
+            continue
+
+        pos_data = apply_smoothing(pos_data, smoothing)
+        color = colors[exp_idx % len(colors)]
+        is_visible = 'legendonly' if exp_name in hidden_experiments else True
+
+        for axis_idx in range(3):
+            fig.add_trace(
+                go.Scattergl(
+                    y=pos_data[:, axis_idx],
+                    mode='lines',
+                    name=exp_name,
+                    legendgroup=exp_name,
+                    showlegend=(axis_idx == 0),
+                    line=dict(color=color, width=1.5),
+                    opacity=0.8,
+                    visible=is_visible,
+                ),
+                row=axis_idx + 1, col=1,
+            )
+
+    fig.update_layout(height=900, title_text=f"Base CoM Position (Env {env_id})")
+    fig.update_yaxes(title_text="Position (m)")
+    fig.update_xaxes(title_text="Time (steps)", row=3)
+    if zoom_range:
+        fig.update_xaxes(range=zoom_range)
+    return fig
+
+def create_feet_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0,
+                     hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
+    """
+    Creates a 6xF grid gathering every per-foot channel into one window: contact force
+    magnitude and vertical component, horizontal and vertical foot speed, sole clearance
+    and body frame height. One column per foot, one row per quantity, so a single glance
+    reads the joint state of a foot. Reading them together is the point: a foot reporting
+    contact force while its sole clearance sits well above the ground is forged contact
+    (self collision), and a frame height that rises while the sole clearance does not is
+    tilt rather than a lift.
+    """
+    hidden_experiments = hidden_experiments or []
+
+    # Channel definition: (row title, y axis label, extractor over the per-env array).
+    # Each extractor takes the (Time, Body, ...) array and returns a (Time,) series.
+    channels = [
+        ("feet_contact_forces", "Contact Force |F|", "Force (N)", lambda a, f: np.linalg.norm(a[:, f, :], axis=-1)),
+        ("feet_contact_forces", "Contact Force Fz", "Force (N)", lambda a, f: a[:, f, 2]),
+        ("feet_velocities", "Horizontal Speed |v_xy|", "Velocity (m/s)", lambda a, f: np.linalg.norm(a[:, f, :2], axis=-1)),
+        ("feet_velocities", "Vertical Velocity v_z", "Velocity (m/s)", lambda a, f: a[:, f, 2]),
+        ("feet_sole_clearances", "Sole Clearance", "Height (m)", lambda a, f: a[:, f]),
+        ("feet_frame_heights", "Body Frame Height", "Height (m)", lambda a, f: a[:, f]),
+    ]
+
+    feet_names = resolve_feet_names(experiments_dict, profile)
+    if not feet_names:
+        width = channel_width(experiments_dict, "feet_frame_heights") or num_legs
+        feet_names = [f"foot {i}" for i in range(width)]
+    num_feet = len(feet_names)
+    num_rows = len(channels)
+
+    titles = []
+    for _, row_title, _, _ in channels:
+        for foot_name in feet_names:
+            titles.append(f"{row_title} — {foot_name}")
+
+    fig = make_subplots(
+        rows=num_rows, cols=num_feet,
+        subplot_titles=titles,
+        shared_xaxes="all",
+        vertical_spacing=0.05,
+        horizontal_spacing=0.08,
+    )
+
+    colors = pcolors.qualitative.Plotly + pcolors.qualitative.D3
+    exp_names = sorted(experiments_dict.keys())
+
+    for exp_idx, exp_name in enumerate(exp_names):
+        data = experiments_dict[exp_name]
+        color = colors[exp_idx % len(colors)]
+        is_visible = 'legendonly' if exp_name in hidden_experiments else True
+        first_trace = True
+
+        for row_idx, (metric_key, _, _, extract) in enumerate(channels):
+            if metric_key not in data:
+                continue
+
+            metric_data = get_env_data(data[metric_key], env_id)
+            if metric_data.size == 0 or metric_data.ndim < 2:
+                continue
+
+            for foot_idx in range(min(num_feet, metric_data.shape[1])):
+                try:
+                    series = extract(metric_data, foot_idx)
+                except IndexError:
+                    print(f"[WARN] Skipping {metric_key} for {exp_name}, shape {metric_data.shape}")
+                    break
+
+                series = np.asarray(apply_smoothing(series, smoothing)).reshape(-1)
+
+                fig.add_trace(
+                    go.Scattergl(
+                        y=series,
+                        mode='lines',
+                        name=exp_name,
+                        legendgroup=exp_name,
+                        showlegend=first_trace,
+                        line=dict(color=color, width=1.5),
+                        opacity=0.8,
+                        visible=is_visible,
+                    ),
+                    row=row_idx + 1, col=foot_idx + 1
+                )
+                first_trace = False
+
+    # A robot with no gait command carries no clearance channel, play.py gating that
+    # append on the sole table at play.py:431, so the line is suppressed rather than
+    # drawn across an empty panel.
+    for foot_idx in range(num_feet):
+        fig.add_hline(
+            y=profile.contact_force_threshold, line=dict(color='grey', dash='dot', width=1),
+            row=1, col=foot_idx + 1
+        )
+        if profile.sole_clearance_target is not None:
+            fig.add_hline(
+                y=profile.sole_clearance_target, line=dict(color='grey', dash='dot', width=1),
+                row=5, col=foot_idx + 1
+            )
+
+    fig.update_layout(height=350 * num_rows, title_text=f"Feet Forces, Velocities & Heights (Env {env_id})")
+
+    for row_idx, (_, _, unit_label, _) in enumerate(channels):
+        fig.update_yaxes(title_text=unit_label, row=row_idx + 1)
+    fig.update_xaxes(title_text="Time (steps)", row=num_rows)
+
+    if zoom_range:
+        fig.update_xaxes(range=zoom_range)
+
+    return fig
+
+def create_torque_velocity_plot(experiments_dict, env_id, smoothing=0.0,
+                                hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
+    """Creates a grid Scatter plot, Joint Torque (Y) against Joint Velocity (X)."""
+    hidden_experiments = hidden_experiments or []
+
+    joint_names = resolve_joint_names(experiments_dict, profile)
+    if not joint_names:
+        joint_names = [f"joint {i}" for i in range(channel_width(experiments_dict, "joint_torques"))]
+    num_joints = len(joint_names)
+    if num_joints == 0:
+        return go.Figure().update_layout(title="No joint torque or velocity in any dump for this seed")
+    num_cols = 4 if num_legs >= 4 else 2
+    grid_rows = (num_joints + num_cols - 1) // num_cols
+    clean_titles = [pretty_joint_name(name) for name in joint_names]
+
+    fig = make_subplots(
+        rows=grid_rows, cols=num_cols,
         subplot_titles=clean_titles,
         vertical_spacing=0.08,
         horizontal_spacing=0.08,
@@ -350,19 +711,23 @@ def create_torque_velocity_plot(experiments_dict, env_id, smoothing=0.0, hidden_
         
         if torques.size == 0 or velocities.size == 0:
             continue
-            
+
+        if torques.ndim < 2 or torques.shape[1] != num_joints or velocities.shape[1] != num_joints:
+            print(f"[WARN] Skipping torque-velocity for {exp_name}, shape mismatch: {torques.shape} vs {velocities.shape}")
+            continue
+
         # Apply Smoothing (to both axes to see filtered trend)
         torques = apply_smoothing(torques, smoothing)
         velocities = apply_smoothing(velocities, smoothing)
 
         color = colors[exp_idx % len(colors)]
         is_visible = 'legendonly' if exp_name in hidden_experiments else True
-        
-        for j in range(8):
-            row = (j // 2) + 1
-            col = (j % 2) + 1
+
+        for j in range(num_joints):
+            row = (j // num_cols) + 1
+            col = (j % num_cols) + 1
             show_leg = (j == 0)
-            
+
             fig.add_trace(
                 go.Scattergl(
                     x=velocities[:, j],
@@ -378,7 +743,7 @@ def create_torque_velocity_plot(experiments_dict, env_id, smoothing=0.0, hidden_
             )
 
     fig.update_layout(
-        height=2400, 
+        height=600 * grid_rows,
         title_text=f"Joint Torque vs Velocity (Env {env_id})",
         showlegend=True
     )
@@ -388,12 +753,270 @@ def create_torque_velocity_plot(experiments_dict, env_id, smoothing=0.0, hidden_
     
     return fig
 
+def create_rewards_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0, hidden_experiments=None):
+    """
+    Plots all reward terms stored in rewards.npy.
+    One subplot per reward key, two columns, all experiments overlaid on each subplot.
+    Subplot titles are derived from the reward term keys.
+    """
+    hidden_experiments = hidden_experiments or []
+
+    # Collect the ordered union of reward keys across all experiments.
+    all_reward_keys = []
+    for data in experiments_dict.values():
+        for k in data.get("_rewards", {}):
+            if k not in all_reward_keys:
+                all_reward_keys.append(k)
+
+    if not all_reward_keys:
+        return go.Figure().update_layout(title="No reward data found (rewards.npy missing or empty)")
+
+    num_cols = 2
+    num_rows = (len(all_reward_keys) + num_cols - 1) // num_cols
+    subplot_titles = [k.replace("_", " ").title() for k in all_reward_keys]
+
+    # Scale vertical_spacing down with row count so gaps do not consume all the
+    # normalised height. With N rows there are N-1 gaps; keeping total gap fraction
+    # below 0.4 leaves at least 60% of the figure for the actual plot areas.
+    vertical_spacing = min(0.05, 0.4 / max(num_rows - 1, 1))
+
+    fig = make_subplots(
+        rows=num_rows, cols=num_cols,
+        subplot_titles=subplot_titles,
+        shared_xaxes="all",
+        vertical_spacing=vertical_spacing,
+        horizontal_spacing=0.08,
+    )
+
+    colors = pcolors.qualitative.Plotly + pcolors.qualitative.D3
+    exp_names = sorted(experiments_dict.keys())
+
+    for exp_idx, exp_name in enumerate(exp_names):
+        data = experiments_dict[exp_name]
+        reward_dict = data.get("_rewards", {})
+        color = colors[exp_idx % len(colors)]
+        is_visible = 'legendonly' if exp_name in hidden_experiments else True
+        first_trace = True
+
+        for key_idx, key in enumerate(all_reward_keys):
+            if key not in reward_dict:
+                continue
+            series = get_env_data(reward_dict[key], env_id)
+            if series.size == 0:
+                continue
+            series = np.asarray(apply_smoothing(series, smoothing)).reshape(-1)
+
+            row = (key_idx // num_cols) + 1
+            col = (key_idx % num_cols) + 1
+
+            fig.add_trace(
+                go.Scattergl(
+                    y=series,
+                    mode='lines',
+                    name=exp_name,
+                    legendgroup=exp_name,
+                    showlegend=first_trace,
+                    line=dict(color=color, width=1.5),
+                    opacity=0.8,
+                    visible=is_visible,
+                ),
+                row=row, col=col,
+            )
+            first_trace = False
+
+    fig.update_layout(height=400 * num_rows, title_text=f"Reward Terms (Env {env_id})")
+    fig.update_yaxes(title_text="Reward")
+    fig.update_xaxes(title_text="Time (steps)")
+    if zoom_range:
+        fig.update_xaxes(range=zoom_range)
+    return fig
+
+
+def create_feet_plot_2(experiments_dict, env_id, zoom_range=None, smoothing=0.0,
+                       hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
+    """
+    Plots the signed per-axis distance between the two ankles (Link6R minus Link6L)
+    over time. Three rows (X, Y, Z), one column. The X axis reflects fore-aft
+    separation, Y reflects lateral separation, and Z reflects height difference.
+    This mirrors the scalar quantity penalised by feet_distance in mdp/rewards.py,
+    but retains the sign and splits the three axes so asymmetries are visible.
+    """
+    hidden_experiments = hidden_experiments or []
+
+    if num_legs != 2:
+        # play.py:437 forms this as the difference of feet indices 0 and 1 alone, so on a
+        # quadruped it is one arbitrary pair of six and not a gait quantity.
+        return go.Figure().update_layout(
+            title="Feet distance is defined for two feet only. play.py logs the separation "
+                  "of feet 0 and 1, which on a quadruped is one arbitrary pair."
+        )
+
+    axis_labels = ["X (fore-aft, m)", "Y (lateral, m)", "Z (height diff, m)", "Total Distance XY", "Total Distance"]
+
+    fig = make_subplots(
+        rows=5, cols=1,
+        subplot_titles=axis_labels,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+    )
+
+    colors = pcolors.qualitative.Plotly + pcolors.qualitative.D3
+    exp_names = sorted(experiments_dict.keys())
+
+    for exp_idx, exp_name in enumerate(exp_names):
+        data = experiments_dict[exp_name]
+        if "feet_distance" not in data:
+            continue
+
+        dist_data = get_env_data(data["feet_distance"], env_id)
+        if dist_data.size == 0 or dist_data.ndim < 2 or dist_data.shape[1] < 3:
+            continue
+
+        dist_data = apply_smoothing(dist_data, smoothing)
+        color = colors[exp_idx % len(colors)]
+        is_visible = 'legendonly' if exp_name in hidden_experiments else True
+
+        for axis_idx in range(3):
+            fig.add_trace(
+                go.Scattergl(
+                    y=dist_data[:, axis_idx],
+                    mode='lines',
+                    name=exp_name,
+                    legendgroup=exp_name,
+                    showlegend=(axis_idx == 0),
+                    line=dict(color=color, width=1.5),
+                    opacity=0.8,
+                    visible=is_visible,
+                ),
+                row=axis_idx + 1, col=1,
+            )
+        fig.add_trace(
+            go.Scattergl(
+                y=np.sqrt(np.sum(np.square(dist_data[:, :2]), axis = -1)),
+                mode='lines',
+                name=exp_name,
+                legendgroup=exp_name,
+                showlegend=(axis_idx == 0),
+                line=dict(color=color, width=1.5),
+                opacity=0.8,
+                visible=is_visible,
+            ),
+            row=4, col=1,
+        )
+        fig.add_trace(
+            go.Scattergl(
+                y=np.sqrt(np.sum(np.square(dist_data), axis = -1)),
+                mode='lines',
+                name=exp_name,
+                legendgroup=exp_name,
+                showlegend=(axis_idx == 0),
+                line=dict(color=color, width=1.5),
+                opacity=0.8,
+                visible=is_visible,
+            ),
+            row=5, col=1,
+        )
+
+    fig.update_layout(height=900, title_text=f"Ankle-to-Ankle Distance by Axis (Env {env_id})")
+    fig.update_yaxes(title_text="Distance (m)")
+    fig.update_xaxes(title_text="Time (steps)", row=3)
+    if zoom_range:
+        fig.update_xaxes(range=zoom_range)
+    return fig
+
+
 # --- Main Application ---
+
+def create_statistics_table(experiments_dict, group_filter=None, search=""):
+    """Two index comparison table, quantity by statistic, one column per experiment.
+
+    The row order is the order in which the module emitted the records for the first
+    experiment that carries them, which groups related statistics together and puts the
+    families in the order of the module's own assembly rather than alphabetically,
+    because a reader scanning for a defect scans by family.
+    """
+    exp_names = sorted(experiments_dict.keys())
+    rows, order = {}, []
+    for exp_name in exp_names:
+        record_set = experiments_dict[exp_name].get("_statistics")
+        if not record_set:
+            continue
+        for entry in record_set.get("records", []):
+            if group_filter and entry.get("group") != group_filter:
+                continue
+            key = (entry["group"], entry["quantity"], entry["statistic"])
+            if key not in rows:
+                rows[key] = {
+                    "Group": entry["group"],
+                    "Quantity": entry["quantity"],
+                    "Statistic": entry["statistic"],
+                    "Unit": entry.get("unit", ""),
+                }
+                order.append(key)
+            value = entry["value"]
+            rows[key][exp_name] = (
+                "" if value is None or (isinstance(value, float) and np.isnan(value))
+                else f"{value:.4g}"
+            )
+    if not order:
+        return html.Div("No statistics.npy under any experiment for this seed. The "
+                        "record set is written by play.py, so replay these runs.")
+    records = [rows[key] for key in order]
+    if search:
+        needle = search.lower()
+        records = [
+            r for r in records
+            if needle in r["Quantity"].lower() or needle in r["Statistic"].lower()
+        ]
+    columns = [
+        {"name": "Quantity", "id": "Quantity"},
+        {"name": "Statistic", "id": "Statistic"},
+        {"name": "Unit", "id": "Unit"},
+    ] + [{"name": e, "id": e} for e in exp_names]
+    return dash_table.DataTable(
+        data=records,
+        columns=columns,
+        # The two index columns are frozen so that they remain visible while the
+        # experiment columns scroll, which is the whole ergonomic point of the window
+        # once more than three experiments are under comparison.
+        fixed_columns={"headers": True, "data": 2},
+        fixed_rows={"headers": True},
+        style_table={"overflowX": "auto", "overflowY": "auto",
+                     "maxHeight": "78vh", "minWidth": "100%"},
+        style_cell={"fontFamily": "monospace", "fontSize": "12px",
+                    "textAlign": "center", "padding": "4px",
+                    "minWidth": "150px", "maxWidth": "500px"},
+        style_cell_conditional=[
+            {"if": {"column_id": c}, "textAlign": "left"}
+            for c in ("Quantity", "Statistic", "Unit")
+        ],
+        style_data_conditional=[
+            # Alternate the shading by quantity rather than by row, so that the block of
+            # statistics belonging to one quantity reads as one object.
+            {"if": {"row_index": "odd"}, "backgroundColor": "#f6f8fa"},
+        ],
+        style_header={"backgroundColor": "#e8f4f8", "fontWeight": "bold"},
+        sort_action="native",
+        filter_action="native",
+        page_size=200,
+    )
+
 
 def main():
     parser = argparse.ArgumentParser(description="RSL-RL Experiment Dashboard")
     parser.add_argument("log_dir", type=str, help="Path to the directory containing all experiments")
+    parser.add_argument(
+        "--robot", type=str, default="brs", choices=sorted(ROBOT_PROFILES),
+        help="Robot the dumps under log_dir belong to. Selects the leg count, the grid "
+             "width, the reference levels and the fallback name lists. Defaults to brs, "
+             "which reproduces the behaviour this script had before the flag existed.",
+    )
     args = parser.parse_args()
+
+    profile = ROBOT_PROFILES[args.robot]
+    print(f"[INFO] Robot profile {profile.key}, {profile.num_legs} legs, "
+          f"clearance reference "
+          f"{'none' if profile.sole_clearance_target is None else profile.sole_clearance_target}")
 
     data_store = load_experiments(args.log_dir)
     
@@ -407,16 +1030,21 @@ def main():
 
     # Build Metric Tabs including new Torque vs Velocity
     metric_tabs_list = [dcc.Tab(label="Base & Commanded", value='base')]
+    metric_tabs_list.append(dcc.Tab(label="Base Position", value='base_position'))
     for k, v in JOINT_METRICS.items():
         metric_tabs_list.append(dcc.Tab(label=v, value=k))
+    metric_tabs_list.append(dcc.Tab(label="Feet", value='feet'))
     metric_tabs_list.append(dcc.Tab(label="Torque vs Velocity", value='torque_velocity'))
+    metric_tabs_list.append(dcc.Tab(label="Rewards", value='rewards'))
+    metric_tabs_list.append(dcc.Tab(label="Feet Distance", value='feet_distance'))
+    metric_tabs_list.append(dcc.Tab(label="Statistics", value='statistics'))
 
     # Layout
     app.layout = html.Div([
         dcc.Store(id='zoom-store', storage_type='memory'),
         dcc.Store(id='legend-store', storage_type='memory', data=[]),
 
-        html.H1("RSL-RL Experiment Dashboard", style={'textAlign': 'center'}),
+        html.H1(f"RSL-RL Experiment Dashboard — {profile.title}", style={'textAlign': 'center'}),
         
         html.Div([
             # Row 1: Tabs
@@ -462,7 +1090,20 @@ def main():
 
         html.Div([
             dcc.Loading(id="loading-plot", type="default", children=dcc.Graph(id="main-graph", style={'height': '85vh'}))
-        ])
+        ]),
+
+        html.Div([
+            dcc.Input(id="stat-search", type="text", debounce=True, value="",
+                      placeholder="filter by quantity or statistic",
+                      style={'width': '40%', 'marginBottom': '8px'}),
+            dcc.Dropdown(id="stat-group", value=None, placeholder="all groups",
+                         options=[{"label": g, "value": g} for g in (
+                             "tracking", "temporal", "impact", "swing", "feet", "stance",
+                             "joints", "energetics", "posture", "stability", "symmetry",
+                             "smoothness", "variability", "odometry", "rewards")],
+                         style={'width': '40%', 'marginBottom': '8px'}),
+            html.Div(id="statistics-table"),
+        ], id="statistics-panel", style={'display': 'none', 'padding': '10px'}),
     ])
 
     # Callbacks
@@ -525,13 +1166,44 @@ def main():
 
         if metric_type == 'base':
             return create_base_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments)
+        elif metric_type == 'base_position':
+            return create_base_position_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments)
+        elif metric_type == 'feet':
+            return create_feet_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments,
+                                    num_legs=profile.num_legs, profile=profile)
         elif metric_type == 'torque_velocity':
             # Do not pass Time-based zoom range to Velocity axis
-            return create_torque_velocity_plot(experiments_dict, env_id, smoothing, hidden_experiments)
+            return create_torque_velocity_plot(experiments_dict, env_id, smoothing, hidden_experiments,
+                                               num_legs=profile.num_legs, profile=profile)
+        elif metric_type == 'rewards':
+            return create_rewards_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments)
+        elif metric_type == 'feet_distance':
+            return create_feet_plot_2(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments,
+                                      num_legs=profile.num_legs, profile=profile)
         elif metric_type in JOINT_METRICS:
-            return create_joint_plot(experiments_dict, metric_type, env_id, zoom_range, smoothing, hidden_experiments)
+            return create_joint_plot(experiments_dict, metric_type, env_id, zoom_range, smoothing,
+                                     hidden_experiments, num_legs=profile.num_legs, profile=profile)
         else:
             return go.Figure().update_layout(title="Unknown Metric Selected")
+
+    # The statistics view returns an HTML component rather than a figure, so it is given
+    # its own callback and its own output area rather than being folded into update_graph.
+    # Every branch of that callback constructs a figure, so returning a table from one of
+    # them would change the output type of the whole callback and therefore every branch,
+    # which is a larger blast radius than the feature warrants.
+    @app.callback(
+        [Output("statistics-table", "children"),
+         Output("statistics-panel", "style"),
+         Output("main-graph", "style")],
+        [Input("seed-tabs", "value"), Input("metric-tabs", "value"),
+         Input("stat-search", "value"), Input("stat-group", "value")],
+    )
+    def update_statistics(seed, metric_type, search, group):
+        hidden, shown = {'display': 'none'}, {'display': 'block'}
+        if metric_type != 'statistics' or not seed:
+            return dash.no_update, hidden, {'height': '85vh'}
+        return (create_statistics_table(data_store[seed], group, search or ""),
+                {'display': 'block', 'padding': '10px'}, hidden)
 
     print("[INFO] Starting Dash Server...")
     app.run(debug=True, host='0.0.0.0', port=8051)
