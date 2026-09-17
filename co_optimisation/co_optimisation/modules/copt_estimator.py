@@ -31,7 +31,7 @@ class CoptEstimator(nn.Module):
     The encoder consumes ``temporal_steps`` steps of actor observations
     flattened together with the morphology and terrain privileged
     observations, and emits a latent of width ``enc_hidden_dims[-1]``.  The
-    decoder regresses the robot dynamic state (``predictedPrivilegedObs``)
+    decoder regresses the robot dynamic state (``privilegedDynamicsObs``)
     from that latent.  Unlike ``HIMEstimator`` this module owns no optimiser,
     the model estimation loss returned by :meth:`update` is folded into the
     PPO loss and minimised by the single shared optimiser, so the encoder
@@ -67,7 +67,9 @@ class CoptEstimator(nn.Module):
         self.num_privileged_obs = num_privileged_obs
 
         # Encoder
-        enc_input_dim = self.temporal_steps * self.num_one_step_obs + self.num_privileged_obs
+        enc_input_dim = (
+            self.temporal_steps * self.num_one_step_obs + self.num_privileged_obs
+        )
         print("encoder input dim: ", enc_input_dim)
         print("temporal_steps: ", self.temporal_steps)
         print("num one step observations: ", self.num_one_step_obs)

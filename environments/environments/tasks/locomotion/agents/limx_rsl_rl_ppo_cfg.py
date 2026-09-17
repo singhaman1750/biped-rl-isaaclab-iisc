@@ -8,14 +8,11 @@ from isaaclab_rl.rsl_rl import (
     RslRlSymmetryCfg,
 )
 
-from environments.tasks.locomotion.mdp.symmetry.brs import (
-    compute_symmetric_states as brs_compute_symmetric_states,
-)
+from environments.tasks.locomotion.mdp.symmetry.brs import compute_symmetric_states as brs_compute_symmetric_states
 from environments.tasks.locomotion.mdp.symmetry.kscale import (
     compute_symmetric_states as kscale_compute_symmetric_states,
 )
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
-    DecoderCfg,
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
 )
@@ -132,34 +129,83 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         activation="elu",
         orthogonal_init=False,
     )
-
-
-# -----------------------------------------------------------------
-@configclass
-class SFCoptPPORunnerCfg(SF_TRON1AFlatPPORunnerCfg):
-    experiment_name: str = "sf_copt"
-    max_iterations: int = 45000
-    obs_groups: dict[str, list[str]] = {
-        "policy": ["policy", "morphologyObs"],
-        "critic": ["critic"],
-    }
-
-
-# -----------------------------------------------------------------
-@configclass
-class SFCoptLearnedModelPPORunnerCfg(SFCoptPPORunnerCfg):
-    experiment_name: str = "sf_copt_learned"
+    # States explicitly what resolve_obs_groups already infers for every task
+    # registered against this configuration, removing two deprecation warnings
+    # and giving the co-optimisation subclasses a concrete parent mapping.
     obs_groups: dict[str, list[str]] = {
         "policy": ["policy"],
         "critic": ["critic"],
     }
-    decoder = DecoderCfg(
-        output_detach=False,
-        num_output_dim=3,
-        hidden_dims=[128, 256, 512],
+
+
+# -----------------------------------------------------------------
+@configclass
+class SFCoptBaseRunnerCfg(SF_TRON1AFlatPPORunnerCfg):
+    """Settings common to the four co-optimisation experiments."""
+
+    max_iterations: int = 45000
+    encoder = EncoderCfg(
+        output_detach=True,
+        num_output_dim=19,
+        hidden_dims=[1024, 512, 256],
         activation="elu",
         orthogonal_init=False,
     )
+
+
+
+@configclass
+class SFCoptMorphologyRunnerCfg(SFCoptBaseRunnerCfg):
+    """Experiment 1, morphology inferred from proprioceptive history alone."""
+
+    experiment_name: str = "copt_moral"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+        "encoderIn": ["historyObs"],
+        "gtEncoderOut": ["morphologyObs"],
+    }
+
+
+
+@configclass
+class SFCoptMorphologyFromDynamicsRunnerCfg(SFCoptBaseRunnerCfg):
+    """Experiment 2, morphology inferred from history and privileged dynamics."""
+
+    experiment_name: str = "copt_morphology_from_dynamics"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+        "encoderIn": ["historyObs", "privilegedDynamicsObs"],
+        "gtEncoderOut": ["morphologyObs"],
+    }
+
+
+
+@configclass
+class SFCoptDynamicsFromMorphologyRunnerCfg(SFCoptBaseRunnerCfg):
+    """Experiment 3, dynamics inferred from history and the true morphology."""
+
+    experiment_name: str = "copt_dynamics_from_morphology"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+        "encoderIn": ["historyObs", "morphologyObs"],
+        "gtEncoderOut": ["privilegedDynamicsObs"],
+    }
+
+
+@configclass
+class SFCoptMorphologyAndVelocityRunnerCfg(SFCoptBaseRunnerCfg):
+    """Experiment 4, morphology and base linear velocity inferred together."""
+
+    experiment_name: str = "copt_moral_base_vel"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+        "encoderIn": ["historyObs"],
+        "gtEncoderOut": ["morphologyObs", "estimatorGT"],
+    }
 
 
 # -----------------------------------------------------------------

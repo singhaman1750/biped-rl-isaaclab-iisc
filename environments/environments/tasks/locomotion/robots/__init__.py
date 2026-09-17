@@ -41,9 +41,7 @@ limx_sf_him_blind_flat_runner_cfg = SF_TRON1AFlatPPORunnerCfg()
 
 limx_sf_berkeley_mimic_runner_cfg = SF_Berkeley_PPORunnerCfg()
 
-limx_sf_copt_runner_cfg = SFCoptPPORunnerCfg()
-
-limx_sf_copt_learned_runner_cfg = SFCoptLearnedModelPPORunnerCfg()
+limx_sf_copt_moral_runner_cfg = SFCoptMorphologyRunnerCfg()
 
 quadruped_runner_cfg = PFQuadrupedPPORunnerCfg()
 
@@ -385,75 +383,32 @@ gym.register(
 # SF Co-Optimisation Environment
 #############################
 gym.register(
-    id="Isaac-Limx-SF-Copt-Flat-v0",
+    id="Isaac-Limx-SF-Copt-MoRAL-Flat-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_moral_runner_cfg,
     },
 )
 
 gym.register(
-    id="Isaac-Limx-SF-Copt-Rough-v0",
+    id="Isaac-Limx-SF-Copt-MoRAL-Rough-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_moral_runner_cfg,
     },
 )
 
 gym.register(
-    id="Isaac-Limx-SF-Copt-Rough-Play-v0",
+    id="Isaac-Limx-SF-Copt-MoRAL-Rough-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
-    },
-)
-
-#############################
-# SF Co-Optimisation Learned-Model Environment
-#############################
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Flat-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Flat-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Rough-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Rough-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_moral_runner_cfg,
     },
 )
 

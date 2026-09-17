@@ -139,9 +139,36 @@ class ActionsCfg:
     )
 
 
+def _sf_link_lengths_obs_term() -> ObsTerm:
+    """A fresh link length observation term for the four scalable links.
+
+    Returned by a factory rather than held as a module constant, since the
+    observation manager mutates term configurations in place.
+    """
+    return ObsTerm(
+        func=mdp.robot_link_lengths,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "parent_body_names": [
+                "hip_R_thigh_Link", "hip_L_thigh_Link", "knee_R_Link", "knee_L_Link",
+            ],
+            "child_body_names": [
+                "knee_R_Link", "knee_L_Link", "ankle_R_actuator_Link", "ankle_L_actuator_Link",
+            ],
+        },
+        clip=(0.0, 100.0),
+    )
+
+
 @configclass
 class ObservationsCfg:
-    """Observation specifications for the MDP"""
+    """Observation specifications for the SF MDP, plain and co-optimised alike.
+
+    The groups a plain task needs are enabled by default and carry exactly the
+    terms and post initialisation they carried before the merge. The groups only
+    a co-optimisation task needs default to None, which the observation manager
+    skips at observation_manager.py:496, and are enabled by SFCoptEnvCfg.
+    """
 
     @configclass
     class PolicyCfg(ObsGroup):
@@ -203,65 +230,6 @@ class ObservationsCfg:
             # Required by HIMActorCritic
             self.flatten_history_dim = True
 
-    # @configclass
-    # class HistoryObsCfg(ObsGroup):
-    #     """Observation for policy group"""
-    #
-    #     # robot base measurements
-    #     base_lin_vel = ObsTerm(
-    #         func=mdp.base_lin_vel,
-    #         clip=(-100.0, 100.0),
-    #         noise=GaussianNoise(mean=0.0, std=0.05),
-    #         scale=1.0,
-    #     )
-    #     base_ang_vel = ObsTerm(
-    #         func=mdp.base_ang_vel,
-    #         noise=GaussianNoise(mean=0.0, std=0.05),
-    #         clip=(-100.0, 100.0),
-    #         scale=0.25,
-    #     )
-    #     proj_gravity = ObsTerm(
-    #         func=mdp.projected_gravity,
-    #         noise=GaussianNoise(mean=0.0, std=0.025),
-    #         clip=(-100.0, 100.0),
-    #         scale=1.0,
-    #     )
-    #
-    #     # robot joint measurements
-    #     joint_pos = ObsTerm(
-    #         func=mdp.joint_pos_rel,
-    #         noise=GaussianNoise(mean=0.0, std=0.01),
-    #         clip=(-100.0, 100.0),
-    #         scale=1.0,
-    #     )
-    #     joint_vel = ObsTerm(
-    #         func=mdp.joint_vel_rel,
-    #         noise=GaussianNoise(mean=0.0, std=0.01),
-    #         clip=(-100.0, 100.0),
-    #         scale=0.05,
-    #     )
-    #
-    #     # last action
-    #     last_action = ObsTerm(
-    #         func=mdp.last_action,
-    #         noise=GaussianNoise(mean=0.0, std=0.01),
-    #         clip=(-100.0, 100.0),
-    #         scale=1.0,
-    #     )
-    #     velocity_commands = ObsTerm(
-    #         func=mdp.generated_commands, params={"command_name": "base_velocity"}
-    #     )
-    #
-    #     # gaits
-    #     # gait_phase = ObsTerm(func=mdp.get_gait_phase)
-    #     # gait_command = ObsTerm(func=mdp.get_gait_command, params={"command_name": "gait_command"})
-    #
-    #     def __post_init__(self):
-    #         self.enable_corruption = True
-    #         self.concatenate_terms = True
-    #         self.history_length = 25
-    #         self.flatten_history_dim = False
-
     @configclass
     class CriticCfg(ObsGroup):
         """Observation for critic group"""
@@ -337,6 +305,7 @@ class ObservationsCfg:
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
             clip=(-5.0, 5.0),
         )
+        link_lengths: ObsTerm | None = None
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -351,91 +320,11 @@ class ObservationsCfg:
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
         )
 
-    policy: PolicyCfg = PolicyCfg()
-    critic: CriticCfg = CriticCfg()
-    commands: CommandsObsCfg = CommandsObsCfg()
-    # obsHistory: HistoryObsCfg = HistoryObsCfg()
-
-@configclass
-class CoptObservationsCfg:
-    """Observation specifications for the MDP"""
-
-    @configclass
-    class PolicyCfg(ObsGroup):
-        """Observation for policy group"""
-
-        # robot base measurements
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel,
-            clip=(-100.0, 100.0),
-            noise=GaussianNoise(mean=0.0, std=0.05),
-            scale=1.0,
-        )
-        base_ang_vel = ObsTerm(
-            func=mdp.base_ang_vel,
-            noise=GaussianNoise(mean=0.0, std=0.05),
-            clip=(-100.0, 100.0),
-            scale=0.25,
-        )
-        proj_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-            noise=GaussianNoise(mean=0.0, std=0.025),
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-
-        # robot joint measurements
-        joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel,
-            noise=GaussianNoise(mean=0.0, std=0.01),
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-        joint_vel = ObsTerm(
-            func=mdp.joint_vel_rel,
-            noise=GaussianNoise(mean=0.0, std=0.01),
-            clip=(-100.0, 100.0),
-            scale=0.25,
-        )
-
-        # last action
-        last_action = ObsTerm(
-            func=mdp.last_action,
-            noise=GaussianNoise(mean=0.0, std=0.01),
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-        velocity_commands = ObsTerm(
-            func=mdp.generated_commands, params={"command_name": "base_velocity"}
-        )
-
-        def __post_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = True
-
     @configclass
     class MorphologyCfg(ObsGroup):
-        """P_1, morphology and terrain privileged information"""
+        """The design parameters, an estimator target or an estimator input."""
 
-        link_lengths = ObsTerm(
-            func=mdp.robot_link_lengths,
-            params={
-                "asset_cfg": SceneEntityCfg("robot"),
-                "parent_body_names": [
-                    "hip_R_thigh_Link",
-                    "hip_L_thigh_Link",
-                    "knee_R_Link",
-                    "knee_L_Link",
-                ],
-                "child_body_names": [
-                    "knee_R_Link",
-                    "knee_L_Link",
-                    "ankle_R_actuator_Link",
-                    "ankle_L_actuator_Link",
-                ],
-            },
-            clip=(0.0, 100.0),
-        )
+        link_lengths = _sf_link_lengths_obs_term()
         robot_mass = ObsTerm(func=mdp.robot_mass, clip=(0.0, 100.0))
         robot_inertia = ObsTerm(func=mdp.robot_inertia)
 
@@ -444,38 +333,8 @@ class CoptObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
-    class PredictedMorphologyCfg(ObsGroup):
-        """P_1, morphology and terrain privileged information"""
-
-        link_lengths = ObsTerm(
-            func=mdp.robot_link_lengths,
-            params={
-                "asset_cfg": SceneEntityCfg("robot"),
-                "parent_body_names": [
-                    "hip_R_thigh_Link",
-                    "hip_L_thigh_Link",
-                    "knee_R_Link",
-                    "knee_L_Link",
-                ],
-                "child_body_names": [
-                    "knee_R_Link",
-                    "knee_L_Link",
-                    "ankle_R_actuator_Link",
-                    "ankle_L_actuator_Link",
-                ],
-            },
-            clip=(0.0, 100.0),
-        )
-        robot_mass = ObsTerm(func=mdp.robot_mass, clip=(0.0, 100.0))
-        robot_inertia = ObsTerm(func=mdp.robot_inertia)
-
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
-
-    @configclass
-    class PredictedPrivilegedCfg(ObsGroup):
-        """P_2, ground-truth dynamic state, the decoder regression target"""
+    class PrivilegedDynamicsCfg(ObsGroup):
+        """The dynamic state, formerly predictedPrivilegedObs."""
 
         robot_joint_torque = ObsTerm(func=mdp.robot_joint_torque)
         robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
@@ -493,112 +352,10 @@ class CoptObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-
-    @configclass
-    class CriticCfg(ObsGroup):
-        """Observation for critic group"""
-
-        # robot base measurements
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel,
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-        base_ang_vel = ObsTerm(
-            func=mdp.base_ang_vel,
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-        proj_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-
-        # robot joint measurements
-        joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel,
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-        joint_vel = ObsTerm(
-            func=mdp.joint_vel_rel,
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-
-        # last action
-        last_action = ObsTerm(
-            func=mdp.last_action,
-            clip=(-100.0, 100.0),
-            scale=1.0,
-        )
-        velocity_commands = ObsTerm(
-            func=mdp.generated_commands, params={"command_name": "base_velocity"}
-        )
-
-        # velocity command
-        # vel_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
-
-        # gait_phase = ObsTerm(func=mdp.get_gait_phase)
-        # gait_command = ObsTerm(func=mdp.get_gait_command, params={"command_name": "gait_command"})
-
-        # Privileged observation
-        robot_joint_torque = ObsTerm(func=mdp.robot_joint_torque)
-        robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
-        feet_lin_vel = ObsTerm(
-            func=mdp.feet_lin_vel,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*")},
-        )
-        robot_mass = ObsTerm(func=mdp.robot_mass)
-        robot_inertia = ObsTerm(func=mdp.robot_inertia)
-        robot_joint_pos = ObsTerm(func=mdp.robot_joint_pos)
-        robot_joint_stiffness = ObsTerm(func=mdp.robot_joint_stiffness)
-        robot_joint_damping = ObsTerm(func=mdp.robot_joint_damping)
-        robot_pos = ObsTerm(func=mdp.robot_pos)
-        robot_vel = ObsTerm(func=mdp.robot_vel)
-        robot_material_properties = ObsTerm(func=mdp.robot_material_properties)
-        feet_contact_force = ObsTerm(
-            func=mdp.robot_contact_force,
-            params={
-                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
-            },
-        )
-        heights = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            clip=(-5.0, 5.0),
-        )
-        link_lengths = ObsTerm(
-            func=mdp.robot_link_lengths,
-            params={
-                "asset_cfg": SceneEntityCfg("robot"),
-                "parent_body_names": [
-                    "hip_R_thigh_Link",
-                    "hip_L_thigh_Link",
-                    "knee_R_Link",
-                    "knee_L_Link",
-                ],
-                "child_body_names": [
-                    "knee_R_Link",
-                    "knee_L_Link",
-                    "ankle_R_actuator_Link",
-                    "ankle_L_actuator_Link",
-                ],
-            },
-            clip=(0.0, 100.0),
-        )
-
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
-            self.history_length = 10
-            # Required by HIMActorCritic
-            self.flatten_history_dim = True
 
     @configclass
     class HistoryObsCfg(ObsGroup):
-        """H, the n-step rolling history of the actor state"""
+        """The rolling actor state history, flattened by the manager."""
 
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel,
@@ -649,21 +406,30 @@ class CoptObservationsCfg:
             self.enable_corruption = True
             self.concatenate_terms = True
             self.history_length = 25
-            self.flatten_history_dim = False
+            self.flatten_history_dim = True
 
     @configclass
-    class CommandsObsCfg(ObsGroup):
-        velocity_commands = ObsTerm(
-            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+    class EstimatorGTCfg(ObsGroup):
+        """The base linear velocity, an estimator target in experiment four."""
+
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel,
+            clip=(-100.0, 100.0),
+            noise=GaussianNoise(mean=0.0, std=0.00),
+            scale=1.0,
         )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
-    morphologyObs: MorphologyCfg = MorphologyCfg()
-    predictedMorphologyObs: PredictedMorphologyCfg = PredictedMorphologyCfg()
-    predictedPrivilegedObs: PredictedPrivilegedCfg = PredictedPrivilegedCfg()
-    obsHistory: HistoryObsCfg = HistoryObsCfg()
+    morphologyObs: MorphologyCfg | None = None
+    privilegedDynamicsObs: PrivilegedDynamicsCfg | None = None
+    historyObs: HistoryObsCfg | None = None
+    estimatorGT: EstimatorGTCfg | None = None
 
 
 @configclass
@@ -1468,7 +1234,7 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
     # Scene settings
     scene: SFSceneCfg = SFSceneCfg(num_envs=4096, env_spacing=env_spacing)
     # Basic settings
-    observations: CoptObservationsCfg = CoptObservationsCfg()
+    observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
@@ -1498,6 +1264,17 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
+
+        # Co-optimisation observation groups, disabled in ObservationsCfg so that
+        # SFEnvCfg is unaffected.
+        self.observations.morphologyObs = ObservationsCfg.MorphologyCfg()
+        self.observations.privilegedDynamicsObs = ObservationsCfg.PrivilegedDynamicsCfg()
+        self.observations.historyObs = ObservationsCfg.HistoryObsCfg()
+        self.observations.estimatorGT = ObservationsCfg.EstimatorGTCfg()
+        self.observations.critic.link_lengths = _sf_link_lengths_obs_term()
+        # The co-optimisation actor state is a single step, not the ten step
+        # history the plain task uses, reproducing the former CoptObservationsCfg.PolicyCfg.
+        self.observations.policy.history_length = 0
 
 
 

@@ -222,15 +222,8 @@ def main():
             max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
             / ea_update_interval,
         )
-        if args_cli.policy_type == "COPT-LEARNED":
-            agent_cfg.policy.class_name = "CoptLearnedModelActorCritic"
-            agent_cfg.algorithm.class_name = "CoptLearnedModelPPO"
-        elif args_cli.policy_type == "COPT-LEARNED-2":
-            agent_cfg.policy.class_name = "CoptLearnedModelV2ActorCritic"
-            agent_cfg.algorithm.class_name = "CoptLearnedModelV2PPO"
-        else:
-            agent_cfg.policy.class_name = "CoptActorCritic"
-            agent_cfg.algorithm.class_name = "CoptPPO"
+        agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
             "ea_update_interval": ea_update_interval,
