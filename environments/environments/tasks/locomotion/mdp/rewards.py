@@ -34,8 +34,10 @@ def foot_landing_vel(
     """Penalize high foot landing velocities
 
     Note:
-        THREE DEFECTS are left standing here for a sole foot robot. Use
-        :func:`foot_landing_vel_v2` on a sole footed robot.
+        FIVE DEFECTS are left standing here. Use :func:`foot_landing_vel_v2` on a sole
+        footed robot on flat ground, and :func:`foot_landing_vel_v3` on any robot, soled or
+        point footed, on terrain that is not flat. This function is retained unchanged for
+        the callers that already read it.
 
         1. The height gate is the FRAME PROXY ``body_pos_w[z] - foot_radius``, which assumes
            the sole sits a constant distance below the frame and is therefore exact only for
@@ -46,6 +48,10 @@ def foot_landing_vel(
         3. The term is a TIME INTEGRAL of the squared velocity over a wide gate, so it is
            minimised by descending slowly through the upper part of the window rather than by
            arriving softly.
+        4. The height gate is an ABSOLUTE world height, correct only on flat terrain.
+        5. On terrain that is not flat, the gate should be referenced to the LOCAL terrain
+           beneath each foot, which :func:`foot_landing_vel_v3` does via
+           :func:`_terrain_height_under_points`.
     """
     asset = env.scene[asset_cfg.name]
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
@@ -162,6 +168,142 @@ def foot_landing_vel_v2(
     return torch.sum(torch.square(landing_vel), dim=1)
 
 
+def foot_landing_vel_v3(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    height_sensor_cfg: SceneEntityCfg,
+    about_landing_threshold: float,
+    force_threshold: float = 1.0,
+    sole_offsets: list[list[float]] | None = None,
+    foot_radius: float = 0.0,
+    num_neighbours: int = 4,
+    max_horizontal_dist: float | None = 0.5,
+    reduction: str = "max",
+) -> torch.Tensor:
+    """Penalise the approach velocity of a foot about to land on the LOCAL terrain.
+
+    This is to :func:`foot_landing_vel_v2` what :func:`foot_clearance_reward_v4` is to
+    :func:`foot_clearance_reward_v2`. Both earlier variants gate on an ABSOLUTE world
+    height, correct only on flat terrain, so on generated terrain a foot descending toward a
+    raised tread is judged against the plane the terrain was built upon rather than the
+    surface it is about to strike, opening the gate too late on rising ground and too early
+    on falling ground. Here the clearance is referenced to the terrain beneath each foot
+    individually via :func:`_terrain_height_under_points`, the same estimator and defaults
+    that :func:`foot_clearance_reward_v4` uses, so the clearance this term gates on and the
+    clearance that term rewards cannot drift apart.
+
+    The term serves a sole footed and a point footed robot from one implementation, and a
+    biped and a quadruped alike, the foot count entering only as the axis the penalty is
+    summed over. Which branch is taken is decided by ``sole_offsets``.
+
+    On a sole foot the contact point is the lowest of the sole points, its clearance is that
+    point's height above the terrain beneath ITSELF rather than beneath the ankle, and the
+    penalised quantity is the vertical component of ``v_link + omega x r`` evaluated there,
+    so a foot rotating its sole into the ground is charged for the rotation. On a point foot
+    the contact point is ``foot_radius`` directly below the frame origin along the WORLD
+    vertical, whatever the foot's orientation, because the lowest point of a sphere does not
+    move in the body frame as the body turns. Its lever arm therefore has no horizontal
+    component, ``omega_x r_y - omega_y r_x`` vanishes identically, and the approach velocity
+    is the frame's vertical velocity exactly.
+
+    This function reads ``body_link_lin_vel_w`` and ``body_link_pos_w`` throughout, as
+    :func:`foot_landing_vel_v2` does, rather than the mismatched centre-of-mass velocity and
+    link frame position that :func:`foot_landing_vel` pairs. A negative clearance, a foot
+    that has penetrated the estimated terrain, is retained and charged rather than clipped.
+
+    The term remains a TIME INTEGRAL of the squared approach velocity over the gate, and is
+    therefore still reducible in principle by descending slowly through the window rather
+    than by arriving softly. The remedy adopted is v2's, sizing ``about_landing_threshold``
+    to the terminal approach rather than the whole descent, so the free fall velocity from
+    the threshold height bounds what an unpowered descent can deliver.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Robot asset configuration resolving the feet bodies.
+        sensor_cfg: Contact sensor configuration resolving the same feet, in the same order.
+            A foot already carrying load is exempt.
+        height_sensor_cfg: Configuration for the ray caster supplying the terrain heights,
+            the same sensor :func:`foot_clearance_reward_v4` and :func:`base_height_rough_l2`
+            read.
+        about_landing_threshold: Clearance (m) above the LOCAL terrain below which a
+            descending, unloaded foot is charged. Agrees with v2's argument of the same name
+            on flat ground and diverges from it elsewhere, so a value tuned on a plane
+            carries across unchanged while a value tuned against v1's frame proxy does not.
+        force_threshold: Contact force magnitude (N) above which a foot counts as landed and
+            is exempt. Defaults to 1.0, matching ``rew_foot_clearance``.
+        sole_offsets: Points on the sole in the foot body frame whose lowest world height is
+            the clearance. Leave as None on a point foot, where ``foot_radius`` supplies the
+            offset instead.
+        foot_radius: Radius (m) of the contact sphere of a point foot, read only when
+            ``sole_offsets`` is None. Defaults to 0.0.
+        num_neighbours: Ray hits reduced over per foot, passed through to the lookup.
+        max_horizontal_dist: Radius (m) beyond which a ray hit is not accepted as a
+            neighbour of a foot. Defaults to 0.5, half the scanner's 1.0 m width.
+        reduction: ``"max"`` or ``"mean"``, passed through to the lookup.
+
+    Returns:
+        The computed penalty tensor, summed over the feet.
+
+    Note:
+        DEFECT LEFT STANDING. A foot for which the ray caster resolves no accepted
+        neighbour is NOT charged, mirroring the choice :func:`foot_clearance_reward_v4`
+        makes in refusing to pay such a foot. Refusing to pay is conservative for a reward;
+        refusing to charge is permissive for a penalty, leaving a nominal exploit in which a
+        policy escapes the term by placing a foot beyond half the scanner width from the
+        base. On the configurations in this workspace the scanner spans 1.6 m by 1.0 m about
+        the base and no reachable foot placement leaves it, so the exploit is not available
+        in practice.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    sensor: RayCaster = env.scene.sensors[height_sensor_cfg.name]
+
+    # link frame throughout, so that the position and the velocity belong to the same point
+    foot_pos = asset.data.body_link_pos_w[:, asset_cfg.body_ids]        # (N, F, 3)
+    lin_vel = asset.data.body_link_lin_vel_w[:, asset_cfg.body_ids]     # (N, F, 3)
+
+    if sole_offsets is None:
+        # a sphere's lowest point sits foot_radius below the origin along the world vertical
+        # whatever the foot's orientation, so the lever arm is purely vertical and the
+        # rotational contribution to the vertical velocity is identically zero
+        query_pts = foot_pos
+        contact_z = foot_pos[..., 2] - foot_radius
+        approach_vel = lin_vel[..., 2]
+    else:
+        pts_w, r_w = _sole_points_world(asset, asset_cfg.body_ids, sole_offsets)
+        contact_z, lowest = pts_w[..., 2].min(dim=2)                    # (N, F), (N, F)
+        idx = lowest.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, 1, 3)   # (N, F, 1, 3)
+        r_low = torch.gather(r_w, 2, idx).squeeze(2)                    # (N, F, 3)
+        # the ground is looked up beneath the lowest sole point, not beneath the ankle
+        query_pts = torch.gather(pts_w, 2, idx).squeeze(2)              # (N, F, 3)
+        ang_vel = asset.data.body_link_ang_vel_w[:, asset_cfg.body_ids]
+        approach_vel = lin_vel[..., 2] + (
+            ang_vel[..., 0] * r_low[..., 1] - ang_vel[..., 1] * r_low[..., 0]
+        )
+
+    terrain_z, valid = _terrain_height_under_points(
+        query_pts, sensor.data.ray_hits_w, num_neighbours, max_horizontal_dist, reduction
+    )
+    # world frame vertical difference, for the reason foot_clearance_reward_v4 records. A
+    # negative value, the contact point below the estimated terrain, is retained rather than
+    # clipped, so a foot that has penetrated is charged rather than hidden.
+    clearance = contact_z - terrain_z                                   # (N, F)
+
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # history max, as in feet_slide, so contact chatter cannot flicker a loaded foot back
+    # into the gate between two control steps
+    in_contact = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0]
+        > force_threshold
+    )
+
+    about_to_land = (
+        (clearance < about_landing_threshold) & (~in_contact) & (approach_vel < 0.0) & valid
+    )
+    landing_vel = torch.where(about_to_land, approach_vel, torch.zeros_like(approach_vel))
+    return torch.sum(torch.square(landing_vel), dim=1)
+
+
 def feet_impact_force(
     env: ManagerBasedRLEnv,
     sensor_cfg: SceneEntityCfg,
@@ -222,6 +364,37 @@ def feet_air_time(
     reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
     return reward
 
+
+def feet_air_time_v2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    threshold_min: float,
+    threshold_max: float
+) -> torch.Tensor:
+    """Reward long steps taken by the feet using L2-kernel, penalising a step that overruns.
+
+    Identical to :func:`feet_air_time` below the cap, since both reward
+    ``last_air_time - threshold_min`` on first contact. Where that function clamps the
+    reward at ``threshold_max - threshold_min`` so an overlong step earns no more but no
+    less than the cap, this one continues past the cap with a NEGATIVE slope, so a step
+    that ran on twice as long as intended is charged rather than merely capped.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
+    last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
+    # negative reward for small steps
+    air_time = (last_air_time - threshold_min) * first_contact
+    # negative penalty for large steps: reward grows up to the cap, then
+    # falls below zero the further air_time exceeds threshold_max
+    cap = threshold_max - threshold_min
+    air_time = torch.where(air_time > cap, cap - air_time, air_time)
+    reward = torch.sum(air_time, dim=1)
+    # no reward for zero command
+    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    return reward
+
+
 def feet_slide(env, sensor_cfg: SceneEntityCfg, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize feet sliding"""
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
@@ -269,6 +442,11 @@ def foot_clearance_reward(
 
     Returns:
         The computed reward tensor, summed over the feet.
+
+    Note:
+        DEFECT LEFT STANDING. The clearance is an ABSOLUTE world height, correct only on
+        flat terrain. Use :func:`foot_clearance_reward_v4` on terrain that is not flat,
+        which references the clearance to the LOCAL terrain beneath each foot.
     """
     asset: Articulation = env.scene[asset_cfg.name]
     foot_z_target_error = torch.square(asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height)
@@ -332,6 +510,10 @@ def foot_clearance_reward_v2(
         The clearance is an absolute world height, which equals the height above the terrain
         only on flat ground. On generated terrain it must be referenced to the terrain height
         beneath the foot, as the TODO in :func:`feet_regulation` also records.
+
+        Addendum. This is now closed by :func:`foot_clearance_reward_v4`, which references
+        the clearance to the LOCAL terrain beneath each foot via
+        :func:`_terrain_height_under_points`. Use it on terrain that is not flat.
     """
     asset: Articulation = env.scene[asset_cfg.name]
     foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids]  # (N, F, 3)
@@ -479,6 +661,192 @@ def foot_clearance_reward_v3(
     return torch.sum(reward, dim=1)
 
 
+def _terrain_height_under_points(
+    points_w: torch.Tensor,
+    ray_hits_w: torch.Tensor,
+    num_neighbours: int = 4,
+    max_horizontal_dist: float | None = None,
+    reduction: str = "max",
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Estimate the terrain height directly beneath a set of world frame points.
+
+    For every query point this selects the ``num_neighbours`` ray hits nearest to it in the
+    horizontal plane and reduces their world heights, which gives a LOCAL terrain reference
+    rather than the single mean over all rays that :func:`base_height_rough_l2` takes. The
+    distinction matters on generated terrain, where the four feet of a quadruped may stand
+    on four different surfaces, a mean beneath the base being an average of all of them and
+    therefore correct for none of them.
+
+    The estimate is valid because the ray caster's directions are NOT rotated under a yaw
+    alignment, only its start positions are, so every ray descends vertically in the world
+    frame and ``ray_hits_w[..., 2]`` is the ground height vertically below that grid point.
+
+    Args:
+        points_w: World frame query points, shape (N, P, 3) or (N, P, 2). Only the first two
+            components are read, the height of the point itself being irrelevant to where
+            the ground beneath it lies.
+        ray_hits_w: World frame ray hit positions from the ray caster, shape (N, R, 3).
+        num_neighbours: How many nearest hits to reduce over. Clamped to the ray count. At
+            the 0.1 m grid resolution this configuration uses, 4 brackets a point between
+            the surrounding grid cells.
+        max_horizontal_dist: Optional radius (m) beyond which a neighbour is rejected. A
+            point with no accepted neighbour is reported invalid rather than silently
+            resolved against a distant grid edge, which is the failure a query point outside
+            the scanner's footprint would otherwise produce. Defaults to None, no limit.
+        reduction: ``"max"``, the default, for the highest accepted neighbour, the
+            conservative choice near a step edge where a foot must clear the tallest nearby
+            ground, resolving a rising tread from the moment a foot's horizontal position
+            clears its edge at the cost of a bias of about half a grid cell diagonal on a
+            slope. ``"mean"`` for an inverse distance weighted mean instead, smooth in the
+            point position and therefore well conditioned for a reward gradient, but wrong
+            by a reversal of the clearance signal, not merely an offset, at a riser.
+
+    Returns:
+        A tuple of the estimated terrain height, shape (N, P), and a boolean validity mask
+        of the same shape. The height at an invalid entry is zero and must not be read.
+    """
+    if reduction not in ("mean", "max"):
+        raise ValueError(f"reduction must be 'mean' or 'max'. Received: '{reduction}'.")
+
+    hits_xy = ray_hits_w[..., :2]  # (N, R, 2)
+    hits_z = ray_hits_w[..., 2]  # (N, R)
+    # A ray that struck no geometry reports a non finite hit. Such a ray is excluded from
+    # SELECTION by an infinite distance, rather than having its height substituted as
+    # base_height_rough_l2 does, since a substituted height adjacent to a foot would corrupt
+    # that foot's local estimate in a way it cannot corrupt a mean over the whole grid.
+    finite = torch.isfinite(ray_hits_w).all(dim=-1)  # (N, R)
+
+    # squared horizontal distance from every query point to every ray hit, (N, P, R)
+    delta = points_w[..., :2].unsqueeze(2) - hits_xy.unsqueeze(1)
+    dist_sq = delta.pow(2).sum(dim=-1)
+    dist_sq = torch.where(finite.unsqueeze(1), dist_sq, torch.inf)
+
+    k = min(int(num_neighbours), hits_xy.shape[1])
+    near_dist_sq, near_idx = torch.topk(dist_sq, k, dim=-1, largest=False)  # (N, P, k)
+    near_z = torch.gather(hits_z.unsqueeze(1).expand(-1, points_w.shape[1], -1), 2, near_idx)
+
+    accepted = torch.isfinite(near_dist_sq)
+    if max_horizontal_dist is not None:
+        accepted = accepted & (near_dist_sq <= max_horizontal_dist**2)
+    valid = accepted.any(dim=-1)  # (N, P)
+
+    if reduction == "max":
+        # -inf so a rejected neighbour can never win the maximum
+        height = torch.where(accepted, near_z, torch.full_like(near_z, -torch.inf)).max(dim=-1)[0]
+    else:
+        # inverse distance weighting, the epsilon bounding the weight of a point sitting
+        # exactly on a grid node rather than letting it diverge
+        weights = torch.where(accepted, 1.0 / (near_dist_sq + 1.0e-6), torch.zeros_like(near_dist_sq))
+        total = weights.sum(dim=-1)
+        height = (weights * near_z).sum(dim=-1) / total.clamp(min=1.0e-12)
+
+    return torch.where(valid, height, torch.zeros_like(height)), valid
+
+
+def foot_clearance_reward_v4(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    height_sensor_cfg: SceneEntityCfg,
+    target_height: float,
+    std: float,
+    tanh_mult: float,
+    sensor_cfg: SceneEntityCfg | None = None,
+    force_threshold: float = 1.0,
+    sole_offsets: list[list[float]] | None = None,
+    num_neighbours: int = 4,
+    max_horizontal_dist: float | None = 0.5,
+    reduction: str = "max",
+) -> torch.Tensor:
+    """Reward the swinging feet for clearing a height above the LOCAL terrain.
+
+    This is the terrain referenced form of :func:`foot_clearance_reward`, and it exists to
+    close the defect that variant and :func:`foot_clearance_reward_v2` both carry, that
+    their clearance is an absolute world height and therefore equals the height above the
+    ground only on flat terrain. Here each foot is referenced to the terrain beneath ITSELF,
+    estimated from the ray caster hits nearest that foot, rather than to the mean terrain
+    height beneath the base that :func:`base_height_rough_l2` uses, because on a generated
+    terrain carrying stairs, slopes and waves the four feet may stand on four different
+    surfaces and a single mean is correct for none of them.
+
+    The clearance is a world frame vertical difference, foot height minus ground height,
+    which is the physically correct quantity because the ray caster descends vertically in
+    the world frame even under a yaw alignment. Projecting it into the body frame would
+    scale it by the cosine of the trunk tilt and couple the reward to pitch and roll, so a
+    robot on a slope would be charged for a clearance it in fact has.
+
+    ``target_height`` here is a clearance ABOVE THE TERRAIN and is a different physical
+    quantity from v1's absolute body frame height and v2's absolute sole height, so a value
+    tuned against either of those must not be carried across without re-tuning.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Configuration for the robot asset, resolving the feet bodies.
+        height_sensor_cfg: Configuration for the ray caster supplying the terrain heights,
+            the same sensor :func:`base_height_rough_l2` reads.
+        target_height: Desired clearance of the foot above the local terrain (m).
+        std: Width of the Gaussian clearance kernel (m).
+        tanh_mult: Scaling applied to the horizontal foot speed inside the tanh gate.
+        sensor_cfg: Optional contact sensor configuration. When given, a foot in contact
+            earns nothing whatever its measured clearance. Defaults to None.
+        force_threshold: Contact force magnitude (N) above which a foot counts as grounded.
+            Only used when ``sensor_cfg`` is given.
+        sole_offsets: Optional sole points in the foot frame, as v2 takes them. When given,
+            the clearance is the lowest sole point above the terrain rather than the body
+            frame origin above the terrain, closing the tilt exploit on a soled foot. Leave
+            as None on a point foot, where the two agree and the machinery is inert.
+        num_neighbours: Ray hits reduced over per foot, passed through to the lookup.
+        max_horizontal_dist: Radius (m) beyond which a ray hit is not accepted as a
+            neighbour of a foot. Defaults to 0.5, half the scanner's 1.0 m width.
+        reduction: ``"mean"`` or ``"max"``, passed through to the lookup.
+
+    Returns:
+        The computed reward tensor, summed over the feet.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    sensor: RayCaster = env.scene.sensors[height_sensor_cfg.name]
+
+    foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids]  # (N, F, 3)
+
+    if sole_offsets is None:
+        query_xy = foot_pos
+        foot_z = foot_pos[..., 2]
+    else:
+        # lowest sole point, as v2 computes it, so the clearance is invariant to foot tilt
+        foot_quat = asset.data.body_quat_w[:, asset_cfg.body_ids]  # (N, F, 4)
+        num_envs, num_feet = foot_quat.shape[0], foot_quat.shape[1]
+        offsets = torch.as_tensor(sole_offsets, dtype=foot_pos.dtype, device=foot_pos.device)
+        num_pts = offsets.shape[0]
+        quat = foot_quat.unsqueeze(2).expand(num_envs, num_feet, num_pts, 4)
+        pts = offsets.view(1, 1, num_pts, 3).expand(num_envs, num_feet, num_pts, 3)
+        pts_w = math_utils.quat_apply(quat.reshape(-1, 4), pts.reshape(-1, 3)).view(num_envs, num_feet, num_pts, 3)
+        pts_w = pts_w + foot_pos.unsqueeze(2)
+        lowest = pts_w[..., 2].argmin(dim=2, keepdim=True)  # (N, F, 1)
+        foot_z = torch.gather(pts_w[..., 2], 2, lowest).squeeze(2)
+        # the ground is looked up beneath the lowest sole point, not beneath the ankle
+        query_xy = torch.gather(pts_w, 2, lowest.unsqueeze(-1).expand(-1, -1, -1, 3)).squeeze(2)
+
+    terrain_z, valid = _terrain_height_under_points(
+        query_xy, sensor.data.ray_hits_w, num_neighbours, max_horizontal_dist, reduction
+    )
+
+    clearance = foot_z - terrain_z  # (N, F), world frame vertical
+    clearance_error = torch.square(clearance - target_height)
+    foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2))
+    reward = torch.exp(-clearance_error / std**2) * foot_velocity_tanh
+    # a foot the scanner cannot resolve earns nothing rather than being scored against a
+    # terrain height that was never measured beneath it
+    reward = reward * valid
+
+    if sensor_cfg is not None:
+        contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+        in_contact = (
+            contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0]
+            > force_threshold
+        )
+        reward = reward * ~in_contact
+    return torch.sum(reward, dim=1)
+
+
 def joint_powers_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize joint powers on the articulation using L1-kernel"""
 
@@ -558,6 +926,13 @@ def feet_distance(env: ManagerBasedRLEnv,
 
     Returns:
         The computed penalty tensor.
+
+    Note:
+        DEFECT LEFT STANDING. This measures the separation of the two foot LINK FRAME
+        ORIGINS, which on a sole footed robot is the ankle and not the foot, and diverges
+        from the true footprint separation the moment a foot yaws. Use
+        :func:`feet_distance_v2` on a sole footed robot, which additionally penalises the
+        footprint separation itself.
     """
     asset: Articulation = env.scene[asset_cfg.name]
     feet_links_idx = asset.find_bodies(feet_links_name)[0]
@@ -573,6 +948,134 @@ def feet_distance(env: ManagerBasedRLEnv,
         feet_distance = torch.norm(feet_pos[:, 0, :2] - feet_pos[:, 1, :2], dim=-1)
     reward = torch.clip(min_feet_distance - feet_distance, 0, 1)
     reward += torch.clip(feet_distance - max_feet_distance, 0, 1)
+    return reward
+
+
+def _footprint_separation(pts_w: torch.Tensor) -> torch.Tensor:
+    """Minimum horizontal distance between two footprints, vertex against edge, both directions.
+
+    Args:
+        pts_w: (N, 2, P, 3) world points of the two feet, the P points of each foot given in
+            perimeter order so that consecutive entries bound an edge.
+
+    Returns:
+        (N,) the separation of the two convex footprints, which is exact while they are disjoint.
+
+    For two disjoint convex polygons the closest approach is realised at a vertex of one against an
+    edge of the other, so sweeping every such pair is exact rather than sampled. Comparing instead
+    the P squared VERTEX pairs errs by up to 3.42 mm over the KScale pinned envelope, the closest
+    approach falling on the interior of the sole's long edge, which
+    scripts/analysis/kscale_feet_distance_analysis.py measures in its section 5b.
+
+    The measure saturates at zero rather than going negative once the footprints interpenetrate,
+    and that regime is deliberately left to `filtered_contacts` on the foot pair sensors, which
+    reports the true contact this geometry could only approximate.
+    """
+    best = None
+    for near, far in ((pts_w[:, 0, :, :2], pts_w[:, 1, :, :2]),
+                      (pts_w[:, 1, :, :2], pts_w[:, 0, :, :2])):
+        edge = torch.roll(far, -1, dims=1) - far                          # (N, Q, 2)
+        delta = near.unsqueeze(2) - far.unsqueeze(1)                      # (N, P, Q, 2)
+        scale = (delta * edge.unsqueeze(1)).sum(-1) / (edge * edge).sum(-1).clamp_min(1.0e-12).unsqueeze(1)
+        foot = delta - scale.clamp(0.0, 1.0).unsqueeze(-1) * edge.unsqueeze(1)
+        span = torch.linalg.vector_norm(foot, dim=-1).amin(dim=(1, 2))    # (N,)
+        best = span if best is None else torch.minimum(best, span)
+    return best
+
+
+def _perimeter_order(sole_offsets: list[list[float]]) -> list[list[float]]:
+    """The sole table sorted around its own perimeter, which an angular sort gives for a convex set.
+
+    The configuration is not obliged to declare the points in traversal order, the SD_BRS1 table at
+    cfg/SF/brs_base_env_cfg.py:644 being grouped in mirrored pairs, so the order is imposed here
+    rather than required of the caller. The sole normal is taken as the axis of least spread, which
+    needs no robot specific knowledge of which axis that is, and that matters because the KScale
+    foot frame is a full axis permutation away from the SD_BRS1 convention.
+    """
+    offsets = np.asarray(sole_offsets, dtype=np.float64)
+    plane = [i for i in range(3) if i != int(np.argmin(offsets.std(axis=0)))]
+    planar = offsets[:, plane] - offsets[:, plane].mean(axis=0)
+    return offsets[np.argsort(np.arctan2(planar[:, 1], planar[:, 0]))].tolist()
+
+
+def feet_distance_v2(env: ManagerBasedRLEnv,
+                     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+                     feet_links_name: list[str] = ["foot_[RL]_Link"],
+                     min_feet_distance: float = 0.1,
+                     max_feet_distance: float = 1.0,
+                     lateral_only: bool = False,
+                     sole_offsets: list[list[float]] | None = None,
+                     min_sole_distance: float = 0.0,) -> torch.Tensor:
+    """Penalise the separation of the feet, measured at the frame origins and at the soles.
+
+    :func:`feet_distance` measures the separation of the two foot LINK FRAME ORIGINS, which on a
+    sole footed robot is the ankle and not the foot. The quantity that decides whether the feet
+    foul one another is the separation of the two SOLE POLYGONS projected onto the ground, and the
+    two diverge the moment a foot yaws, the toe swinging laterally about an origin that need not
+    move. On the KScale at its nominal pose the origin measure exceeds the true footprint
+    separation by 84.6 mm, being the width of a sole the original cannot see, and with the ankles
+    held at the configured threshold of 0.24 m the two footprints touch at 0.60 rad of symmetric
+    toe in while the original reads a penalty of exactly zero throughout. Both figures are
+    reproduced by scripts/analysis/kscale_feet_distance_analysis.py.
+
+    This term therefore carries two hinges rather than one. The first is the frame origin hinge of
+    :func:`feet_distance`, reproduced bit for bit, which regulates the stance width. The second
+    charges the footprint separation falling below ``min_sole_distance``, and it is silent unless
+    both ``sole_offsets`` and a positive floor are supplied, so that every existing caller of this
+    signature is unaffected. Give the two hinges independent weights by registering the function
+    twice, the second term setting ``min_feet_distance`` to zero so that only the sole hinge speaks.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Configuration for the robot asset.
+        feet_links_name: Name patterns resolving the two feet bodies.
+        min_feet_distance: Frame origin separation (m) below which the lower hinge becomes active.
+        max_feet_distance: Frame origin separation (m) above which the upper hinge becomes active.
+        lateral_only: As :func:`feet_distance`, and it governs both hinges. When False the sole
+            hinge measures the true planar distance between the footprints, which is a genuine
+            clearance and stays silent for feet that are merely separated fore and aft. When True
+            it measures the SIGNED lateral gap in the base yaw frame, which goes negative when the
+            footprints overlap in the lateral band, and which is the stance width proper.
+        sole_offsets: Points on the sole in the foot body frame, the same table
+            :func:`foot_clearance_reward_v3` consumes, ordered around the perimeter internally.
+            Leave unset to obtain :func:`feet_distance` exactly.
+        min_sole_distance: Footprint separation (m) below which the sole hinge becomes active.
+            Leave at zero to obtain :func:`feet_distance` exactly.
+
+    Returns:
+        The computed penalty tensor.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    feet_links_idx = asset.find_bodies(feet_links_name)[0]
+    feet_pos = asset.data.body_link_pos_w[:, feet_links_idx]
+    yaw_quat = math_utils.yaw_quat(asset.data.root_link_quat_w) if lateral_only else None
+
+    if lateral_only:
+        # rotate the planar separation into the base frame and keep the lateral component
+        diff_w = feet_pos[:, 0, :3] - feet_pos[:, 1, :3]
+        diff_b = math_utils.quat_apply_inverse(yaw_quat, diff_w)
+        feet_distance = torch.abs(diff_b[:, 1])
+    else:
+        # feet distance on x-y plane
+        feet_distance = torch.norm(feet_pos[:, 0, :2] - feet_pos[:, 1, :2], dim=-1)
+    reward = torch.clip(min_feet_distance - feet_distance, 0, 1)
+    reward += torch.clip(feet_distance - max_feet_distance, 0, 1)
+
+    if sole_offsets is None or min_sole_distance <= 0.0:
+        return reward
+
+    pts_w, _ = _sole_points_world(asset, feet_links_idx, _perimeter_order(sole_offsets))
+    if lateral_only:
+        # the signed lateral gap between the two footprints, negative where their bands overlap
+        num_envs, num_feet, num_pts, _ = pts_w.shape
+        rel = (pts_w - asset.data.root_link_pos_w[:, None, None, :]).reshape(-1, 3)
+        quat = yaw_quat[:, None, None, :].expand(num_envs, num_feet, num_pts, 4).reshape(-1, 4)
+        lateral = math_utils.quat_apply_inverse(quat, rel).view(num_envs, num_feet, num_pts, 3)[..., 1]
+        sole_distance = torch.maximum(lateral[:, 0].amin(-1) - lateral[:, 1].amax(-1),
+                                      lateral[:, 1].amin(-1) - lateral[:, 0].amax(-1))
+    else:
+        sole_distance = _footprint_separation(pts_w)
+    reward += torch.clip(min_sole_distance - sole_distance, 0, 1)
     return reward
 
 
@@ -1549,4 +2052,27 @@ class JointTorqueRatePenalty(ManagerTermBase):
         penalty[startup_env_mask] = 0
 
         return penalty
+
+
+def feet_hold_penalty(
+    env: ManagerBasedRLEnv,
+    sensor_cfg: SceneEntityCfg,
+    command_name: str,
+    air_time_ceiling: float,
+) -> torch.Tensor:
+    """Penalise a foot held in the air beyond a ceiling.
+
+    Unlike feet_air_time and feet_air_time_v2, which are evaluated only at touchdown and
+    therefore pay a foot that never lands exactly zero, this term reads the RUNNING air
+    time every step, so a retracted limb accrues without bound. Deliberately unclipped,
+    since a clip would remove the gradient exactly where a runaway retraction should be
+    punished more, which is the defect this term exists to avoid. Gated on the command
+    norm so that a standing robot is not charged for holding still.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    current_air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
+    excess = torch.clamp(current_air_time - air_time_ceiling, min=0.0)
+    reward = torch.sum(excess, dim=1)
+    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    return reward
 
