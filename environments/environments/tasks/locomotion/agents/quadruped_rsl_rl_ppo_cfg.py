@@ -2,7 +2,6 @@ from isaaclab.utils import configclass
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg
 
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
-    DecoderCfg,
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
 )
@@ -30,7 +29,7 @@ class PFQuadrupedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.005,
+        entropy_coef=0.001,
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,
@@ -50,7 +49,8 @@ class PFQuadrupedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 
 # The co-optimisation runner reads obs_groups to decide which observation groups feed
-# the actor and which the critic, at copt_on_policy_runner.py:483.
+# the actor, the critic, the estimator input and the estimator regression target, at
+# copt_actor_critic.py.
 @configclass
 class PFQuadrupedCoptPPORunnerCfg(PFQuadrupedPPORunnerCfg):
     experiment_name: str = "quadruped_copt"
@@ -58,20 +58,13 @@ class PFQuadrupedCoptPPORunnerCfg(PFQuadrupedPPORunnerCfg):
     obs_groups: dict[str, list[str]] = {
         "policy": ["policy", "morphologyObs"],
         "critic": ["critic"],
+        "encoderIn": ["morphologyObs", "historyObs"],
+        "gtEncoderOut": ["privilegedDynamicsObs"],
     }
-
-
-@configclass
-class PFQuadrupedCoptLearnedModelPPORunnerCfg(PFQuadrupedCoptPPORunnerCfg):
-    experiment_name: str = "quadruped_copt_learned"
-    obs_groups: dict[str, list[str]] = {
-        "policy": ["policy"],
-        "critic": ["critic"],
-    }
-    decoder = DecoderCfg(
-        output_detach=False,
-        num_output_dim=3,
-        hidden_dims=[128, 256, 512],
+    encoder = EncoderCfg(
+        output_detach=True,
+        num_output_dim=19,
+        hidden_dims=[1024, 512, 256],
         activation="elu",
         orthogonal_init=False,
     )

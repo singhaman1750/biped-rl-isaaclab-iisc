@@ -452,46 +452,8 @@ class CoptObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
-    class PredictedMorphologyCfg(ObsGroup):
-        """P_1, morphology and terrain privileged information"""
-
-        link_lengths = ObsTerm(
-            func=mdp.robot_link_lengths,
-            params={
-                "asset_cfg": SceneEntityCfg("robot"),
-                "parent_body_names": [
-                    "hip_FR_thigh_Link",
-                    "hip_FL_thigh_Link",
-                    "hip_RR_thigh_Link",
-                    "hip_RL_thigh_Link",
-                    "knee_FR_Link",
-                    "knee_FL_Link",
-                    "knee_RR_Link",
-                    "knee_RL_Link",
-                ],
-                "child_body_names": [
-                    "knee_FR_Link",
-                    "knee_FL_Link",
-                    "knee_RR_Link",
-                    "knee_RL_Link",
-                    "foot_FR_Link",
-                    "foot_FL_Link",
-                    "foot_RR_Link",
-                    "foot_RL_Link",
-                ],
-            },
-            clip=(0.0, 100.0),
-        )
-        robot_mass = ObsTerm(func=mdp.robot_mass, clip=(0.0, 100.0))
-        robot_inertia = ObsTerm(func=mdp.robot_inertia)
-
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
-
-    @configclass
-    class PredictedPrivilegedCfg(ObsGroup):
-        """P_2, ground-truth dynamic state, the decoder regression target"""
+    class PrivilegedDynamicsCfg(ObsGroup):
+        """The dynamic state whose only reader is now being the estimator target named by obs_groups["gtEncoderOut"]."""
 
         robot_joint_torque = ObsTerm(func=mdp.robot_joint_torque)
         robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
@@ -622,7 +584,7 @@ class CoptObservationsCfg:
 
     @configclass
     class HistoryObsCfg(ObsGroup):
-        """H, the n-step rolling history of the actor state"""
+        """The rolling actor state history, flattened by the manager."""
 
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel,
@@ -673,7 +635,7 @@ class CoptObservationsCfg:
             self.enable_corruption = True
             self.concatenate_terms = True
             self.history_length = 25
-            self.flatten_history_dim = False
+            self.flatten_history_dim = True
 
     @configclass
     class CommandsObsCfg(ObsGroup):
@@ -685,9 +647,8 @@ class CoptObservationsCfg:
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
     morphologyObs: MorphologyCfg = MorphologyCfg()
-    predictedMorphologyObs: PredictedMorphologyCfg = PredictedMorphologyCfg()
-    predictedPrivilegedObs: PredictedPrivilegedCfg = PredictedPrivilegedCfg()
-    obsHistory: HistoryObsCfg = HistoryObsCfg()
+    privilegedDynamicsObs: PrivilegedDynamicsCfg = PrivilegedDynamicsCfg()
+    historyObs: HistoryObsCfg = HistoryObsCfg()
 
 
 @configclass
@@ -1130,13 +1091,13 @@ class RewardsCfg:
         weight=-5.0,
     )
     pen_lin_vel_z = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.5)
+    pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     pen_joint_torque = RewTerm(func=mdp.joint_torques_l2, weight=-2.0e-4)
     pen_joint_accel = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
-    pen_action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.05)
+    pen_action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     pen_joint_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-2.0)
     pen_joint_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5.0e-05)
-    pen_action_smoothness = RewTerm(func=mdp.ActionSmoothnessPenalty, weight=-0.075)
+    pen_action_smoothness = RewTerm(func=mdp.ActionSmoothnessPenalty, weight=-0.01)
     pen_flat_orientation = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
 
     # Every body except the four feet. The feet are named foot_<LEG>_Link and are
@@ -1158,7 +1119,7 @@ class RewardsCfg:
     # 0.426 m leg. Follows the hip_pos term of Extreme Parkour.
     pen_abad_deviation = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-2.0,
+        weight=-0.5,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["abad_.._Joint"])},
     )
 
@@ -1166,13 +1127,13 @@ class RewardsCfg:
     # threshold_min is half the stride period of a 2 Hz trot at a duty factor of one
     # half, which is what the canonical 0.5 s is for ANYmal's 1 Hz trot.
     feet_air_time = RewTerm(
-        func=mdp.feet_air_time,
-        weight=2.0,
+        func=mdp.feet_air_time_v2,
+        weight=10.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "command_name": "base_velocity",
-            "threshold_min": 0.25,
-            "threshold_max": 0.40,
+            "threshold_min": 0.15,
+            "threshold_max": 0.45,
         },
     )
     feet_slide = RewTerm(
@@ -1181,6 +1142,55 @@ class RewardsCfg:
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link"),
+        },
+    )
+    # Penalises a foot held in the air beyond a ceiling, the running complement to
+    # feet_air_time_v2's touchdown-only measurement. See mdp/rewards.py:feet_hold_penalty.
+    pen_feet_hold = RewTerm(
+        func=mdp.feet_hold_penalty,
+        weight=-0.1,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+            "command_name": "base_velocity",
+            "air_time_ceiling": 0.45,
+        },
+    )
+    # Terrain referenced foot clearance, closing the absolute-world-height defect that
+    # foot_clearance_reward and foot_clearance_reward_v2 both carry.
+    rew_foot_clearance = RewTerm(
+        func=mdp.foot_clearance_reward_v4,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+            "target_height": 0.10,
+            "std": 0.05,
+            "tanh_mult": 2.0,
+        },
+    )
+    # Terrain referenced foot landing velocity, the penalty counterpart to rew_foot_clearance,
+    # gated on the same local terrain estimate so the two cannot drift apart.
+    pen_foot_landing_vel = RewTerm(
+        func=mdp.foot_landing_vel_v3,
+        weight=-0.3,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "foot_radius": 0.022,
+            "about_landing_threshold": 0.04,
+            "force_threshold": 1.0,
+        },
+    )
+    # Per-foot impact force penalty, Humanoid-Gym form (arXiv 2404.05695). At this weight
+    # the term is very nearly inert
+    pen_feet_impact = RewTerm(
+        func=mdp.feet_impact_force,
+        weight=-5.0e-4,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+            "force_threshold": 160.0,
         },
     )
 
@@ -1215,7 +1225,7 @@ class CurriculumCfg:
         func=mdp.modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": (3.0, 3.0),
+            "max_velocity": (1.0, 1.0),
             "interval": 400 * 24,
             "starting_step": 6000 * 24,
             "increment_rate": 1.1,

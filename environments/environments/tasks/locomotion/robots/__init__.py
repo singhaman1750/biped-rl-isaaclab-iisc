@@ -1,17 +1,19 @@
 import gymnasium as gym
 
+from isaaclab_tasks.manager_based.locomotion.velocity.config.go1.agents.rsl_rl_ppo_cfg import (
+    UnitreeGo1RoughPPORunnerCfg,
+)
+
 from environments.tasks.locomotion.agents.limx_rsl_rl_ppo_cfg import (
     KscaleFlatPPORunnerCfg,
     PF_TRON1AFlatPPORunnerCfg,
     SD_BRS1FlatPPORunnerCfg,
     SF_Berkeley_PPORunnerCfg,
     SF_TRON1AFlatPPORunnerCfg,
-    SFCoptLearnedModelPPORunnerCfg,
-    SFCoptPPORunnerCfg,
+    SFCoptMorphologyRunnerCfg,
     WF_TRON1AFlatPPORunnerCfg,
 )
 from environments.tasks.locomotion.agents.quadruped_rsl_rl_ppo_cfg import (
-    PFQuadrupedCoptLearnedModelPPORunnerCfg,
     PFQuadrupedCoptPPORunnerCfg,
     PFQuadrupedPPORunnerCfg,
 )
@@ -41,9 +43,7 @@ limx_sf_him_blind_flat_runner_cfg = SF_TRON1AFlatPPORunnerCfg()
 
 limx_sf_berkeley_mimic_runner_cfg = SF_Berkeley_PPORunnerCfg()
 
-limx_sf_copt_runner_cfg = SFCoptPPORunnerCfg()
-
-limx_sf_copt_learned_runner_cfg = SFCoptLearnedModelPPORunnerCfg()
+limx_sf_copt_moral_runner_cfg = SFCoptMorphologyRunnerCfg()
 
 quadruped_runner_cfg = PFQuadrupedPPORunnerCfg()
 
@@ -51,7 +51,7 @@ quadruped_him_runner_cfg = PFQuadrupedPPORunnerCfg()
 
 quadruped_copt_runner_cfg = PFQuadrupedCoptPPORunnerCfg()
 
-quadruped_copt_learned_runner_cfg = PFQuadrupedCoptLearnedModelPPORunnerCfg()
+go1_native_matched_runner_cfg = UnitreeGo1RoughPPORunnerCfg()
 
 limx_kscale_runner_cfg = KscaleFlatPPORunnerCfg()
 
@@ -385,75 +385,32 @@ gym.register(
 # SF Co-Optimisation Environment
 #############################
 gym.register(
-    id="Isaac-Limx-SF-Copt-Flat-v0",
+    id="Isaac-Limx-SF-Copt-MoRAL-Flat-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_moral_runner_cfg,
     },
 )
 
 gym.register(
-    id="Isaac-Limx-SF-Copt-Rough-v0",
+    id="Isaac-Limx-SF-Copt-MoRAL-Rough-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_moral_runner_cfg,
     },
 )
 
 gym.register(
-    id="Isaac-Limx-SF-Copt-Rough-Play-v0",
+    id="Isaac-Limx-SF-Copt-MoRAL-Rough-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
-    },
-)
-
-#############################
-# SF Co-Optimisation Learned-Model Environment
-#############################
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Flat-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Flat-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Rough-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Limx-SF-Copt-Learned-Rough-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": limx_sf_copt_learned_runner_cfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_moral_runner_cfg,
     },
 )
 
@@ -611,6 +568,35 @@ gym.register(
 )
 
 ######################################
+# Quadruped Go1 Asset Ablation, Debug
+######################################
+# Entry point class matches Isaac-Quadruped-Blind-Rough-v0 exactly, ManagerBasedRLEnv, per
+# context/go1_quadruped_throughput.md's own component comparison table, so that this
+# ablation holds the environment and MDP stack fixed and varies only the asset.
+gym.register(
+    id="Isaac-Quadruped-Go1Asset-Blind-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFGo1AssetBlindRoughEnvCfg,
+        "rsl_rl_cfg_entry_point": quadruped_runner_cfg,
+    },
+)
+
+######################################################
+# Go1 Native, Population and Terrain Matched, Debug
+######################################################
+gym.register(
+    id="Isaac-Quadruped-Go1Native-Matched-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": quadruped_pointfoot_env_cfg.Go1NativeMatchedEnvCfg,
+        "rsl_rl_cfg_entry_point": go1_native_matched_runner_cfg,
+    },
+)
+
+######################################
 # Quadruped HIM Blind Flat Environment
 ######################################
 gym.register(
@@ -689,19 +675,6 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg_PLAY,
         "rsl_rl_cfg_entry_point": quadruped_copt_runner_cfg,
-    },
-)
-
-################################################
-# Quadruped Copt Learned Model Rough Environment
-################################################
-gym.register(
-    id="Isaac-Quadruped-Copt-Learned-Rough-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg,
-        "rsl_rl_cfg_entry_point": quadruped_copt_learned_runner_cfg,
     },
 )
 

@@ -104,6 +104,7 @@ from co_optimisation.runners.usd_generator import (
 # Import extensions to set up environment tasks
 from environments.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from himloco.runners import HIMOnPolicyRunner
+from rsl_rl_debug.runners import DebugOnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -193,8 +194,13 @@ def main():
         runner_cls = HIMOnPolicyRunner
         agent_cfg.policy.class_name = "HIMActorCritic"
         agent_cfg.algorithm.class_name = "HIMPPO"
+    elif args_cli.policy_type in ("quadruped-debug", "go1-debug", "go1-default-debug"):
+        # Timing-instrumented runner, unchanged policy and algorithm class names, used to
+        # attribute a throughput difference to the environment and MDP stack rather than
+        # to the policy architecture. See context/go1_quadruped_throughput.md.
+        runner_cls = DebugOnPolicyRunner
     runner = None
-    if args_cli.policy_type in ("COPT", "COPT-LEARNED", "COPT-LEARNED-2"):
+    if args_cli.policy_type == "COPT":
 
         _base_urdf = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -222,15 +228,8 @@ def main():
             max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
             / ea_update_interval,
         )
-        if args_cli.policy_type == "COPT-LEARNED":
-            agent_cfg.policy.class_name = "CoptLearnedModelActorCritic"
-            agent_cfg.algorithm.class_name = "CoptLearnedModelPPO"
-        elif args_cli.policy_type == "COPT-LEARNED-2":
-            agent_cfg.policy.class_name = "CoptLearnedModelV2ActorCritic"
-            agent_cfg.algorithm.class_name = "CoptLearnedModelV2PPO"
-        else:
-            agent_cfg.policy.class_name = "CoptActorCritic"
-            agent_cfg.algorithm.class_name = "CoptPPO"
+        agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
             "ea_update_interval": ea_update_interval,
