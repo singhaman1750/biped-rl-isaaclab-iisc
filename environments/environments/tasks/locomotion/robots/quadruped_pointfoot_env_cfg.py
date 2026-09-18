@@ -1,4 +1,8 @@
 from isaaclab.utils import configclass
+from isaaclab_assets.robots.unitree import UNITREE_GO1_CFG
+from isaaclab_tasks.manager_based.locomotion.velocity.config.go1.rough_env_cfg import (
+    UnitreeGo1RoughEnvCfg,
+)
 
 from environments.assets.config.quadruped_identified_cfg import QUADRUPED_IDENTIFIED_CFG
 from environments.tasks.locomotion.cfg.quadruped.base_env_cfg import (
@@ -73,6 +77,7 @@ class QuadrupedPFBaseEnvCfg_PLAY(QuadrupedPFBaseEnvCfg):
         # set maximum commanded velocity
         self.commands.base_velocity.ranges.lin_vel_x = (-1.35, 1.35)
 
+
 ######################
 # Quadruped Base Environments
 ######################
@@ -125,6 +130,7 @@ class QuadrupedPFHIMBaseEnvCfg_PLAY(QuadrupedPFHIMBaseEnvCfg):
 
         # set maximum commanded velocity
         self.commands.base_velocity.ranges.lin_vel_x = (-1.35, 1.35)
+
 
 ######################
 # Quadruped Base Environments
@@ -287,3 +293,101 @@ class QuadrupedPFCoptBlindRoughEnvCfg_PLAY(QuadrupedPFCoptBaseEnvCfg_PLAY):
         self.scene.terrain.terrain_type = "generator"
         self.scene.terrain.max_init_terrain_level = None
         self.scene.terrain.terrain_generator = QUADRUPED_ROUGH_TERRAINS_PLAY_CFG
+
+
+######################################
+# Go1 Asset Ablation, Debug
+######################################
+
+
+@configclass
+class QuadrupedPFGo1AssetBaseEnvCfg(QuadrupedPFEnvCfg):
+    """The quadruped task's own environment and MDP stack, unchanged, with the Unitree
+    Go1's shipped USD in place of QUADRUPED_IDENTIFIED_CFG.
+
+    Reward magnitudes tuned to the quadruped's own geometry (pen_base_height's
+    target_height=0.33, the 0.022 m foot radius in the landing and clearance terms) are
+    left untouched and are therefore wrong for Go1's 0.4 m standing height, this task
+    exists to measure throughput, not to converge a gait.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.scene.robot = UNITREE_GO1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/trunk"
+
+        self.events.add_base_mass.params["asset_cfg"].body_names = "trunk"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk"
+
+        for term in (
+            self.rewards.feet_air_time,
+            self.rewards.pen_feet_hold,
+            self.rewards.feet_slide,
+            self.rewards.rew_foot_clearance,
+            self.rewards.pen_foot_landing_vel,
+            self.rewards.pen_feet_impact,
+        ):
+            if "sensor_cfg" in term.params:
+                term.params["sensor_cfg"].body_names = ".*_foot"
+            if "asset_cfg" in term.params:
+                term.params["asset_cfg"].body_names = ".*_foot"
+        self.observations.critic.feet_lin_vel.params["asset_cfg"].body_names = ".*_foot"
+        self.observations.critic.feet_contact_force.params["sensor_cfg"].body_names = (
+            ".*_foot"
+        )
+
+        # Go1's own hip_joint/thigh_joint/calf_joint are respectively the abduction, hip
+        # flexion, and knee axes, see the derivation comments in quadruped_identified_cfg.py.
+        self.rewards.pen_abad_deviation.params["asset_cfg"].joint_names = [
+            ".*_hip_joint"
+        ]
+        self.events.robot_joint_stiffness_and_damping_abad.params[
+            "asset_cfg"
+        ].joint_names = [".*_hip_joint"]
+        self.events.robot_joint_stiffness_and_damping_hip.params[
+            "asset_cfg"
+        ].joint_names = [".*_thigh_joint"]
+        self.events.robot_joint_stiffness_and_damping_knee.params[
+            "asset_cfg"
+        ].joint_names = [".*_calf_joint"]
+
+        # No verified Go1 equivalent for the quadruped's four-name non-foot contact list.
+        # Go1's own rough_env_cfg.py:54 disables this term rather than guess one, followed
+        # here.
+        self.rewards.pen_undesired_contacts = None
+
+        self.viewer.origin_type = "asset_root"
+        self.viewer.asset_name = "robot"
+        self.viewer.env_index = 0
+        self.viewer.eye = (-2.4, 0.0, 1.6)
+        self.viewer.lookat = (0.0, 0.0, 0.4)
+
+
+@configclass
+class QuadrupedPFGo1AssetBlindRoughEnvCfg(QuadrupedPFGo1AssetBaseEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.scene.terrain.terrain_type = "generator"
+        self.scene.terrain.terrain_generator = QUADRUPED_ROUGH_TERRAINS_CFG
+
+
+###############################################
+# Go1 Native, Population and Terrain Matched, Debug
+###############################################
+
+
+@configclass
+class Go1NativeMatchedEnvCfg(UnitreeGo1RoughEnvCfg):
+    """IsaacLab's own shipped Go1 rough task, `UnitreeGo1RoughEnvCfg`, completely
+    unchanged except for the population and the terrain generator, both overridden here
+    to match this repository's quadruped task, `QuadrupedPFBlindRoughEnvCfg`, and its Go1
+    asset ablation, `QuadrupedPFGo1AssetBlindRoughEnvCfg` above, exactly.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.scene.num_envs = 7000
+        self.scene.terrain.terrain_generator = QUADRUPED_ROUGH_TERRAINS_CFG
