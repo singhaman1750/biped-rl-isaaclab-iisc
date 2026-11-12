@@ -782,6 +782,33 @@ class RandomDesignGenerator(DesignGeneratorBase):
 
 
 # ---------------------------------------------------------------------------
+# Fixed design generator
+# ---------------------------------------------------------------------------
+
+
+class FixedDesignGenerator(DesignGeneratorBase):
+    """Emits one given design as a population of one, for replaying a searched design.
+
+    Mirrors CMAESDesignGenerator._generate_individual, actuator parameters included, so the
+    replayed robot is the one the search emitted. The base class's default ranges carry the
+    scale or offset kind of every CMAES_PARAM_KEYS entry and the thigh_bend_offset range that
+    _lean_max reads, both as train.py gave them to the run.
+    """
+
+    def __init__(self, parameters: dict[str, float], **kwargs):
+        super().__init__(num_individuals=1, **kwargs)
+        self.parameters = dict(parameters)
+
+    def generate_population(self, generation: int):
+        return self._build_population(generation, range(self.num_individuals))
+
+    def _generate_individual(self, generation: int, idx: int):
+        self._current_parameters = dict(self.parameters)
+        spec = self._spec_from_parameters(self.parameters)
+        return spec, self._actuator_params(spec)
+
+
+# ---------------------------------------------------------------------------
 # CMA-ES design generator
 # ---------------------------------------------------------------------------
 

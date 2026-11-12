@@ -23,9 +23,8 @@ figures recorded in the twentieth, twenty first and twenty second passes of
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 import numpy as np
+from dataclasses import dataclass, field
 
 # Keys of the dump that carry index metadata or a constant of the run rather than a per
 # step series. They are written once and stored flat, so a consumer reads
@@ -45,12 +44,15 @@ METADATA_KEYS = (
     # unbounded default and made the whole saturation family inert.
     "joint_effort_limits_sim",
     "joint_velocity_limits_sim",
+    "joint_saturation_effort",
     "joint_position_limits",
     "joint_soft_position_limits",
     "default_joint_pos",
     "body_masses",
     "step_dt",
     "contact_force_history_length",
+    "sole_normal_link",
+    "action_terms",
     # Which frame each per body vector channel is expressed in. Absent on any dump
     # written before 2026-08-07, under which the three feet channels are world frame.
     "frame_convention",

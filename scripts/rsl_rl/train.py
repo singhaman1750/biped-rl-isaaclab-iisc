@@ -232,6 +232,7 @@ def main():
         # attribute a throughput difference to the environment and MDP stack rather than
         # to the policy architecture. See context/go1_quadruped_throughput.md.
         runner_cls = DebugOnPolicyRunner
+        agent_cfg.policy.class_name = "DebugActorCritic"
     runner = None
     if args_cli.policy_type == "COPT":
 

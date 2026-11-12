@@ -36,7 +36,14 @@ from rsl_rl.modules import ActorCritic
 from rsl_rl.networks import MLP
 
 
-class CoptActorCritic(ActorCritic):
+def report_nan(tensors: TensorDict | dict[str, torch.Tensor]) -> None:
+    """Print each named tensor that holds a NaN with the last axis indices it occurs at."""
+    for key, item in tensors.items():
+        if item.isnan().any():
+            nan_indices = torch.nonzero(item.isnan(), as_tuple=False)[:, -1].unique()
+            print(f"NaN in {key} at indices:\n{nan_indices}")
+
+
     """Actor-critic whose estimator is configured entirely by observation sets.
 
     The estimator input is the concatenation of the groups named by
@@ -139,6 +146,22 @@ class CoptActorCritic(ActorCritic):
         obs[self.ENCODER_OUTPUT_KEY] = encoder_output
         return obs
 
+    _report_nan = staticmethod(report_nan)
+
+    def _update_distribution(self, obs: torch.Tensor) -> None:
+        # The inherited act passes the concatenated and normalised actor input,
+        # not the TensorDict its annotation names, so the per group check is
+        # made in act. Normal validation is disabled by ActorCritic, so NaN
+        # passes through the distribution and is reported here.
+        super()._update_distribution(obs)
+        self._report_nan(
+            {
+                "normalised actor input": obs,
+                "mean": self.distribution.mean,
+                "std": self.distribution.stddev,
+            }
+        )
+
     def _actor_input(self, obs: TensorDict) -> tuple[torch.Tensor, torch.Tensor]:
         encoder_output = self.estimator(self._get_estimator_input(obs))
         actor_obs = self.get_actor_obs(self._with_encoder_output(obs, encoder_output))
@@ -148,8 +171,15 @@ class CoptActorCritic(ActorCritic):
         self, obs: TensorDict, **kwargs: dict[str, Any]
     ) -> tuple[torch.Tensor, torch.Tensor]:
         actor_obs, encoder_output = self._actor_input(obs)
+        self._report_nan(self._with_encoder_output(obs, encoder_output))
         self._update_distribution(actor_obs)
         return self.distribution.sample(), encoder_output
+
+    def evaluate(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
+        critic_obs = self.critic_obs_normalizer(self.get_critic_obs(obs))
+        value = self.critic(critic_obs)
+        self._report_nan({"normalised critic input": critic_obs, "value": value})
+        return value
 
     def act_inference(self, obs: TensorDict) -> torch.Tensor:
         actor_obs, _ = self._actor_input(obs)
