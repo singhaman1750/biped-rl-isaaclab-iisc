@@ -179,16 +179,6 @@ class GaitData:
         the frame is a different quantity. Where only the frame is available the caller is
         told so by `has_sole_clearance`, and every dependent record is labelled accordingly.
 
-        HISTORICAL CAUTION, applying to any dump written before the robot profile resolver
-        landed in play.py. That version applied the SD_BRS1 sole table to whatever robot was
-        played, its guard testing a table literal rather than the configured global, so on
-        such a dump the PRESENCE of this channel is not evidence that the robot has a sole,
-        and it must be trusted on SD_BRS1 and read as the frame height on anything else. See
-        section 1.3 of context/gait_metrics.md. A dump written since carries the channel only
-        where the robot's own foot geometry is known, `_ROBOT_PROFILES` at play.py:199 holding
-        a sole support set for the SD_BRS1 and the KScale and a sphere radius for the
-        quadruped, whose clearance is the frame height less that radius exactly. The TRON1
-        still carries no geometry and so still writes no channel.
         """
         if self.feet_sole_clearances is not None:
             return self.feet_sole_clearances

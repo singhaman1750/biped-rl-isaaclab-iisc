@@ -55,6 +55,14 @@ parser.add_argument(
     "the working tree's instead. For deliberately replaying a policy under a different "
     "action mapping, which is a different experiment and not an evaluation of the run.",
 )
+parser.add_argument(
+    "--copt_best_design",
+    action="store_true",
+    help="Replay the best/* design of the designs/cmaes_history.csv row whose iteration lies "
+    "nearest the checkpoint's, spawned in every environment, and dump under "
+    "best_design/model_<n>/ rather than beside the run. Off, the default, leaves the COPT "
+    "replay as it was, with no searched design applied.",
+)
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -89,26 +97,31 @@ from isaaclab.envs import (
     multi_agent_to_single_agent,
 )
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.sensors import RayCaster
 from isaaclab.utils.dict import print_dict
+from isaaclab.utils.warp import raycast_mesh
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
-from rsl_rl.runners import OnPolicyRunner
 
 # Import extensions to set up environment tasks
 import environments  # noqa: F401
 from co_optimisation.algorithms import CoptPPO
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
+    CMAES_PARAM_KEYS,
     DEFAULT_PARAM_RANGES,
     CMAESDesignGenerator,
+    FixedDesignGenerator,
     RandomDesignGenerator,
 )
+from co_optimisation.utils.respawn import respawn_robots
 from environments.utils.wrappers.rsl_rl import (
     RslRlPpoAlgorithmMlpCfg,
     export_mlp_as_onnx,
     export_policy_as_jit,
 )
 from himloco.runners import HIMOnPolicyRunner
+from rsl_rl.runners import OnPolicyRunner
 
 # The analysis package sits beside this one in the repository. Adding it to the path here
 # rather than making it an installed dependency keeps play.py runnable from a checkout.
@@ -121,12 +134,7 @@ import stats
 from stats import METADATA_KEYS
 
 # Regex pattern matching the feet link names of the robot being analysed.
-# Resolved at runtime by _select_robot_profile below against the articulation's actual body
-# names, so a dump is no longer silently taken against the wrong robot's foot pattern. This
-# value is the fallback used when no profile matches, and it is SD_BRS1's so that the
-# behaviour when the resolver finds nothing is exactly what it was before the resolver existed.
-# Assign it explicitly to pin a robot and skip resolution (e.g. "ankle_.*" for TRON1 solefoot).
-FEET_LINK_NAMES = "Link6[LR]"
+FEET_LINK_NAMES = "foot_[LR]_Link"
 
 # METADATA_KEYS, imported above, names the keys of the dump that carry index metadata or a
 # constant of the run rather than a per-step series.
@@ -175,39 +183,66 @@ KSCALE_SOLE_OFFSETS = [
     [-0.0363, +0.0430, +0.0200],
 ]
 
-# Foot pattern and sole table per robot, tried in order. The pattern that resolves against the
-# articulation's own body names identifies the robot, which is a more reliable discriminator
-# than the task id because a robot may carry several task variants.
-#
-# This resolution replaces a hand-edited pair of module constants. That arrangement was
-# correct as long as exactly one robot was ever dumped, and it silently ceased to be so with
-# the arrival of a second sole-footed biped: a kscale dump read under SD_BRS1's pattern
-# resolves no feet at all, and, worse, a kscale dump read under SD_BRS1's TABLE would have
-# reported clearances measured against a sole three times too deep in the wrong axis.
+# SD_BRS1's sole face lies at z -0.1240 with the chamfers rising toward z -0.1144, so the
+# face the machine stands on points along the link's MINUS z.
+SD_BRS1_SOLE_NORMAL = (0.0, 0.0, -1.0)
+# The kscale foot link is permuted, carrying its width on x, its fore and aft length on z
+# and its vertical on y POINTING DOWNWARD, 
+KSCALE_SOLE_NORMAL = (0.0, 1.0, 0.0)
+
+# Support set of the TRON1 foot_[LR]_Link sole, for use with FEET_LINK_NAMES = "foot_[LR]_Link",
+TRON1_SOLE_OFFSETS = [
+    [-0.090, -0.035, -0.050],
+    [-0.090, 0.035, -0.050],
+    [0.110, -0.035, -0.050],
+    [0.110, 0.035, -0.050],
+    [-0.090, -0.035, -0.020],
+    [-0.090, 0.035, -0.020],
+    [0.110, -0.035, -0.020],
+    [0.110, 0.035, -0.020],
+]
+# The TRON1 foot frame is unpermuted, x forward, y left and z up, and the generator places the
+# sole level at the nominal pose, so the ground facing normal is the link's MINUS z.
+TRON1_SOLE_NORMAL = (0.0, 0.0, -1.0)
+
+# Radius of a spherical foot, used in place of a sole table where the profile carries none.
+# The quadruped's feet are collision spheres of radius 0.022 m and the lowest point of a sphere sits
+# one radius beneath its centre along the world vertical whatever the foot's orientation.
+QUADRUPED_FOOT_RADIUS = 0.022
+
 _ROBOT_PROFILES = (
-    ("Link6[LR]", SD_BRS1_SOLE_OFFSETS),
-    ("foot_6061.*", KSCALE_SOLE_OFFSETS),
-    ("ankle_.*", None),
-    ("foot_.._Link", None)
+    ("Link6[LR]", SD_BRS1_SOLE_OFFSETS, SD_BRS1_SOLE_NORMAL, None),
+    ("foot_6061.*", KSCALE_SOLE_OFFSETS, KSCALE_SOLE_NORMAL, None),
+    ("foot_[LR]_Link", TRON1_SOLE_OFFSETS, TRON1_SOLE_NORMAL, None),
+    ("foot_.._Link", None, None, QUADRUPED_FOOT_RADIUS)
 )
 
 SOLE_OFFSETS = SD_BRS1_SOLE_OFFSETS
+SOLE_NORMAL_L = SD_BRS1_SOLE_NORMAL
+# Read only where SOLE_OFFSETS is None. Zero treats the foot frame origin as the contact point.
+FOOT_RADIUS = 0.0
+
+# The terrain mesh the height scanner casts against in every task here, whose warp mesh the
+# clearance raycast reuses from RayCaster.meshes.
+TERRAIN_MESH_PRIM_PATH = "/World/ground"
 
 _PROFILE_RESOLVED = False
 
 
 def _select_robot_profile(asset):
-    """Set FEET_LINK_NAMES and SOLE_OFFSETS from the articulation's body names, once.
+    """Set FEET_LINK_NAMES, SOLE_OFFSETS, SOLE_NORMAL_L and FOOT_RADIUS from the body names, once.
 
-    A profile whose table is None resolves the feet but disables the sole clearance logging,
-    which is the correct treatment of a robot for which no sole table has been measured: the
-    clearance is simply not reported, rather than reported against another robot's geometry.
+    A profile whose table is None is a point footed robot, its clearance being reported from
+    the lowest point of a sphere of FOOT_RADIUS about the foot origin, rather than against
+    another robot's sole geometry.
+    The sole normal is governed by the same rule and for the same reason, a tilt measured
+    against another robot's sole axis being not merely imprecise but a different quantity.
     """
-    global FEET_LINK_NAMES, SOLE_OFFSETS, _PROFILE_RESOLVED
+    global FEET_LINK_NAMES, SOLE_OFFSETS, SOLE_NORMAL_L, FOOT_RADIUS, _PROFILE_RESOLVED
     if _PROFILE_RESOLVED:
         return
     _PROFILE_RESOLVED = True
-    for pattern, table in _ROBOT_PROFILES:
+    for pattern, table, normal, radius in _ROBOT_PROFILES:
         # find_bodies raises rather than returning empty when a key matches nothing, since
         # resolve_matching_names treats an unmatched key as an error, so a non-matching profile
         # arrives here as an exception and not as a falsy result.
@@ -216,15 +251,67 @@ def _select_robot_profile(asset):
         except (ValueError, KeyError):
             continue
         if ids:
-            FEET_LINK_NAMES, SOLE_OFFSETS = pattern, table
+            FEET_LINK_NAMES, SOLE_OFFSETS, SOLE_NORMAL_L = pattern, table, normal
+            if radius is not None:
+                FOOT_RADIUS = radius
             print(f"[play] resolved feet pattern {pattern!r} -> {names}")
-            print(f"[play] sole table: {'none, clearance logging disabled' if table is None else str(len(table)) + ' points'}")
+            print(f"[play] sole table: {f'none, point foot of radius {FOOT_RADIUS} m' if table is None else str(len(table)) + ' points'}")
+            print(f"[play] sole normal in the link frame: "
+                  f"{'none, tilt logging disabled' if normal is None else normal}")
             return
     print(
         f"[play] WARNING no profile matched the articulation's bodies; falling back to "
-        f"{FEET_LINK_NAMES!r}. Sole clearance will be logged against SD_BRS1's geometry, "
-        f"which is meaningless for any other robot. Add a profile to _ROBOT_PROFILES."
+        f"{FEET_LINK_NAMES!r}. Sole clearance and sole tilt will be logged against SD_BRS1's "
+        f"geometry, which is meaningless for any other robot. Add a profile to _ROBOT_PROFILES."
     )
+
+
+def _best_design(log_dir: str, resume_path: str) -> tuple[dict[str, float], dict]:
+    """The best/* design of the cmaes_history.csv row whose iteration lies nearest the checkpoint's.
+
+    Args:
+        log_dir: The run directory, holding designs/cmaes_history.csv.
+        resume_path: The checkpoint, whose basename model_<n>.pt gives the iteration.
+
+    Returns:
+        The searched parameters, and a record naming the row they were taken from.
+    """
+    match = re.search(r"model_(\d+)\.pt$", os.path.basename(resume_path))
+    if match is None:
+        raise ValueError(f"cannot read an iteration from the checkpoint name {resume_path!r}")
+    target = int(match.group(1))
+    # A checkpoint of the fine-tune replays the final design, the fine-tuned distribution mean that
+    # log_optimised_designs records. A checkpoint at or before the termination never trained on it.
+    final = os.path.join(log_dir, "designs", "optimised", "final_design.csv")
+    if os.path.exists(final):
+        row = pd.read_csv(final).iloc[0]
+        if bool(row.get("fine_tuned", False)) and target > int(row["finetune_start_iteration"]):
+            parameters = {k: float(row[k]) for k in CMAES_PARAM_KEYS if k in row.index}
+            return parameters, {
+                "checkpoint_iteration": target,
+                "history_iteration": int(row["termination_iteration"]),
+                "generation": int(row["termination_generation"]),
+                "source": "designs/optimised/final_design.csv, the fine-tuned distribution mean",
+                "parameters": parameters,
+            }
+    path = os.path.join(log_dir, "designs", "cmaes_history.csv")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"no CMA-ES history at {path}")
+    history = pd.read_csv(path)
+    columns = [c for c in history.columns if c.startswith("best/")]
+    if history.empty or not columns:
+        raise ValueError(f"{path} carries no best/ columns")
+    # idxmin takes the first minimum and the history is appended in iteration order, so a
+    # checkpoint equidistant from two generations takes the earlier.
+    row = history.loc[(history["iteration"] - target).abs().idxmin()]
+    parameters = {c[len("best/"):]: float(row[c]) for c in columns}
+    record = {
+        "checkpoint_iteration": target,
+        "history_iteration": int(row["iteration"]),
+        "generation": int(row["generation"]),
+        "parameters": parameters,
+    }
+    return parameters, record
 
 
 class DataLogger:
@@ -243,6 +330,10 @@ class DataLogger:
             "joint_powers": [],
             "joint_positions": [],
             "joint_accelerations": [],
+            "joint_position_targets": [],
+            "joint_action_raw": [],
+            "joint_computed_torque": [],
+            "joint_available_torque": [],
             "base_com_position": [],
             "base_linear_velocity": [],
             "base_angular_velocity": [],
@@ -257,6 +348,7 @@ class DataLogger:
             "feet_quaternions": [],
             "feet_frame_heights": [],
             "feet_sole_clearances": [],
+            "feet_sole_tilt": [],
             "feet_distance": [],
             "robot_mass": [],
             "robot_inertia": [],
@@ -272,6 +364,8 @@ class DataLogger:
         self.seed = seed
         self.data_reward = {}
         self.reward_weights = {}
+        self._envelope = None
+        self._action_slots = None
 
     def log_link_properties(self, usd_path: Union[list, str]):
         """Log the mass and size of each link from the USD file.
@@ -346,6 +440,9 @@ class DataLogger:
         joint_power = torch.mul(asset.data.applied_torque, asset.data.joint_vel)
         self.data["joint_powers"].append(joint_power.cpu().numpy())
         self.data["joint_positions"].append(asset.data.joint_pos.cpu().numpy())
+        computed = getattr(asset.data, "computed_torque", None)
+        if computed is not None:
+            self.data["joint_computed_torque"].append(computed.cpu().numpy())
         self.data["base_com_position"].append(asset.data.root_com_pos_w.cpu().numpy())
         self.data["base_linear_velocity"].append(asset.data.root_lin_vel_b.cpu().numpy())
         self.data["base_angular_velocity"].append(asset.data.root_ang_vel_b.cpu().numpy())
@@ -403,11 +500,14 @@ class DataLogger:
             # since the two are genuinely different quantities and a torque clipped by
             # the actuator model is not the same event as one clipped by the solver.
             self._log_actuator_limits(asset)
+            self._log_action_metadata(env, asset)
             self.data["body_masses"] = asset.data.default_mass[0].cpu().numpy().tolist()
             self.data["step_dt"] = float(env.step_dt)
             self.data["contact_force_history_length"] = int(
                 getattr(contact_sensor.cfg, "history_length", 0)
             )
+            if SOLE_NORMAL_L is not None:
+                self.data["sole_normal_link"] = list(SOLE_NORMAL_L)
             self.data["frame_convention"] = {
                 "feet_distance": "base_yaw",
                 "feet_velocities": "base_yaw",
@@ -417,6 +517,7 @@ class DataLogger:
                 "base_angular_velocity": "base",
                 "base_quaternion": "world",
                 "feet_quaternions": "world",
+                "feet_sole_tilt": "base_yaw",
             }
 
         forces = contact_sensor.data.net_forces_w_history[:, :, sensor_feet_ids, :]
@@ -442,10 +543,29 @@ class DataLogger:
         self.data["feet_frame_heights"].append(
             asset.data.body_pos_w[:, feet_ids, 2].cpu().numpy()
         )
+        height_scanner = env.scene.sensors.get("height_scanner")
+        ray_hits_w = None if height_scanner is None else height_scanner.data.ray_hits_w
         if SOLE_OFFSETS is not None:
-            self.data["feet_sole_clearances"].append(
-                self._sole_clearance(asset, feet_ids).cpu().numpy()
+            clearance = self._sole_clearance(asset, feet_ids, ray_hits_w)
+        else:
+            clearance = self._sole_clearance_pf(asset, feet_ids, ray_hits_w)
+        self.data["feet_sole_clearances"].append(clearance.cpu().numpy())
+        if SOLE_NORMAL_L is not None:
+            self.data["feet_sole_tilt"].append(
+                self._sole_tilt(asset, feet_ids, yaw_quat).cpu().numpy()
             )
+
+        # The commanded target and the raw action behind it, scattered by joint so that
+        # every column aligns with joint_positions and joint_torques.
+        targets, raw = self._commanded_targets(env, asset)
+        if targets is not None:
+            self.data["joint_position_targets"].append(targets.cpu().numpy())
+        if raw is not None:
+            self.data["joint_action_raw"].append(raw.cpu().numpy())
+
+        available = self._available_torque(asset)
+        if available is not None:
+            self.data["joint_available_torque"].append(available.cpu().numpy())
 
         feet_pos = asset.data.body_pos_w[:, feet_ids]  # (num_envs, 2, 3)
         separation_w = (feet_pos[:, 0, :] - feet_pos[:, 1, :]).unsqueeze(1)
@@ -515,6 +635,7 @@ class DataLogger:
         for key, attr in (
             ("joint_effort_limits", "effort_limit"),
             ("joint_velocity_limits", "velocity_limit"),
+            ("joint_saturation_effort", "_saturation_effort"),
         ):
             limits = torch.full(
                 (asset.num_joints,), float("nan"), device=asset.device
@@ -522,6 +643,9 @@ class DataLogger:
             found = False
             for actuator in getattr(asset, "actuators", {}).values():
                 value = getattr(actuator, attr, None)
+                if value is None and attr == "_saturation_effort":
+                    value = getattr(getattr(actuator, "cfg", None),
+                                    "saturation_effort", None)
                 if value is None:
                     continue
                 # (num_envs, num_joints_in_actuator), environment zero being
@@ -543,13 +667,219 @@ class DataLogger:
             if value is not None:
                 self.data[key] = value[0].cpu().numpy().tolist()
 
+    def _log_action_metadata(self, env, asset):
+        """Record which action term drives which joint, and under what semantics.
+
+        The commanded target is only interpretable beside the term that produced it. A
+        JointPositionAction's processed action is an absolute joint angle in radians, a
+        RelativeJointPositionAction's is an increment upon the current position, and a
+        velocity term's is not a position at all, so the class name is dumped rather than
+        assumed. This matters more than it did, since arms 7, 10 and 19 of
+        plans/kscale_gait_shaping.md each remove a joint pair from the action term, after
+        which the processed action is narrower than the articulation and a consumer that
+        assumes the two are the same width reads the wrong column for every joint past the
+        first removal.
+
+        Args:
+            env: The unwrapped ManagerBasedRLEnv.
+            asset: The robot articulation.
+        """
+        manager = getattr(env, "action_manager", None)
+        terms = getattr(manager, "_terms", None) if manager is not None else None
+        if not terms:
+            self._action_slots = []
+            return
+        slots, record = [], {}
+        for name, term in terms.items():
+            joint_ids = getattr(term, "_joint_ids", None)
+            joint_names = getattr(term, "_joint_names", None)
+            if joint_ids is None or joint_names is None:
+                # A term that does not act in joint space, whose processed action cannot be
+                # scattered by joint and is therefore recorded in the register alone.
+                record[name] = {"class": type(term).__name__, "joints": None,
+                                "action_dim": int(getattr(term, "action_dim", 0))}
+                continue
+            index = (torch.arange(asset.num_joints, device=asset.device)
+                     if isinstance(joint_ids, slice)
+                     else torch.as_tensor(list(joint_ids), device=asset.device))
+            slots.append((name, index))
+            record[name] = {"class": type(term).__name__,
+                            "joints": list(joint_names),
+                            "action_dim": int(getattr(term, "action_dim", len(index)))}
+        self._action_slots = slots
+        self.data["action_terms"] = record
+        print(f"[play] action terms logged: "
+              + ", ".join(f"{n} ({r['class']}, {r['action_dim']} dims)"
+                          for n, r in record.items()))
+
+    def _commanded_targets(self, env, asset):
+        """The processed and the raw action of every joint space term, scattered by joint.
+
+        Both are returned at the full articulation width with NaN in any column no term
+        drives, so that they align column for column with joint_positions and a frozen
+        joint is visibly absent rather than silently zero. Where two terms claim one joint,
+        which no configuration here does, the later term in the manager's order wins and
+        the register dumped by _log_action_metadata is what would reveal it.
+
+        Args:
+            env: The unwrapped ManagerBasedRLEnv.
+            asset: The robot articulation.
+
+        Returns:
+            A pair of tensors of shape (num_envs, num_joints), or (None, None) where no
+            term acts in joint space.
+        """
+        if self._action_slots is None:
+            self._log_action_metadata(env, asset)
+        if not self._action_slots:
+            return None, None
+        manager = env.action_manager
+        shape = (asset.num_joints,)
+        targets = torch.full((asset.data.joint_pos.shape[0],) + shape, float("nan"),
+                             device=asset.device, dtype=asset.data.joint_pos.dtype)
+        raw = torch.full_like(targets, float("nan"))
+        for name, index in self._action_slots:
+            term = manager._terms[name]
+            processed = getattr(term, "processed_actions", None)
+            if processed is not None and processed.shape[1] == index.numel():
+                targets[:, index] = processed.to(targets.dtype)
+            raw_actions = getattr(term, "raw_actions", None)
+            if raw_actions is not None and raw_actions.shape[1] == index.numel():
+                raw[:, index] = raw_actions.to(raw.dtype)
+        return targets, raw
+
+    def _available_torque(self, asset):
+        """The velocity dependent torque bounds, as the actuator model itself computes them.
+
+        This reproduces DCMotor._clip_effort at
+        IsaacLab/source/isaaclab/isaaclab/actuators/actuator_pd.py:295, which clamps the
+        joint velocity to the speed at which the envelope meets the effort limit, takes the
+        two sides of the torque speed line at that velocity, and bounds each by the flat
+        effort limit. Both bounds are returned rather than one signed figure, since which
+        of them binds depends on the sign of the torque being clipped and a single column
+        forces the consumer to guess which convention was used. Saturation is then exactly
+        the computed torque lying outside the pair, with no threshold and no dependence on
+        the friction term that IdentifiedActuator subtracts after the clip.
+
+        A joint whose actuator declares no saturation effort, meaning an ideal or implicit
+        model, falls back to the flat effort limit on both sides, which is the correct
+        envelope for such an actuator rather than an approximation of one.
+
+        Args:
+            asset: The robot articulation.
+
+        Returns:
+            A tensor of shape (num_envs, num_joints, 2) holding the lower and the upper
+            bound, or None where no effort ceiling is known at all.
+        """
+        if self._envelope is None:
+            effort = self.data.get("joint_effort_limits")
+            if effort is None:
+                self._envelope = ()
+                return None
+            device, dtype = asset.device, asset.data.joint_vel.dtype
+            effort = torch.as_tensor(effort, device=device, dtype=dtype)
+            saturation = torch.as_tensor(
+                self.data.get("joint_saturation_effort", [float("nan")] * len(effort)),
+                device=device, dtype=dtype)
+            speed = torch.as_tensor(
+                self.data.get("joint_velocity_limits", [float("nan")] * len(effort)),
+                device=device, dtype=dtype)
+            # A joint without a usable envelope is given the flat ceiling on both sides by
+            # setting its saturation effort to its effort limit and its velocity limit to
+            # infinity, which makes the torque speed line horizontal at the ceiling.
+            flat = ~(torch.isfinite(saturation) & torch.isfinite(speed) & (speed > 0)
+                     & (saturation > 0))
+            saturation = torch.where(flat, effort, saturation)
+            speed = torch.where(flat, torch.full_like(speed, float("inf")), speed)
+            self._envelope = (saturation, effort, speed,
+                              speed * (1.0 + effort / saturation))
+        if not self._envelope:
+            return None
+        saturation, effort, speed, reach = self._envelope
+        vel = torch.clamp(asset.data.joint_vel, min=-reach, max=reach)
+        upper = torch.clamp(saturation * (1.0 - vel / speed), max=effort)
+        lower = torch.clamp(saturation * (-1.0 - vel / speed), min=-effort)
+        return torch.stack((lower, upper), dim=-1)
+
     @staticmethod
-    def _sole_clearance(asset, feet_ids: list) -> torch.Tensor:
-        """Lowest world height of the sole points, as in mdp.foot_clearance_reward_v2.
+    def _sole_tilt(asset, feet_ids: list, yaw_quat: torch.Tensor) -> torch.Tensor:
+        """The roll and pitch of each sole plane in the base yaw frame.
+
+        The sole's ground facing normal is a fixed direction in the foot link's frame,
+        declared per robot in _ROBOT_PROFILES because the axis differs between the two
+        sole footed bipeds here and cannot be read off the sole point table. Rotating it
+        into the world by the foot's orientation and then into the base yaw frame gives a
+        unit vector that reads (0, 0, -1) for a sole lying flat on level ground, and the
+        two angles below are the rotations about the forward and the lateral axis that
+        carry it there. A positive roll is the sole's normal tipped toward the machine's
+        left, which is the foot standing on its right edge.
 
         Args:
             asset: The robot articulation.
             feet_ids: Indices of the feet bodies.
+            yaw_quat: The yaw only base orientation, of shape (num_envs, 4).
+
+        Returns:
+            The per foot (roll, pitch) in radians, of shape (num_envs, num_feet, 2).
+        """
+        foot_quat = asset.data.body_quat_w[:, feet_ids]  # (N, F, 4)
+        num_envs, num_feet = foot_quat.shape[0], foot_quat.shape[1]
+        normal = torch.as_tensor(
+            SOLE_NORMAL_L, dtype=foot_quat.dtype, device=foot_quat.device
+        ).view(1, 1, 3).expand(num_envs, num_feet, 3)
+        normal_w = math_utils.quat_apply(
+            foot_quat.reshape(-1, 4), normal.reshape(-1, 3)
+        ).view(num_envs, num_feet, 3)
+        quat = yaw_quat.unsqueeze(1).expand(num_envs, num_feet, 4)
+        normal_b = math_utils.quat_apply_inverse(
+            quat.reshape(-1, 4), normal_w.reshape(-1, 3)
+        ).view(num_envs, num_feet, 3)
+        roll = torch.atan2(normal_b[..., 1], -normal_b[..., 2])
+        pitch = torch.atan2(-normal_b[..., 0], -normal_b[..., 2])
+        return torch.stack((roll, pitch), dim=-1)
+
+    @staticmethod
+    def _ground_height(points_w: torch.Tensor, ray_hits_w: torch.Tensor | None) -> torch.Tensor:
+        """World height of the ground vertically beneath each point.
+
+        One vertical ray is cast from 20 m above each point against the terrain mesh the
+        height scanner has already loaded. This replaced, on 2026-10-21, a lookup of the
+        highest of the four nearest scanner hits, which on the trunk mounted 0.1 m grid read
+        the ground up to 28.5 mm high under a loaded foot on rough terrain and drifted by up
+        to 5 mm under a planted one as the grid travelled with the base. A ray that misses
+        the mesh, beyond the terrain border, reads the plane z = 0.
+
+        Args:
+            points_w: World frame query points, of shape (N, F, 3).
+            ray_hits_w: The height scanner's ray hits, read only to establish that the task
+                carries a scanner. None where it does not, in which case the ground is the
+                plane z = 0.
+
+        Returns:
+            The ground height beneath each point, of shape (N, F).
+        """
+        if ray_hits_w is None:
+            return torch.zeros_like(points_w[..., 2])
+        starts = points_w.clone()
+        starts[..., 2] += 20.0
+        directions = torch.zeros_like(starts)
+        directions[..., 2] = -1.0
+        hits = raycast_mesh(starts, directions, mesh=RayCaster.meshes[TERRAIN_MESH_PRIM_PATH])[0]
+        ground = hits.view_as(points_w)[..., 2].to(points_w.device)
+        return torch.where(torch.isfinite(ground), ground, torch.zeros_like(ground))
+
+    @staticmethod
+    def _sole_clearance(asset, feet_ids: list, ray_hits_w: torch.Tensor | None = None) -> torch.Tensor:
+        """Height of the lowest sole point above the ground beneath it, as in
+        mdp.foot_clearance_reward_v4.
+
+        Args:
+            asset: The robot articulation.
+            feet_ids: Indices of the feet bodies.
+            ray_hits_w: The height scanner's ray hits, of shape (N, R, 3). None, the default,
+                measures against the plane z = 0, which reproduces the world height the
+                method returned before the scanner was read.
 
         Returns:
             The per foot sole clearance, of shape (num_envs, num_feet).
@@ -569,7 +899,29 @@ class DataLogger:
             num_envs, num_feet, num_pts, 3
         )
         pts_w = pts_w + foot_pos.unsqueeze(2)
-        return pts_w[..., 2].min(dim=2)[0]  # (N, F)
+        lowest = pts_w[..., 2].argmin(dim=2, keepdim=True)  # (N, F, 1)
+        # the ground is looked up beneath the lowest sole point, not beneath the ankle
+        contact_w = torch.gather(pts_w, 2, lowest.unsqueeze(-1).expand(-1, -1, -1, 3)).squeeze(2)
+        return contact_w[..., 2] - DataLogger._ground_height(contact_w, ray_hits_w)  # (N, F)
+
+    @staticmethod
+    def _sole_clearance_pf(asset, feet_ids: list, ray_hits_w: torch.Tensor | None = None) -> torch.Tensor:
+        """Height of the lowest point of a spherical foot above the ground beneath it.
+
+        The lowest point of a sphere lies FOOT_RADIUS beneath its centre along the world
+        vertical whatever the foot's orientation, so no rotation enters.
+
+        Args:
+            asset: The robot articulation.
+            feet_ids: Indices of the feet bodies.
+            ray_hits_w: The height scanner's ray hits, of shape (N, R, 3), or None to
+                measure against the plane z = 0.
+
+        Returns:
+            The per foot clearance, of shape (num_envs, num_feet).
+        """
+        foot_pos = asset.data.body_pos_w[:, feet_ids]  # (N, F, 3)
+        return foot_pos[..., 2] - FOOT_RADIUS - DataLogger._ground_height(foot_pos, ray_hits_w)
 
     def log_reward(self, rewards, env: ManagerBasedRLEnv | None = None):
         """Log per-step rewards.
@@ -747,8 +1099,19 @@ def main():
                     print(f"[WARNING] Action '{term}' {field} differs, tree {tree} "
                           f"against run {run}, NOT changed")
 
+    design_parameters, design_record = None, None
+    dump_dir = log_dir
+    if args_cli.copt_best_design:
+        if args_cli.policy_type not in ("COPT", "COPT-MORAL"):
+            raise ValueError("--copt_best_design applies only to the COPT and COPT-MORAL policy types")
+        design_parameters, design_record = _best_design(log_dir, resume_path)
+        dump_dir = os.path.join(log_dir, "best_design", f"model_{design_record['checkpoint_iteration']}")
+        print(f"[INFO] Best design of generation {design_record['generation']}, history iteration "
+              f"{design_record['history_iteration']}, for checkpoint iteration "
+              f"{design_record['checkpoint_iteration']}: {design_parameters}")
+
     # instantiate data logger
-    data_logger = DataLogger(log_dir, args_cli.num_envs, agent_cfg.seed)
+    data_logger = DataLogger(dump_dir, args_cli.num_envs, agent_cfg.seed)
     # get asset cfg
     robot_cfg = env_cfg.scene.robot
     # log link properties
@@ -768,7 +1131,7 @@ def main():
         env = HighestTerrainCameraWrapper(env)
         video_kwargs = {
             "video_folder": os.path.join(
-                log_dir, "videos", "play", f"{agent_cfg.seed}"
+                dump_dir, "videos", "play", f"{agent_cfg.seed}"
             ),
             "step_trigger": lambda step: step == 0,
             "video_length": args_cli.video_length,
@@ -795,26 +1158,38 @@ def main():
         ppo_runner = HIMOnPolicyRunner(
             env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device
         )
-    elif args_cli.policy_type == "COPT":
+    elif args_cli.policy_type in ("COPT", "COPT-MORAL"):
 
-        _base_urdf = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf",
-        )
-        _num_individuals = 256
-        param_ranges = {}
-        params = ["thigh_length_scale", "shank_length_scale"]
-        for param in params:
-            param_ranges[param] = DEFAULT_PARAM_RANGES[param]
-        design_generator = CMAESDesignGenerator(
-            base_urdf_path=_base_urdf,
-            num_individuals=_num_individuals,
-            param_ranges=param_ranges,
-            sigma0=0.1,
-            seed=42,
-            late_start=False,
-        )
-        agent_cfg.policy.class_name = "CoptActorCritic"
+        _family = "quadruped" if "Isaac-Quadruped-Copt" in args_cli.task else "biped"
+        if design_parameters is not None:
+            _num_individuals = 1
+            design_generator = FixedDesignGenerator(
+                design_parameters,
+                family=_family,
+                output_dir=os.path.join(dump_dir, "copt_usds"),
+            )
+            # The builder geometry the run emitted its designs under, e.g. the quadruped's
+            # shank_foot_gap of 0.001, recorded by train.py in params/copt_agent.yaml.
+            run_copt = (experiment_params.load_params(log_dir, "copt_agent") or {}).get("copt", {})
+            if run_copt.get("shank_foot_gap") is not None:
+                design_generator.builder_kwargs = {"shank_foot_gap": run_copt["shank_foot_gap"]}
+        else:
+            _num_individuals = 256
+            param_ranges = {}
+            params = ["thigh_length_scale", "shank_length_scale"]
+            for param in params:
+                param_ranges[param] = DEFAULT_PARAM_RANGES[param]
+            design_generator = CMAESDesignGenerator(
+                family=_family,
+                num_individuals=_num_individuals,
+                param_ranges=param_ranges,
+                sigma0=0.1,
+                seed=42,
+                late_start=False,
+            )
+        agent_cfg.policy.class_name = {"COPT": "CoptActorCritic", "COPT-MORAL": "CoptMorALActorCritic"}[
+            args_cli.policy_type
+        ]
         agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         agent_cfg_dict["copt"] = {
@@ -834,6 +1209,14 @@ def main():
             env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device
         )
     ppo_runner.load(resume_path)
+    if design_parameters is not None:
+        # Only learn() spawns a population, so the replay applies the design through the
+        # runner's own generation zero pathway, respawn, nominal pose and reset, then the
+        # actuator parameters. load() leaves current_population None, so sample_batch is
+        # reached and is the base class's no-op.
+        ppo_runner.respawn_robots = respawn_robots()
+        with torch.inference_mode():
+            ppo_runner._reload_morphology()
 
     # obtain the trained policy for inference
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
@@ -867,7 +1250,6 @@ def main():
                 actions = policy(obs)
             # env stepping
             obs, rewards, dones, infos = env.step(actions)
-
             # log data
             data_logger.log(env.unwrapped, SceneEntityCfg("robot"))
             data_logger.log_reward(rewards, env.unwrapped)
@@ -879,6 +1261,9 @@ def main():
 
     # plot data
     data_logger.plot()
+    if design_record is not None:
+        with open(os.path.join(dump_dir, "data", f"{agent_cfg.seed}", "design.json"), "w") as handle:
+            json.dump(design_record, handle, indent=2)
 
     # close the simulator
     env.close()
