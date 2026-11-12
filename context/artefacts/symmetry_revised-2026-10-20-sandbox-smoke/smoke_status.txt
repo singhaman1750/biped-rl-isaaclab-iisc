@@ -1,0 +1,23 @@
+sf_ppo exit 0 tracebacks 0 iterations 3
+quad_ppo exit 0 tracebacks 0 iterations 2
+sf_him exit 0 tracebacks 0 iterations 1
+quad_him exit 0 tracebacks 0 iterations 1
+sf_copt exit 0 tracebacks 1 iterations 0
+quad_copt exit 0 tracebacks 1 iterations 0
+go1_ppo exit 0 tracebacks 1 iterations 0
+brs_ppo exit 0 tracebacks 0 iterations 2
+brs_him exit 0 tracebacks 1 iterations 0
+ks_ppo exit 0 tracebacks 0 iterations 2
+ks_him exit 0 tracebacks 1 iterations 0
+ks_yaw exit 0 tracebacks 0 iterations 2
+DONE
+sf_copt2 exit 0 tracebacks 0 iterations 1
+quad_copt2 exit 0 tracebacks 0 iterations 1
+DONE2
+live_brs_him2 exit 0 tracebacks 1 iterations 0
+live_go1 exit 0 tracebacks 1 iterations 0
+DONE3
+DONE4
+play_sf2 exit 0 tracebacks 0 loaded 1
+play_quad2 exit 0 tracebacks 0 loaded 1
+DONE5

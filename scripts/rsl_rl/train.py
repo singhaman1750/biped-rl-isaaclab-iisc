@@ -3,6 +3,7 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import copy
 import pickle
 import sys
 import yaml
@@ -316,7 +317,7 @@ def main():
         runner = CoptOnPolicyRunner(
             env,
             design_generator,
-            agent_cfg_dict,
+            copy.deepcopy(agent_cfg_dict),
             log_dir=log_dir,
             device=agent_cfg.device,
         )

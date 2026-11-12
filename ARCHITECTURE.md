@@ -96,6 +96,10 @@ gym.register(
 )
 ```
 
+### Sagittal Symmetry in the Runners
+
+Since 2026-10-20 the runner configurations `SF_TRON1AFlatPPORunnerCfg` and `PFQuadrupedPPORunnerCfg` carry `symmetry_cfg` with augmentation and the mirror loss (`environments/environments/tasks/locomotion/agents/limx_rsl_rl_ppo_cfg.py:129-134`, `environments/environments/tasks/locomotion/agents/quadruped_rsl_rl_ppo_cfg.py:46-51`), so every SF and quadruped task below, plain, HIM and co-optimisation, trains with the sagittal mirror without a task of its own. The mirror modules live in `environments/environments/tasks/locomotion/mdp/symmetry/`, and [plans/symmetry_tron1_quadruped.md](plans/symmetry_tron1_quadruped.md) records their design and validation.
+
 ### The Quadruped Task Registry
 
 Twelve identifiers, written as explicit `gym.register` blocks in the same style as the biped tasks.

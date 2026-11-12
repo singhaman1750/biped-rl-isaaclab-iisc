@@ -1,0 +1,7 @@
+# play_sf2, excerpt of /tmp/symsandbox_v2_20261020/smoke_play_sf2.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.limx_solefoot_env_cfg.SFIdentifiedBlindRoughEnvUrdfCfg_PLAY'>
+[INFO]: Parsing configuration from: SF_TRON1AFlatPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=30000, empirical_normalization=False, obs_groups={'policy': ['policy'], 'critic': ['critic']}, 
+[INFO]: Loading model checkpoint from: /tmp/symsandbox_v2_20261020/playcheck/sf_tron_1a_flat/2026-10-20_05-24-20/model_2000.pt for policy type PPO    | 2230      | 461cfad2.. |
+| Active Observation Terms in Group: 'policy' (shape: (360,)) |
+| Active Observation Terms in Group: 'critic' (shape: (4790,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |

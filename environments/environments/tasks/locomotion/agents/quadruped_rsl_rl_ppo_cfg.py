@@ -1,6 +1,13 @@
 from isaaclab.utils import configclass
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg
+from isaaclab_rl.rsl_rl import (
+    RslRlOnPolicyRunnerCfg,
+    RslRlPpoActorCriticCfg,
+    RslRlSymmetryCfg,
+)
 
+from environments.tasks.locomotion.mdp.symmetry.quadruped import (
+    compute_symmetric_states as quadruped_compute_symmetric_states,
+)
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
@@ -38,6 +45,12 @@ class PFQuadrupedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=True,
+            data_augmentation_func=quadruped_compute_symmetric_states,
+            mirror_loss_coeff=0.5,
+        ),
     )
     encoder = EncoderCfg(
         output_detach=True,

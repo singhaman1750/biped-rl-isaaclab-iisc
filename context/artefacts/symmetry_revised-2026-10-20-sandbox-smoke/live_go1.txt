@@ -1,0 +1,14 @@
+# live_go1, excerpt of /tmp/symsandbox_v2_20261020/smoke_live_go1.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.quadruped_pointfoot_env_cfg.QuadrupedPFGo1AssetBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: PFQuadrupedPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=30000, empirical_normalization=False, obs_groups=<dataclasses._MISSING_TYPE object at 0x7c37aca83
+Traceback (most recent call last):
+  File "/workspace/isaaclab/biped/scripts/rsl_rl/train.py", line 366, in <module>
+  File "/workspace/isaaclab/biped/scripts/rsl_rl/train.py", line 198, in main
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/envs/manager_based_rl_env.py", line 80, in __init__
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/envs/manager_based_env.py", line 173, in __init__
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/sim/simulation_context.py", line 530, in reset
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/sim/simulation_context.py", line 601, in render
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/sensors/sensor_base.py", line 303, in _initialize_callback
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/sensors/contact_sensor/contact_sensor.py", line 272, in _initialize_impl
+    raise RuntimeError(
+RuntimeError: Sensor at path '/World/envs/env_.*/Robot/trunk/.*' could not find any bodies with contact reporter API.

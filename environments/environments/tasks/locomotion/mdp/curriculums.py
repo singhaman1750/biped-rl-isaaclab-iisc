@@ -284,6 +284,28 @@ def modify_push_force_v2(
     return curr_setting
 
 
+def _tracking_kernel_average(env, term_name, term_cfg, env_ids, episodes) -> tuple[float, int]:
+    """Episode weighted moving average of the mean per step kernel of the episodes now ending, and its count.
+
+    An episode's kernel is its reward sum over the term's maximum, the quantity the gate of
+    reduce_tracking_rewards_std compares with its threshold, so a fall counts as the reward
+    forgone. Each episode carries weight 1 / episodes, so the average spans about that many.
+    """
+    store = env.__dict__.setdefault("_tracking_kernel_average", {})
+    average, count = store.get(term_name, (0.0, 0))
+    ended = env.num_envs if isinstance(env_ids, slice) else len(env_ids)
+    if ended > 0:
+        kernel = env.reward_manager._episode_sums[term_name][env_ids] / (
+            env.max_episode_length * term_cfg.weight * env.step_dt
+        )
+        batch = kernel.mean().item()
+        alpha = 1.0 - (1.0 - 1.0 / episodes) ** ended
+        average = batch if count == 0 else average + alpha * (batch - average)
+        count += ended
+        store[term_name] = (average, count)
+    return average, count
+
+
 def reduce_tracking_rewards_std(
     env: ManagerBasedRLEnv,
     env_ids: Sequence[int],
@@ -293,20 +315,47 @@ def reduce_tracking_rewards_std(
     update_threshold: float = 0.8,
     update_rate: float = 0.995,
     starting_step: float = 0.0,
+    smoothing_episodes: int | None = None,
+    widen_threshold: float | None = None,
+    maximum_std: float | None = None,
 ):
+    """Narrow a tracking kernel's width as its tracking improves.
+
+    With smoothing_episodes None, the default, the gate reads the environments resetting on
+    the interval step and only narrows, the behaviour every run before 2026-10-23 trained
+    under. With it set, the gate reads a moving average over that many ended episodes,
+    narrows above update_threshold and, with widen_threshold set, widens below it up to
+    maximum_std, so the width settles where the average stays between the two.
+
+    Defect left standing in the default path, which every existing configuration calls, is a
+    gate that fires on a single step's resetting environments, which across 58 runs narrowed
+    the biped widths while their mean kernel stood below the threshold (context/rewards.md,
+    addition of 2026-10-23), and a floor overshot by up to one step.
+    """
     term_cfg = env.reward_manager.get_term_cfg(term_name)
+    suppressed = getattr(env, "_suppress_curriculum", False)
+    if smoothing_episodes is not None and not suppressed:
+        average, count = _tracking_kernel_average(env, term_name, term_cfg, env_ids, smoothing_episodes)
     if env.common_step_counter < starting_step:
         return term_cfg.params["std"]
 
     # Raised by CoptOnPolicyRunner across a design swap's reset.
-    if env.common_step_counter % interval == 0 and not getattr(env, "_suppress_curriculum", False):
-        rew = env.reward_manager._episode_sums[term_name][env_ids]
-        if (
-            torch.mean(rew) / env.max_episode_length
-            > update_threshold * term_cfg.weight * env.step_dt
-        ):
-            if term_cfg.params["std"] > minimum_std:
-                term_cfg.params["std"] = term_cfg.params["std"] * update_rate
+    if env.common_step_counter % interval == 0 and not suppressed:
+        if smoothing_episodes is None:
+            rew = env.reward_manager._episode_sums[term_name][env_ids]
+            if (
+                torch.mean(rew) / env.max_episode_length
+                > update_threshold * term_cfg.weight * env.step_dt
+            ):
+                if term_cfg.params["std"] > minimum_std:
+                    term_cfg.params["std"] = term_cfg.params["std"] * update_rate
+        elif count >= smoothing_episodes:
+            std = term_cfg.params["std"]
+            if average > update_threshold:
+                term_cfg.params["std"] = max(std * update_rate, minimum_std)
+            elif widen_threshold is not None and average < widen_threshold:
+                cap = maximum_std if maximum_std is not None else float("inf")
+                term_cfg.params["std"] = min(std / update_rate, cap)
     return term_cfg.params["std"]
 
 
@@ -463,6 +512,7 @@ def terrain_levels_vel_delayed(
     env_ids: Sequence[int],
     asset_cfg: SceneEntityCfg,
     starting_step: float = 0.0,
+    update_threshold: float = 0.75
 ) -> torch.Tensor:
     """Curriculum based on the distance the robot walked when commanded to move at a desired velocity.
 
@@ -492,11 +542,11 @@ def terrain_levels_vel_delayed(
             dim=1,
         )
         # robots that walked far enough progress to harder terrains
-        move_up = distance > terrain.cfg.terrain_generator.size[0] * 0.75
+        move_up = distance > terrain.cfg.terrain_generator.size[0] * update_threshold
         # robots that walked less than half of their required distance go to simpler terrains
         move_down = (
             distance
-            < torch.norm(command[env_ids, :2], dim=1) * env.max_episode_length_s * 0.75
+            < torch.norm(command[env_ids, :2], dim=1) * env.max_episode_length_s * update_threshold
         )
         move_down *= ~move_up
         # update terrain levels

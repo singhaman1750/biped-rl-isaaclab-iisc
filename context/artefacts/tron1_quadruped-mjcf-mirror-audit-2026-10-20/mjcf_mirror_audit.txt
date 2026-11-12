@@ -1,0 +1,28 @@
+== /ws/tron1-rl-isaaclab-cozum/environments/environments/assets/mjcf/solefoot/tron1/base_robot.xml
+bodies: 15
+max body position mirror error: 0.00e+00 m
+joint             partner           world axis              sign  limits consistent
+abad_R_Joint      abad_L_Joint      [-1.  0.  0.]           +1    True
+hip_R_Joint       hip_L_Joint       [ 0. -1.  0.]           +1    True
+knee_R_Joint      knee_L_Joint      [ 0. -1.  0.]           +1    True
+ankle_R_Joint     ankle_L_Joint     [ 0. -1.  0.]           +1    True
+abad_L_Joint      abad_R_Joint      [1. 0. 0.]              +1    True
+hip_L_Joint       hip_R_Joint       [ 0. -1.  0.]           +1    True
+knee_L_Joint      knee_R_Joint      [ 0. -1.  0.]           +1    True
+ankle_L_Joint     ankle_R_Joint     [ 0. -1.  0.]           +1    True
+== /ws/tron1-rl-isaaclab-cozum/environments/environments/assets/mjcf/quadruped/quadruped.xml
+bodies: 25
+max body position mirror error: 0.00e+00 m
+joint             partner           world axis              sign  limits consistent
+FR_hip_joint      FL_hip_joint      [1. 0. 0.]              -1    True (limits symmetric, ambiguous)
+FR_thigh_joint    FL_thigh_joint    [0. 1. 0.]              +1    True
+FR_calf_joint     FL_calf_joint     [0. 1. 0.]              +1    True
+FL_hip_joint      FR_hip_joint      [1. 0. 0.]              -1    True (limits symmetric, ambiguous)
+FL_thigh_joint    FR_thigh_joint    [0. 1. 0.]              +1    True
+FL_calf_joint     FR_calf_joint     [0. 1. 0.]              +1    True
+RR_hip_joint      RL_hip_joint      [1. 0. 0.]              -1    True (limits symmetric, ambiguous)
+RR_thigh_joint    RL_thigh_joint    [0. 1. 0.]              +1    True
+RR_calf_joint     RL_calf_joint     [0. 1. 0.]              +1    True
+RL_hip_joint      RR_hip_joint      [1. 0. 0.]              -1    True (limits symmetric, ambiguous)
+RL_thigh_joint    RR_thigh_joint    [0. 1. 0.]              +1    True
+RL_calf_joint     RR_calf_joint     [0. 1. 0.]              +1    True

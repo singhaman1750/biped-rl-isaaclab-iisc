@@ -1161,6 +1161,41 @@ def joint_powers_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEnt
     return torch.sum(torch.abs(torch.mul(asset.data.applied_torque, asset.data.joint_vel)), dim=1)
 
 
+def cost_of_transport_exp(
+    env: ManagerBasedRLEnv,
+    sigma_lin: float = 1000.0,
+    sigma_ang: float = 500.0,
+    min_denominator: float = 1.0e-6,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Velocity normalised energy reward, Eq. 4 of Liang et al., arXiv 2403.20001.
+
+    The absolute joint power over a weighted sum of the measured forward and yaw speeds,
+    a cost of transport whose denominator also credits turning in place, mapped through
+    a negative exponential into (0, 1].
+
+    The denominator is the MEASURED speed, as the paper takes it, so the reward vanishes
+    at standstill and a standing command earns nothing from it. The power is summed over
+    every joint, joint_powers_l1 ignoring asset_cfg.joint_ids.
+
+    Args:
+        env: The environment object.
+        sigma_lin: Scale of the forward speed in the denominator (W s/m).
+        sigma_ang: Scale of the yaw rate in the denominator (W s/rad).
+        min_denominator: Floor on the denominator, guarding the division at standstill.
+        asset_cfg: Configuration for the robot asset.
+
+    Returns:
+        The computed reward tensor.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    power = joint_powers_l1(env, asset_cfg)
+    speed = (
+        sigma_lin * torch.abs(asset.data.root_lin_vel_b[:, 0])
+        + sigma_ang * torch.abs(asset.data.root_ang_vel_b[:, 2])
+    )
+    return torch.exp(-power / torch.clamp(speed, min=min_denominator))
+
 
 def unbalance_feet_air_time(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """Penalize if the feet air time variance exceeds the balance threshold."""

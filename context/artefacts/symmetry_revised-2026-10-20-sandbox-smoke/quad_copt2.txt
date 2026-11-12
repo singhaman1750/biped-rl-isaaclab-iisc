@@ -1,0 +1,28 @@
+# quad_copt2, excerpt of /tmp/symsandbox_v2_20261020/smoke_quad_copt2.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: PFQuadrupedCoptPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=45000, empirical_normalization=False, obs_groups={'policy': ['policy'], 'critic': ['critic'],
+| Active Observation Terms in Group: 'policy' (shape: (480,)) |
+| Active Observation Terms in Group: 'critic' (shape: (6690,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+| Active Observation Terms in Group: 'morphologyObs' (shape: (216,)) |
+| Active Observation Terms in Group: 'privilegedDynamicsObs' (shape: (48,)) |
+| Active Observation Terms in Group: 'historyObs' (shape: (5875,)) |
+[symmetry-probe] joint_names ['FR_hip_joint', 'FL_hip_joint', 'RR_hip_joint', 'RL_hip_joint', 'FR_thigh_joint', 'FL_thigh_joint', 'RR_thigh_joint', 'RL_thigh_joint', 'FR_calf_joint', 'FL_calf_joint', 'RR_calf_joint', 'RL_calf_joint']
+[symmetry-probe] jperm [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10] jsign [-1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+[symmetry-probe] body_names ['trunk', 'abad_FR_act', 'abad_FL_act', 'abad_RR_act', 'abad_RL_act', 'hip_FR_act', 'hip_FL_act', 'hip_RR_act', 'hip_RL_act', 'knee_FR_act', 'knee_FL_act', 'knee_RR_act', 'knee_RL_act', 'thigh_FR_Link', 'thigh_FL_Link', 'thigh_RR_Link', 'thigh_RL_Link', 'shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link', 'foot_FR_Link', 'foot_FL_Link', 'foot_RR_Link', 'foot_RL_Link']
+[symmetry-probe] body_perm [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23]
+[symmetry-probe] shapes [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] max_shapes 25
+[symmetry-probe] limits [[-0.802851, 0.802851], [-0.802851, 0.802851], [-0.802851, 0.802851], [-0.802851, 0.802851], [-1.931537, 3.304453], [-1.931537, 3.304453], [-1.931537, 3.304453], [-1.931537, 3.304453], [-0.927857, 0.852375], [-0.927857, 0.852375], [-0.927857, 0.852375], [-0.927857, 0.852375]]
+[symmetry-probe] default {'.._hip_joint': 0.0, '.._thigh_joint': 0.0, '.._calf_joint': 0.0}
+[symmetry-probe] group policy [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (120,), 10), ('joint_vel', (120,), 10), ('last_action', (120,), 10), ('velocity_commands', (30,), 10)]
+[symmetry-probe] group critic [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (120,), 10), ('joint_vel', (120,), 10), ('last_action', (120,), 10), ('velocity_commands', (30,), 10), ('robot_joint_torque', (120,), 10), ('robot_joint_acc', (120,), 10), ('feet_lin_vel', (120,), 10), ('robot_mass', (250,), 10), ('robot_inertia', (2250,), 10), ('robot_joint_pos', (120,), 10), ('robot_joint_stiffness', (120,), 10), ('robot_joint_damping', (120,), 10), ('robot_pos', (30,), 10), ('robot_vel', (60,), 10), ('robot_material_properties', (750,), 10), ('feet_contact_force', (120,), 10), ('heights', (1870,), 10), ('link_lengths', (80,), 10), ('nominal_pose', (80,), 10)]
+[symmetry-probe] group commands [('velocity_commands', (3,), 0)]
+[symmetry-probe] group morphologyObs [('link_lengths', (8,), 0), ('robot_mass', (20,), 0), ('robot_inertia', (180,), 0), ('nominal_pose', (8,), 0)]
+[symmetry-probe] group privilegedDynamicsObs [('robot_joint_torque', (12,), 0), ('robot_joint_acc', (12,), 0), ('feet_contact_force', (12,), 0), ('feet_lin_vel', (12,), 0)]
+[symmetry-probe] group historyObs [('base_lin_vel', (75,), 25), ('base_ang_vel', (75,), 25), ('proj_gravity', (75,), 25), ('joint_pos', (300,), 25), ('joint_vel', (300,), 25), ('last_action', (300,), 25), ('velocity_commands', (75,), 25), ('heights', (4675,), 25)]
+[symmetry-probe] rays height_scanner 187 yaw xy
+[symmetry-probe] sensor contact_forces ['trunk', 'abad_FR_act', 'hip_FR_act', 'knee_FR_act', 'thigh_FR_Link', 'shank_FR_Link', 'foot_FR_Link', 'abad_FL_act', 'hip_FL_act', 'knee_FL_act', 'thigh_FL_Link', 'shank_FL_Link', 'foot_FL_Link', 'abad_RR_act', 'hip_RR_act', 'knee_RR_act', 'thigh_RR_Link', 'shank_RR_Link', 'foot_RR_Link', 'abad_RL_act', 'hip_RL_act', 'knee_RL_act', 'thigh_RL_Link', 'shank_RL_Link', 'foot_RL_Link']
+[symmetry] mirrored groups ['policy', 'critic', 'commands', 'morphologyObs', 'privilegedDynamicsObs', 'historyObs']
+                        [1m Learning iteration 0/3 [0m                        
+             model_estimation_loss: 0.0582
+                          symmetry: 0.0114

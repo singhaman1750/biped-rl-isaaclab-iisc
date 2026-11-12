@@ -1,0 +1,98 @@
+MODEL environments/environments/assets/urdf/solefoot/tron1/base_robot_tron1.urdf
+mass 20.813 kg, weight 204.2 N, action scale 0.25
+
+================================================================================================
+STATIC STANCE TORQUE at the nominal pose, root 0.8397 m above the ground, leg R
+================================================================================================
+  centre of mass +0.0007 m fore-aft, 0.5291 m high, centre of pressure placed beneath it
+
+  joint              double   single   swing   limit      K    sag2    sag1   act2   act1   use1
+  abad_R_Joint        +0.02    +0.08   -0.04    60.0   55.0   0.000   0.001   0.00   0.01   0.00
+  hip_R_Joint         -3.26    -5.52   -1.01    60.0   80.0   0.041   0.069   0.16   0.28   0.09
+  knee_R_Joint       +15.22   +32.79   -2.35    90.0   60.0   0.254   0.547   1.01   2.19   0.36
+  ankle_R_Joint       -2.19    -4.45   +0.07    40.0   10.0   0.219   0.445   0.88   1.78   0.11
+
+  torques in Nm, positive about the joint axis. sag in rad is torque over stiffness, the steady error
+  a proportional loop settles at under that load, act is that sag in action units, the action the
+  policy must add merely to hold the pose, and use1 the single support torque over the effort limit.
+
+================================================================================================
+STANCE AND SWING INERTIA, AND THE PROPOSED GAINS, target zeta 0.7, error budget 0.15 rad
+================================================================================================
+  joint             I_swing  I_stance      K      D zeta_sw zeta_st   K_min      K*     D*   zsw*   zst*  sag1*
+  abad_R_Joint       0.4842    1.0690   55.0  13.50    1.31    0.88     0.5    69.7  11.62   1.00   0.67  0.001
+  hip_R_Joint        0.4941    0.7423   80.0  13.00    1.03    0.84    36.8    71.2  10.17   0.86   0.70  0.078
+  knee_R_Joint       0.1593    2.5525   60.0   4.00    0.65    0.16   218.6   218.6  11.80   1.00   0.25  0.150
+  ankle_R_Joint      0.0082    5.7537   10.0   0.50    0.88    0.03    29.7    29.7   0.98   1.00   0.04  0.150
+
+  I in kg m^2 with the configured armature. K_min holds the single support torque within the budget,
+  capped at the effort limit. D* is the smallest of the stance target, the swing critical damping and
+  the explicit integration ceiling I_swing / (dt x 1.158) of the randomised envelope.
+
+  Proposed actuator block:
+    abad     stiffness    69.7   damping  11.62
+    hip      stiffness    71.2   damping  10.17
+    knee     stiffness   218.6   damping  11.80
+    ankle    stiffness    29.7   damping   0.98
+
+================================================================================================
+ZERO ACTION DROP TEST, trunk held level on a gantry, configured gains, 32 trials of 3.0 s, spawn 0.8 m
+================================================================================================
+  from the nominal pose, settled root height 0.8094 m against standing 0.8397 m
+    resting on ankle_L_Link, ankle_R_Link, leg links touched none, trunk touched False, first non foot contact None
+    deflection abad_R_Joint +0.000, hip_R_Joint -0.071, knee_R_Joint -0.185, ankle_R_Joint -0.113, abad_L_Joint +0.000, hip_L_Joint +0.072, knee_L_Joint +0.185, ankle_L_Joint -0.112
+  from the reset distribution, settled root height 0.8021 m (min 0.7820, max 0.8144),
+    0 percent touched the ground with an undesired contact link, 0 percent end resting on one, 0 percent touched it with a terminating body
+
+================================================================================================
+ZERO ACTION DROP TEST, trunk held level on a gantry, proposed gains, 32 trials of 3.0 s, spawn 0.8 m
+================================================================================================
+  from the nominal pose, settled root height 0.8309 m against standing 0.8397 m
+    resting on ankle_L_Link, ankle_R_Link, leg links touched none, trunk touched False, first non foot contact None
+    deflection abad_R_Joint +0.000, hip_R_Joint -0.021, knee_R_Joint -0.054, ankle_R_Joint -0.032, abad_L_Joint +0.000, hip_L_Joint +0.022, knee_L_Joint +0.054, ankle_L_Joint -0.032
+  from the reset distribution, settled root height 0.8250 m (min 0.8196, max 0.8304),
+    0 percent touched the ground with an undesired contact link, 0 percent end resting on one, 0 percent touched it with a terminating body
+
+================================================================================================
+ZERO ACTION DROP TEST, free, configured gains, 32 trials of 3.0 s, spawn 0.8 m
+================================================================================================
+  from the nominal pose, settled root height 0.1844 m against standing 0.8397 m
+    resting on ankle_L_Link, ankle_R_Link, base_Link, leg links touched none, trunk touched True, first non foot contact (0.965, 'base_Link')
+    deflection abad_R_Joint -0.000, hip_R_Joint -0.025, knee_R_Joint -0.008, ankle_R_Joint +0.087, abad_L_Joint +0.000, hip_L_Joint +0.025, knee_L_Joint +0.008, ankle_L_Joint +0.087
+  from the reset distribution, settled root height 0.1623 m (min 0.1072, max 0.2413),
+    52 percent touched the ground with an undesired contact link, 52 percent end resting on one, 100 percent touched it with a terminating body
+    first non foot contact after 0.74 s median, on abad_L_Link (1), abad_R_Link (2), base_Link (19), hip_R_Link (1), knee_L_Link (5), knee_R_Link (3)
+
+================================================================================================
+ZERO ACTION DROP TEST, free, proposed gains, 32 trials of 3.0 s, spawn 0.8 m
+================================================================================================
+  from the nominal pose, settled root height 0.1866 m against standing 0.8397 m
+    resting on ankle_L_Link, ankle_R_Link, base_Link, leg links touched none, trunk touched True, first non foot contact (1.155, 'base_Link')
+    deflection abad_R_Joint +0.000, hip_R_Joint -0.035, knee_R_Joint +0.002, ankle_R_Joint +0.012, abad_L_Joint -0.000, hip_L_Joint +0.035, knee_L_Joint -0.002, ankle_L_Joint +0.012
+  from the reset distribution, settled root height 0.1580 m (min 0.1071, max 0.1878),
+    52 percent touched the ground with an undesired contact link, 52 percent end resting on one, 100 percent touched it with a terminating body
+    first non foot contact after 0.91 s median, on abad_R_Link (3), base_Link (17), hip_L_Link (2), hip_R_Link (3), knee_L_Link (4), knee_R_Link (2)
+
+================================================================================================
+SAGITTAL BEND SWEEP, knee re-posed, hip and ankle solved to keep the ankle lead and the sole pitch
+================================================================================================
+   d_knee   d_hip d_ankle  thigh  shank   incl  height    tk2    tk1    th1    ta1 act_k1 bend_th bend_kn bend_an
+    -0.60  -0.300  -0.300  -47.2  +47.2   85.6  0.7279  +20.9  +45.1   -5.1   -3.5   3.01   +17.2   -34.4   +17.2
+    -0.50  -0.250  -0.250  -44.3  +44.3   91.3  0.7493  +20.0  +43.3   -5.1   -3.7   2.89   +14.3   -28.6   +14.3
+    -0.40  -0.200  -0.200  -41.5  +41.5   97.1  0.7698  +19.1  +41.4   -5.2   -3.8   2.76   +11.5   -22.9   +11.5
+    -0.30  -0.150  -0.150  -38.6  +38.6  102.8  0.7891  +18.2  +39.3   -5.3   -4.0   2.62    +8.6   -17.2    +8.6
+    -0.20  -0.100  -0.100  -35.7  +35.7  108.5  0.8072  +17.3  +37.2   -5.4   -4.1   2.48    +5.7   -11.5    +5.7
+    -0.10  -0.050  -0.050  -32.9  +32.9  114.2  0.8241  +16.3  +35.0   -5.4   -4.3   2.34    +2.9    -5.7    +2.9
+    -0.00  +0.000  +0.000  -30.0  +30.0  119.9  0.8397  +15.2  +32.8   -5.5   -4.5   2.19    -0.0    -0.0    -0.0
+    +0.10  +0.050  +0.050  -27.1  +27.1  125.6  0.8541  +14.2  +30.5   -5.6   -4.6   2.03    -2.9    +5.7    -2.9
+    +0.20  +0.100  +0.100  -24.3  +24.3  131.3  0.8671  +13.1  +28.1   -5.7   -4.8   1.87    -5.7   +11.5    -5.7
+    +0.30  +0.150  +0.150  -21.4  +21.4  137.0  0.8787  +12.0  +25.7   -5.8   -5.0   1.71    -8.6   +17.2    -8.6
+    +0.40  +0.200  +0.200  -18.5  +18.5  142.7  0.8890  +10.8  +23.2   -5.9   -5.2   1.55   -11.5   +22.9   -11.5
+    +0.50  +0.250  +0.250  -15.7  +15.7  148.4  0.8978   +9.7  +20.7   -6.0   -5.4   1.38   -14.3   +28.6   -14.3
+    +0.60  +0.300  +0.300  -12.8  +12.8  154.1  0.9052   +8.5  +18.1   -6.1   -5.5   1.21   -17.2   +34.4   -17.2
+
+  offsets in rad, angles in deg from the downward vertical, incl the knee included angle, height the root
+  above the ground. tk2 and tk1 the knee torque in double and single support, th1 and ta1 the hip and the
+  ankle in single support, Nm, against stiffnesses 60.0, 80.0 and 10.0. act_k1 the knee action that cancels the
+  single support sag. bend_* the equivalent rotation of each body about +y in degrees, the quantity the
+  design generator's thigh, knee and ankle bend offsets add to the baked geometry.

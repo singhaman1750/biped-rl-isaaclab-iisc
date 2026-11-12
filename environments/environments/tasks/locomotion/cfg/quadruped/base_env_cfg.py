@@ -423,6 +423,8 @@ class CoptObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
+            self.history_length = 10
+            self.flatten_history_dim = True
 
     @configclass
     class MorphologyCfg(ObsGroup):
@@ -671,7 +673,7 @@ class CoptObservationsCfg:
     commands: CommandsObsCfg = CommandsObsCfg()
     morphologyObs: MorphologyCfg = MorphologyCfg()
     privilegedDynamicsObs: PrivilegedDynamicsCfg = PrivilegedDynamicsCfg()
-    historyObs: HistoryObsCfg = HistoryObsCfg()
+    # historyObs: HistoryObsCfg = HistoryObsCfg()
 
 
 @configclass
@@ -1085,6 +1087,8 @@ class EventsCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP"""
+    
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-2000.0)
 
     # termination related rewards
     keep_balance = RewTerm(func=mdp.stay_alive, weight=0.05)
@@ -1105,16 +1109,16 @@ class RewardsCfg:
     )
 
     # penalisations
-    # 0.292 m is the standing height at which the 0.022 m foot sphere rests on the
-    # ground given the 0.270 m kinematic drop of the nominal crouch. The 0.33 m target
-    # asks for 38 mm more extension than that crouch.
+    # 0.35 m is the standing height at which the 0.022 m foot sphere rests on the
+    # ground given the 0.328 m kinematic drop of the nominal crouch. The 0.35 m target
+    # asks for no extension beyond that crouch.
     pen_base_height = RewTerm(
         func=mdp.base_height_rough_l2,
         params={
-            "target_height": 0.33,
+            "target_height": 0.35,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
-        weight=-5.0,
+        weight=-15.0,
     )
     pen_lin_vel_z = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
@@ -1156,7 +1160,7 @@ class RewardsCfg:
     # half, which is what the canonical 0.5 s is for ANYmal's 1 Hz trot.
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_v2,
-        weight=10.0,
+        weight=12.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "command_name": "base_velocity",
@@ -1168,7 +1172,7 @@ class RewardsCfg:
     # feet_air_time_v2's touchdown-only measurement. See mdp/rewards.py:feet_hold_penalty.
     pen_feet_hold = RewTerm(
         func=mdp.feet_hold_penalty,
-        weight=-0.1,
+        weight=-1.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "command_name": "base_velocity",
@@ -1275,10 +1279,21 @@ class TerminationsCfg:
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="trunk"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[
+                "trunk"
+            ]),
             "threshold": 1.0,
         },
     )
+    # leg_contact = DoneTerm(
+    #     func=mdp.illegal_contact,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[
+    #             "thigh_.*", "shank_.*",
+    #         ]),
+    #         "threshold": 1.0,
+    #     },
+    # )
 
 
 @configclass
@@ -1293,7 +1308,8 @@ class CurriculumCfg:
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 4800
+            "starting_step": 5000,
+            "update_threshold": 0.75
         }
     )
 
@@ -1302,8 +1318,8 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (1.0, 1.0),
-            "interval": 2400,
-            "starting_step": 2400,
+            "interval": 25 * 100,
+            "starting_step": 25 * 500,
             "increment_rate": 1.1,
             "decrement_rate" : 0.8,
             "minimum_velocity": 0.2
@@ -1315,8 +1331,8 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 2400,
-            "starting_step": 2400,
+            "interval": 25 * 100,
+            "starting_step": 25 * 500,
             "update_rate": 0.03,
             "update_threshold": 0.6,
         }
@@ -1327,9 +1343,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-0.5, 0.5),
-            "interval": 2400,
-            "starting_step": 2400,
-            "update_rate": 0.01,
+            "interval": 25 * 100,
+            "starting_step": 25 * 500,
+            "update_rate": 0.03,
             "update_threshold": 0.5,
         }
     )
@@ -1339,8 +1355,8 @@ class CurriculumCfg:
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
-            "interval": 2400,
-            "starting_step": 2400,
+            "interval": 25 * 100,
+            "starting_step": 25 * 500,
             "update_rate": 0.05,
             "update_threshold": 0.4,
         }
@@ -1350,8 +1366,8 @@ class CurriculumCfg:
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_lin_vel_xy",
-            "interval": 9600,
-            "starting_step": 2400,
+            "interval": 25 * 500,
+            "starting_step": 25 * 500,
             "update_rate": 0.925,
             "update_threshold": 0.67,
             "minimum_std": 0.09
@@ -1361,8 +1377,8 @@ class CurriculumCfg:
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_ang_vel_z",
-            "interval": 9600,
-            "starting_step": 0,
+            "interval": 25 * 500,
+            "starting_step": 25 * 500,
             "update_rate": 0.95,
             "update_threshold": 0.5,
             "minimum_std": 0.09
@@ -1501,7 +1517,7 @@ class QuadrupedPFEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the test environment"""
 
     # Scene settings
-    scene: QuadrupedPFSceneCfg = QuadrupedPFSceneCfg(num_envs=6000, env_spacing=env_spacing)
+    scene: QuadrupedPFSceneCfg = QuadrupedPFSceneCfg(num_envs=4096, env_spacing=env_spacing)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -1532,7 +1548,7 @@ class QuadrupedPFHIMEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the test environment"""
 
     # Scene settings
-    scene: QuadrupedPFSceneCfg = QuadrupedPFSceneCfg(num_envs=6000, env_spacing=env_spacing)
+    scene: QuadrupedPFSceneCfg = QuadrupedPFSceneCfg(num_envs=4096, env_spacing=env_spacing)
     # Basic settings
     observations: HIMObservationsCfg = HIMObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

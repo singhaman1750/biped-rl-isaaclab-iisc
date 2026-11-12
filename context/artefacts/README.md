@@ -17,6 +17,12 @@ Two conditions govern admission and both must hold. An artefact must be cited by
 | `kscale_flat-2026-09-03_09-49-22/` | One contact sheet, `train_320000_episode_span.png`, twelve equally spaced frames spanning the training video at three hundred and twenty thousand steps | `kscale_flat/2026-09-03_09-49-22`, arm R, 13444 iterations | Certain, extracted with OpenCV from `videos/train/rl-video-step-320000.mp4` in that run's own directory |
 | `kscale_flat-2026-09-04_10-15-18/` | Two contact sheets, `train_320000_one_cycle.png` and `train_710000_one_cycle.png`, each twelve frames at three frame spacing over one gait cycle, at the same training step as the corresponding sheets of the other runs and at the last recorded step | `kscale_flat/2026-09-04_10-15-18`, arm 0S, 30000 iterations | Certain, extracted with OpenCV from `videos/train/rl-video-step-320000.mp4` and `rl-video-step-710000.mp4` in that run's own directory |
 | `kscale_flat-2026-09-04_10-40-30/` | Two contact sheets, `train_320000_episode_span.png` spanning the whole recording at twelve equally spaced frames and `train_710000_one_cycle.png` over twelve consecutive sampled frames at the last recorded step | `kscale_flat/2026-09-04_10-40-30`, arm CS, 30000 iterations | Certain, extracted with OpenCV from `videos/train/rl-video-step-320000.mp4` and `rl-video-step-710000.mp4` in that run's own directory |
+| `tron1_quadruped-mjcf-mirror-audit-2026-10-20/` | The sagittal mirror audit of the two MuJoCo documents, the script and its output | No run, the TRON1 and quadruped MJCF of the working tree of 2026-10-20 | Certain, the output regenerates from the script against documents of recorded md5 |
+| `quadruped_symmetry-2026-10-20_06-54-05-sandbox-smoke/` | The probe output, iteration log, dumped symmetry configuration and environment configuration diff of a three iteration sandbox run | `quadruped_symmetry/2026-10-20_06-54-05` in `/tmp/symsandbox_20261020` of `isaac-lab-base-shreyas-gpu1`, a sandbox and not the shared log tree | Certain, extracted from that run's own log and `params/` on the day it ran |
+| `sf_tron_1a_symmetry-2026-10-20_06-56-00-sandbox-smoke/` | The same for the TRON1 | `sf_tron_1a_symmetry/2026-10-20_06-56-00` in the same sandbox | Certain, as above |
+| `sf_quadruped_brs_kscale-obs-term-census-2026-10-20/` | Every observation group and term of the thirty three training tasks of the SF, quadruped, SD_BRS1 and KScale families, with each term's function and parameters, and the script that produced it | No run, the environment configurations of the working tree of 2026-10-20 instantiated without a simulation | Certain, the output regenerates from the script against the tree of that date |
+| `symmetry_revised-2026-10-20-sandbox-smoke/` | Excerpts of the logs of twelve sandbox training runs, two reruns, two runs of the unmodified live tree and two replays, their status table, the dumped symmetry configurations, and the scripts that launched them | The runs of `/tmp/symsandbox_v2_20261020` of `isaac-lab-base-shreyas-gpu1` on 2026-10-20, a sandbox and not the shared log tree | Certain, extracted from each run's own log and `params/` on the day it ran |
+| `symmetry_applied-2026-10-20-live-smoke/` | The status table, the symmetry loss of every run read from its event file, the final checkpoint and dumped augmentation function of every run, and the script, of the eight task smoke test run on the live tree after the symmetry plan was applied | The runs under `/tmp/symmetry_smoke/logs/rsl_rl/` of `isaac-lab-base-shreyas-gpu1` on 2026-10-20, a scratch directory and not the shared log tree | Certain, read from each run's own event file and `params/` the same day |
 
 The `2026-08-25_08-14-22-train-video/` directory is cited as a set by section 1 of [../../plans/quadruped-floot-penetration-fix.md](../../plans/quadruped-floot-penetration-fix.md), which reasons about both sheets together as the visual record of the fall through, the first establishing that the descent continues to the end of the episode and the second that it begins within the first second.
 
@@ -61,6 +67,33 @@ Attribution is by construction and by extraction together. The three contact she
 
 The directory is named for the span of the three runs rather than for one of them, the plan reasoning about the set as a sequence in which each run differs from its predecessor in a countable number of actuator ceilings, and no single run being the subject.
 
+### `sf_tron_1a_flat-2026-10-09_06-04-18/`
+
+Registered 2026-10-19. The run is `sf_tron_1a_flat/2026-10-09_06-04-18`, which despite its experiment name is the rough terrain task `Isaac-Limx-SF-Identified-Blind-Rough-Urdf-v0`, its dumped `params/env.yaml` naming `SFIdentifiedBlindRoughEnvUrdfCfg` on its first line. Attribution is certain for both sub-directories, since every file was produced from that run's own directory by the commands recorded beside it. The source files were identified by md5 prefix on 2026-10-19, the event file `events.out.tfevents.1791526003.auk6000.175479.0` as `956bb3aa5ce7`, `videos/train/rl-video-step-0.mp4` as `e62eee6776fc`, `videos/train/rl-video-step-430000.mp4` as `c8c7099aa869` and `params/env.yaml` as `702431c96743`. All of it is cited by `../../plans/tron1_locomotion_fine_tuning.md`.
+
+| Path | What it holds | Cited by |
+|---|---|---|
+| `frames/sheet_step_<N>.jpg` | One sheet per training video, forty four in all for N from 0 to 430000 in steps of 10000, eight frames each sampled evenly over the forty seconds, cropped to the tracked robot and labelled with the step, the iteration N/25 and the time | section 3.4 |
+| `frames/dense_step_<N>.jpg` | Sixteen frame sheets for the ten videos from 250000 to 340000, the window in which the user reported the transition | section 3.4 |
+| `frames/overview.jpg` | One representative frame per video, forty four tiles | section 3.4 |
+| `tensorboard/scalars_every50.csv.gz` | Every scalar tag of the event file at iterations divisible by fifty, raw values | sections 3.5 and 7 |
+| `tensorboard/plot_*.svg` | Six hand written plots of episode length, implied base height error, undesired contacts, tracking, the foot contact rewards and the noise standard deviation, each marked at iteration 12400 | section 3.5 |
+| `tensorboard/extract.py` | The extraction, its tables and its fits, which reads only the event file and runs in about twenty seconds with tensorboard and scipy on the path | sections 3.5 and 7 |
+| `arm0/contact_probe_model_6000.txt` | The sixty samples printed by the arm 0 contact probe of `scripts/rsl_rl/play.py` on 2026-10-19, the share of 32 environments of the rough play task whose contact force exceeded 10 N per body, replaying `model_6000.pt` for 3000 control steps, with a header recording the replay's configuration. Attribution is certain, the checkpoint path being printed in the replay's own log, from which the user transcribed the samples into the session | section 6.2.1 |
+
+The sheets were built with the `imageio_ffmpeg` static binary and labelled with OpenCV, that binary carrying no drawtext filter. The camera follows environment zero only and does not turn with it, so only side views of that one robot can be read for support, a limitation section 3.4 of the plan states.
+
+### `tron1_sf-model-analysis-2026-10-19/`
+
+Registered 2026-10-19. The outputs of `scripts/analysis/biped_physical_analysis.py` and `scripts/analysis/biped_stance_analysis.py` under `scripts/analysis/biped_configs/tron1_sf.json`, run at repository commit `23513d2` with the working tree of 2026-10-19. They are attributed to the model documents rather than to a training run, `environments/environments/assets/mjcf/solefoot/tron1/base_robot.xml`, `.../urdf/solefoot/tron1/base_robot.urdf` and `.../urdf/solefoot/tron1/base_robot_tron1.urdf`, and are reproduced exactly by rerunning the two scripts, which are deterministic, the drop test seeding its generator at zero.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `physical_analysis.txt` | Mass inventory, nominal pose geometry, joint limit headroom, kneeling geometry, swing inertia, symmetry and collision audit of the three documents, with their comparison table | sections 3.1 and 3.2 of `../../plans/tron1_locomotion_fine_tuning.md` |
+| `stance_analysis_mjcf.txt` | Static stance torques, sag, stance and swing inertia, proposed gains, zero action drop tests on a gantry and free, and the bend sweep, for the generated MJCF | sections 3.2 and 6 |
+| `stance_analysis_tron1_urdf.txt` | The same for the original LimX TRON1 URDF | section 3.2 |
+| `stance_analysis_mjcf_arm7_nominal.txt` | The same for the generated MJCF under `scripts/analysis/biped_configs/tron1_sf_arm7_nominal.json`, the knee straightened by 0.2 rad, which sets the spawn height and the height target of arm 7 | section 6, arm 7 |
+
 ### `render-refresh-diagnostic-2026-10-19/`
 
 Registered 2026-10-19. Renders of a three environment scene built by a diagnostic script run in `isaac-lab-base-shreyas-gpu1` against the working tree of 2026-10-19, not by a training run. Design A, shank scale 0.85 and so a 0.18 m shank, was converted and spawned in environments 0 and 1, design B, shank scale 1.15 and so 0.24 m, in environment 2, and B was then written into environment 0 by `apply_link_length_params`. Attribution is by construction, each image being written by the script that built the scene, with gravity off and every joint at zero.
@@ -70,6 +103,53 @@ Registered 2026-10-19. Renders of a three environment scene built by a diagnosti
 | `quadruped_stale_render.png` | Environment 0 before the write, after the write, and environment 2, the written shanks drawn at A's length with their feet at B's | section 9 of `../co_optimisation_audit.md`, row dated 2026-10-19 |
 | `quadruped_refreshed_render.png` | Environment 0 after the write, after `refresh_rendered_geometry`, and environment 2, the refreshed shanks reaching their feet as B's do | the same row |
 
+### `tron1_quadruped-mjcf-mirror-audit-2026-10-20/`
+
+Registered 2026-10-20. Not the product of a run. `mjcf_mirror_audit.py` composes every body quaternion of a MuJoCo document to the root, expresses each joint axis in the base frame and compares the mirror of each joint's axis with its partner's, and `mjcf_mirror_audit.txt` is its output against `environments/environments/assets/mjcf/solefoot/tron1/base_robot.xml`, md5 `808a09a927219e8d707cc27a4a83770b`, and `environments/environments/assets/mjcf/quadruped/quadruped.xml`, md5 `81a3b2a88f3a9d222952c3f2b0ec04d7`, both as they stood in the working tree of 2026-10-20. Attribution is by regeneration, the script reading only those two files with numpy.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `mjcf_mirror_audit.py` | The audit, run with `python3 -I mjcf_mirror_audit.py` from this directory | sections 4.1 and 4.2 of `../../plans/symmetry_tron1_quadruped.md` |
+| `mjcf_mirror_audit.txt` | Body counts, the worst body position mirror error, and per joint the world axis, the derived sign and the consistency of the limits | the same sections, `../tron1.md` addition of 2026-10-20, section 11 of `../quadruped.md` |
+
+### `quadruped_symmetry-2026-10-20_06-54-05-sandbox-smoke/` and `sf_tron_1a_symmetry-2026-10-20_06-56-00-sandbox-smoke/`
+
+Registered 2026-10-20. Each holds one file, `smoke_probe.txt`, the lines a sandbox run printed through a probe added to `compile_maps` of the proposed `common.py`, its iteration log, the `symmetry_cfg` of its dumped `params/agent.yaml`, and the diff of its dumped `params/env.yaml` against the baseline then in flight, `quadruped_flat/2026-10-20_05-09-02` and `sf_tron_1a_flat/2026-10-20_05-24-20` respectively. The runs trained three iterations on 64 environments of `Isaac-Quadruped-Blind-Rough-Symmetry-v0` and `Isaac-Limx-SF-Identified-Blind-Rough-Urdf-Symmetry-v0` in a sandbox copy of the repository at `/tmp/symsandbox_20261020` inside `isaac-lab-base-shreyas-gpu1`, so they are absent from the shared log tree by design. Attribution is by extraction from each run's own log and directory on the day it ran. Both task identifiers belonged to the plan's first pass and were withdrawn by its revision of the same day, which never registered them, and the runtime orders these files record were reproduced on the registered tasks in `symmetry_revised-2026-10-20-sandbox-smoke/`.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `smoke_probe.txt` | Runtime joint and body names and permutations, signs, shape counts, limits, group layouts, ray pattern, contact sensor order, symmetry loss per iteration, dumped symmetry configuration, environment configuration diff | section 4.4 of `../../plans/symmetry_tron1_quadruped.md` as revised on 2026-10-20, the 2026-10-20 additions of `../tron1.md` and `../quadruped.md` |
+
+### `sf_quadruped_brs_kscale-obs-term-census-2026-10-20/`
+
+Registered 2026-10-20. Not the product of a run. `dump_obs_terms.py` launches Isaac Sim headless, loads the environment configuration of every registered training task whose identifier begins with one of the four family prefixes, play tasks excluded, and records for each its runner class, its environment class, its spawned asset, and per observation group the history, the flattening and every term with its function and parameters, into `obs_terms.json`. It was run inside `isaac-lab-base-shreyas-gpu1` against the working tree of 2026-10-20, md5 of the output `1b8bab39e02f339185cb9537c0db1327`. Attribution is by regeneration.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `dump_obs_terms.py` | The census script | section 5.1 of `../../plans/symmetry_tron1_quadruped.md` |
+| `obs_terms.json` | The census | sections 3.3 and 5.1 of the same plan |
+
+### `symmetry_revised-2026-10-20-sandbox-smoke/`
+
+Registered 2026-10-20. The runs of the revised symmetry plan in a fresh sandbox copy of the repository at `/tmp/symsandbox_v2_20261020` inside `isaac-lab-base-shreyas-gpu1`, each three iterations on 64 environments, so they are absent from the shared log tree by design. `smoke.sh` launched the first twelve, `smoke2.sh` the two co-optimisation reruns after the `train.py` copy, `smoke3.sh` the two runs of the unmodified live tree from a directory holding no `environments` package, and `smoke4.sh` the two replays, the last as edited in place for its rerun after `scripts/analysis` was copied into the sandbox. `smoke.sh` also holds a first live tree run whose output was discarded, the sandbox directory having shadowed the installed package so that no task was registered. `add_probe.py` inserted the probe whose lines the excerpts carry. Each `<name>.txt` is the extraction of one log, the configuration lines, the group widths, the probe and symmetry lines, the iteration and loss lines, and the closing frames of any traceback, and `smoke_status.txt` gives each run's exit, traceback count and logged iterations. Attribution is by extraction from each run's own log and directory on the day it ran.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `sf_ppo.txt`, `quad_ppo.txt`, `sf_him.txt`, `quad_him.txt`, `sf_copt2.txt`, `quad_copt2.txt` | The TRON1 and quadruped plain, HIM and co-optimisation runs that passed | section 11 of `../../plans/symmetry_tron1_quadruped.md`, the 2026-10-20 additions of `../tron1.md` and `../quadruped.md` |
+| `sf_copt.txt`, `quad_copt.txt` | The co-optimisation runs that failed in the dump of `copt_agent.yaml` before the copy | section 11 of the plan |
+| `brs_ppo.txt`, `brs_him.txt`, `live_brs_him2.txt` | The SD_BRS1 runs, and the live tree's HIM failure | section 11 of the plan, the 2026-10-20 addition of `../BRS.md` |
+| `ks_ppo.txt`, `ks_yaw.txt`, `ks_him.txt` | The KScale runs | section 11 of the plan, the 2026-10-20 addition of `../KScale.md` |
+| `go1_ppo.txt`, `live_go1.txt` | The Go1 asset construction failure in the sandbox and the live tree | sections 4.3 and 11 of the plan, the 2026-10-20 addition of `../quadruped.md` |
+| `play_sf2.txt`, `play_quad2.txt` | The replays of the two baselines' checkpoints under the symmetry configuration | sections 10 and 11 of the plan |
+| `dumped_symmetry_cfg.txt`, `smoke_status.txt`, the four scripts, `add_probe.py` | The dumped configurations, the status table and the provenance of every run | section 11 of the plan |
+
+### `symmetry_applied-2026-10-20-live-smoke/`
+
+Registered 2026-10-20. The smoke test of section 9.3 of `../../plans/symmetry_tron1_quadruped.md`, run by `apply_smoke.sh` on the live tree once the plan was applied, from `/tmp/symmetry_smoke` of `isaac-lab-base-shreyas-gpu1`, together with two reruns of its plain tasks, whose directories the listing also holds. `status.txt` is the script's own table, whose empty symmetry columns for the two plain tasks reflect standard output lost at the simulator's exit rather than a failure, `event_losses.txt` is the `Loss/symmetry` scalar of every run read from its event file, and `checkpoints_and_functions.txt` lists every run's checkpoints and the augmentation function its dumped configuration names. Attribution is by extraction from each run's own directory the same day.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `event_losses.txt`, `checkpoints_and_functions.txt`, `status.txt`, `apply_smoke.sh` | The smoke test after application | section 13 of `../../plans/symmetry_tron1_quadruped.md`, the 2026-10-20 additions of `../tron1.md` and `../quadruped.md` recording the application |
 
 ## Removals
 

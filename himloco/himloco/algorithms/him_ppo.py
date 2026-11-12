@@ -175,6 +175,10 @@ class HIMPPO(PPO):
                     actions=actions_batch,
                     env=self.symmetry["_env"],
                 )
+                # The estimator pairs each state with its successor, so the successor is mirrored alike
+                next_obs_batch, _ = data_augmentation_func(
+                    obs=next_obs_batch, actions=None, env=self.symmetry["_env"]
+                )
                 # Compute number of augmentations per sample
                 num_aug = int(obs_batch.batch_size[0] / original_batch_size)
                 # Repeat the rest of the batch

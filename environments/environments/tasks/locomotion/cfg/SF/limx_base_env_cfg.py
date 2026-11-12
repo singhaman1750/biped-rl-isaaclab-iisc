@@ -406,11 +406,6 @@ class ObservationsCfg:
         velocity_commands = ObsTerm(
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
         )
-        heights = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            clip=(-5.0, 5.0),
-        )
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -949,7 +944,7 @@ class RewardsCfg:
             "target_height": 0.75,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
-        weight=-5.0,
+        weight=-10.0,
     )
     pen_lin_vel_z = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)  # -0.5
     pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
@@ -1085,7 +1080,20 @@ class TerminationsCfg:
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="base_Link"),
+            "sensor_cfg": SceneEntityCfg("contact_forces",
+            body_names=[
+                "base_Link",
+            ]),
+            "threshold": 1.0,
+        },
+    )
+    leg_contact = DoneTerm(
+        func=mdp.illegal_contact,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces",
+            body_names=[
+                "thigh_.*", "shank_.*", ".*_act"
+            ]),
             "threshold": 1.0,
         },
     )
@@ -1099,7 +1107,8 @@ class CurriculumCfg:
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 2000*24
+            "starting_step": 400*24,
+            "update_threshold": 0.7
         }
     )
 
@@ -1108,9 +1117,9 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 400 * 24,
-            "starting_step": 6000 * 24,
-            "increment_rate": 1.1,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "increment_rate": 1.25,
             "decrement_rate" : 0.8,
             "minimum_velocity": 0.2
         },
@@ -1121,9 +1130,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 300 * 24,
-            "starting_step": 6000 * 24,
-            "update_rate": 0.015,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.6,
         }
     )
@@ -1133,9 +1142,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1, 1),
-            "interval": 300 * 24,
-            "starting_step": 6000 * 24,
-            "update_rate": 0.015,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.4,
         }
     )
@@ -1145,9 +1154,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
-            "interval": 250 * 24,
-            "starting_step": 6000 * 24,
-            "update_rate": 0.05,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.4,
         }
     )
@@ -1156,8 +1165,8 @@ class CurriculumCfg:
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_lin_vel_xy",
-            "interval": 2000 * 24,
-            "starting_step": 900 * 24,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
             "update_rate": 0.95,
             "update_threshold": 0.67,
             "minimum_std": 0.09
@@ -1167,9 +1176,9 @@ class CurriculumCfg:
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_ang_vel_z",
-            "interval": 2000 * 24,
+            "interval": 200 * 25,
             "starting_step": 0,
-            "update_rate": 0.975,
+            "update_rate": 0.95,
             "update_threshold": 0.5,
             "minimum_std": 0.09
         }
@@ -1225,76 +1234,89 @@ class CoptCurriculumCfg(CurriculumCfg):
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 2000 * 25,
-        },
+            "starting_step": 400*24,
+            "update_threshold": 0.7
+        }
     )
+
     modify_push_force = CurrTerm(
         func=mdp.modify_push_force,
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 400 * 25,
-            "starting_step": 6000 * 25,
-            "increment_rate": 1.1,
-            "decrement_rate": 0.8,
-            "minimum_velocity": 0.2,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "increment_rate": 1.25,
+            "decrement_rate" : 0.8,
+            "minimum_velocity": 0.2
         },
     )
+
     modify_command_velocity_lin_x = CurrTerm(
         func=mdp.modify_command_velocity_x,
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 300 * 25,
-            "starting_step": 6000 * 25,
-            "update_rate": 0.015,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.6,
-        },
+        }
     )
+
     modify_command_velocity_lin_y = CurrTerm(
         func=mdp.modify_command_velocity_y,
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1, 1),
-            "interval": 300 * 25,
-            "starting_step": 6000 * 25,
-            "update_rate": 0.015,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.4,
-        },
+        }
     )
+
     modify_command_velocity_ang_z = CurrTerm(
         func=mdp.modify_command_velocity_angular,
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
-            "interval": 250 * 25,
-            "starting_step": 6000 * 25,
-            "update_rate": 0.05,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.4,
-        },
+        }
     )
+
     modify_linear_tracking_reward_std = CurrTerm(
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_lin_vel_xy",
-            "interval": 2000 * 25,
-            "starting_step": 900 * 25,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
             "update_rate": 0.95,
             "update_threshold": 0.67,
-            "minimum_std": 0.09,
-        },
+            "minimum_std": 0.12,
+            "smoothing_episodes": 6400,
+            "widen_threshold": 0.55,
+            "maximum_std": 0.4,
+        }
     )
     modify_angular_tracking_reward_std = CurrTerm(
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_ang_vel_z",
-            "interval": 2000 * 25,
+            "interval": 200 * 25,
             "starting_step": 0,
-            "update_rate": 0.975,
-            "update_threshold": 0.5,
-            "minimum_std": 0.09,
-        },
+            "update_rate": 0.95,
+            "update_threshold": 0.60,
+            "minimum_std": 0.30,
+            "smoothing_episodes": 6400,
+            "widen_threshold": 0.45,
+            "maximum_std": 0.5,
+        }
     )
+
 
 
 ########################

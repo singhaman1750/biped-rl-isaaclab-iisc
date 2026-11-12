@@ -1,0 +1,28 @@
+# sf_him, excerpt of /tmp/symsandbox_v2_20261020/smoke_sf_him.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.limx_solefoot_env_cfg.SFHIMIdentifiedBlindRoughEnvUrdfCfg'>
+[INFO]: Parsing configuration from: SF_TRON1AFlatPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=30000, empirical_normalization=False, obs_groups={'policy': ['policy'], 'critic': ['critic']}, 
+| Active Observation Terms in Group: 'policy' (shape: (33,)) |
+| Active Observation Terms in Group: 'obsHistory' (shape: (10, 33)) |
+| Active Observation Terms in Group: 'critic' (shape: (4790,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+| Active Observation Terms in Group: 'estimatorGT' (shape: (3,)) |
+| Active Observation Terms in Group: 'targetEnc' (shape: (36,)) |
+[symmetry-probe] joint_names ['abad_R_Joint', 'abad_L_Joint', 'hip_R_Joint', 'hip_L_Joint', 'knee_R_Joint', 'knee_L_Joint', 'ankle_R_Joint', 'ankle_L_Joint']
+[symmetry-probe] jperm [1, 0, 3, 2, 5, 4, 7, 6] jsign [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+[symmetry-probe] body_names ['base_Link', 'abad_R_act', 'abad_L_act', 'hip_R_act', 'hip_L_act', 'knee_R_act', 'knee_L_act', 'thigh_R_Link', 'thigh_L_Link', 'shank_R_Link', 'shank_L_Link', 'ankle_R_act', 'ankle_L_act', 'foot_R_Link', 'foot_L_Link']
+[symmetry-probe] body_perm [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13]
+[symmetry-probe] shapes [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] max_shapes 15
+[symmetry-probe] limits [[-0.38397, 1.39626], [-0.38397, 1.39626], [-1.39626, 1.01229], [-1.39626, 1.01229], [-1.21357, 1.17267], [-1.21357, 1.17267], [-0.791917, 1.30899], [-0.791917, 1.30899]]
+[symmetry-probe] default {'abad_L_Joint': 0.0, 'abad_R_Joint': 0.0, 'hip_L_Joint': 0.0, 'hip_R_Joint': 0.0, 'knee_L_Joint': 0.0, 'knee_R_Joint': 0.0}
+[symmetry-probe] group policy [('base_ang_vel', (3,), 0), ('proj_gravity', (3,), 0), ('joint_pos', (8,), 0), ('joint_vel', (8,), 0), ('last_action', (8,), 0), ('velocity_commands', (3,), 0)]
+[symmetry-probe] group obsHistory [('base_ang_vel', (10, 3), 10), ('proj_gravity', (10, 3), 10), ('joint_pos', (10, 8), 10), ('joint_vel', (10, 8), 10), ('last_action', (10, 8), 10), ('velocity_commands', (10, 3), 10)]
+[symmetry-probe] group critic [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (80,), 10), ('joint_vel', (80,), 10), ('last_action', (80,), 10), ('velocity_commands', (30,), 10), ('heights', (1870,), 10), ('robot_joint_torque', (80,), 10), ('robot_joint_acc', (80,), 10), ('feet_lin_vel', (60,), 10), ('robot_mass', (150,), 10), ('robot_inertia', (1350,), 10), ('robot_joint_pos', (80,), 10), ('robot_joint_stiffness', (80,), 10), ('robot_joint_damping', (80,), 10), ('robot_pos', (30,), 10), ('robot_vel', (60,), 10), ('robot_material_properties', (450,), 10), ('feet_contact_force', (60,), 10)]
+[symmetry-probe] group commands [('velocity_commands', (3,), 0)]
+[symmetry-probe] group estimatorGT [('base_lin_vel', (3,), 0)]
+[symmetry-probe] group targetEnc [('base_ang_vel', (3,), 0), ('proj_gravity', (3,), 0), ('joint_pos', (8,), 0), ('joint_vel', (8,), 0), ('last_action', (8,), 0), ('velocity_commands', (3,), 0), ('base_lin_vel', (3,), 0)]
+[symmetry-probe] rays height_scanner 187 yaw xy
+[symmetry-probe] sensor contact_forces ['base_Link', 'abad_R_act', 'hip_R_act', 'knee_R_act', 'thigh_R_Link', 'shank_R_Link', 'ankle_R_act', 'foot_R_Link', 'abad_L_act', 'hip_L_act', 'knee_L_act', 'thigh_L_Link', 'shank_L_Link', 'ankle_L_act', 'foot_L_Link']
+[symmetry] mirrored groups ['policy', 'obsHistory', 'critic', 'commands', 'estimatorGT', 'targetEnc']
+                        [1m Learning iteration 0/3 [0m                        
+               Mean swap_loss loss: 0.1069
+                Mean symmetry loss: 0.0035

@@ -1,0 +1,7 @@
+# play_quad2, excerpt of /tmp/symsandbox_v2_20261020/smoke_play_quad2.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.quadruped_pointfoot_env_cfg.QuadrupedPFBlindRoughEnvCfg_PLAY'>
+[INFO]: Parsing configuration from: PFQuadrupedPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=30000, empirical_normalization=False, obs_groups=<dataclasses._MISSING_TYPE object at 0x716007503
+[INFO]: Loading model checkpoint from: /tmp/symsandbox_v2_20261020/playcheck/quadruped_flat/2026-10-20_05-09-02/model_1000.pt for policy type PPO
+| Active Observation Terms in Group: 'policy' (shape: (480,)) |
+| Active Observation Terms in Group: 'critic' (shape: (6530,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |

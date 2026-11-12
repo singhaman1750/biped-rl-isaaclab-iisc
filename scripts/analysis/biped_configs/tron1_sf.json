@@ -1,0 +1,58 @@
+{
+  "_comment": "Shared analysis configuration of the TRON1 sole footed biped, read by biped_physical_analysis.py and biped_stance_analysis.py. Mirrors environments/environments/assets/config/solefoot_identified_cfg.py, environments/environments/tasks/locomotion/cfg/SF/limx_base_env_cfg.py and the dumped params/env.yaml of run sf_tron_1a_flat/2026-10-09_06-04-18. Mirror any change there here.",
+  "robot": "TRON1 SF",
+  "model": "environments/environments/assets/mjcf/solefoot/tron1/base_robot.xml",
+  "design_constants": "design_generator/biped/constant_params.json",
+  "root_body": "base_Link",
+  "dof_per_leg": 4,
+  "legs": {
+    "R": {
+      "joints": {
+        "abad_R_Joint": {"dof": 1, "role": "hip_roll", "group": "abad"},
+        "hip_R_Joint": {"dof": 1, "role": "hip_pitch", "group": "hip"},
+        "knee_R_Joint": {"dof": 1, "role": "knee", "group": "knee"},
+        "ankle_R_Joint": {"dof": 1, "role": "ankle_pitch", "group": "ankle"}
+      },
+      "foot_body": "foot_R_Link|ankle_R_Link"
+    },
+    "L": {
+      "joints": {
+        "abad_L_Joint": {"dof": 1, "role": "hip_roll", "group": "abad"},
+        "hip_L_Joint": {"dof": 1, "role": "hip_pitch", "group": "hip"},
+        "knee_L_Joint": {"dof": 1, "role": "knee", "group": "knee"},
+        "ankle_L_Joint": {"dof": 1, "role": "ankle_pitch", "group": "ankle"}
+      },
+      "foot_body": "foot_L_Link|ankle_L_Link"
+    }
+  },
+  "nominal_pose": {
+    "abad_R_Joint": 0.0, "hip_R_Joint": 0.0, "knee_R_Joint": 0.0, "ankle_R_Joint": 0.0,
+    "abad_L_Joint": 0.0, "hip_L_Joint": 0.0, "knee_L_Joint": 0.0, "ankle_L_Joint": 0.0
+  },
+  "actuators": {
+    "abad": {"stiffness": 55.0, "damping": 13.5, "armature": 0.005589, "effort_limit": 60.0, "velocity_limit": 23.0, "saturation_effort": 402.0, "friction_static": 0.3, "activation_vel": 0.1, "friction_dynamic": 0.02},
+    "hip": {"stiffness": 80.0, "damping": 13.0, "armature": 0.007614, "effort_limit": 60.0, "velocity_limit": 20.0, "saturation_effort": 443.0, "friction_static": 0.3, "activation_vel": 0.1, "friction_dynamic": 0.02},
+    "knee": {"stiffness": 60.0, "damping": 4.0, "armature": 0.01215, "effort_limit": 90.0, "velocity_limit": 14.0, "saturation_effort": 560.0, "friction_static": 0.8, "activation_vel": 0.1, "friction_dynamic": 0.02},
+    "ankle": {"stiffness": 10.0, "damping": 0.5, "armature": 0.005589, "effort_limit": 40.0, "velocity_limit": 20.0, "saturation_effort": 402.0, "friction_static": 0.1, "activation_vel": 0.1, "friction_dynamic": 0.02}
+  },
+  "control": {"physics_dt": 0.005, "decimation": 4, "action_scale": 0.25, "soft_joint_pos_limit_factor": 0.9},
+  "reset": {"spawn_height": 0.8, "joint_offset_range": [-0.2, 0.2], "joint_velocity_range": [-0.5, 0.5], "base_velocity_range": 0.5},
+  "rewards": {
+    "base_height_target": 0.75,
+    "base_height_weight": -5.0,
+    "lin_vel_tracking_weight": 25.0,
+    "ang_vel_tracking_weight": 7.5,
+    "tracking_std": 0.4,
+    "undesired_contact_weight": -0.5,
+    "undesired_contact_threshold": 10.0,
+    "undesired_contact_bodies": "abad_.*|hip_.*|knee_.*|thigh_.*|shank_.*|base_Link",
+    "termination_contact_bodies": "base_Link",
+    "foot_radius": 0.03,
+    "min_feet_distance": 0.115
+  },
+  "gain_design": {
+    "target_zeta": 0.7,
+    "position_error_budget": 0.15,
+    "target_omega": {"abad": 12.0, "hip": 12.0, "knee": 14.0, "ankle": 25.0}
+  }
+}

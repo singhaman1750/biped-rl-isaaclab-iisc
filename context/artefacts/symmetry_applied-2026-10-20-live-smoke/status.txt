@@ -1,0 +1,9 @@
+1 Isaac-Limx-SF-Identified-Blind-Rough-Urdf-v0 | exit 0 tracebacks 0 |  | 
+2 Isaac-Quadruped-Blind-Rough-v0 | exit 0 tracebacks 0 |  | 
+3 Isaac-Limx-SF-HIM-Identified-Blind-Rough-Urdf-v0 --policy-type HIMPPO | exit 0 tracebacks 0 | [symmetry] mirrored groups ['policy', 'obsHistory', 'critic', 'commands', 'estimatorGT', 'targetEnc'] |  Mean symmetry loss: 0.0035  Mean symmetry loss: 0.0015 
+4 Isaac-Quadruped-HIM-Blind-Rough-v0 --policy-type HIMPPO | exit 0 tracebacks 0 | [symmetry] mirrored groups ['policy', 'obsHistory', 'critic', 'commands', 'estimatorGT', 'targetEnc'] |  Mean symmetry loss: 0.0052  Mean symmetry loss: 0.0020 
+5 Isaac-Limx-SF-Copt-MoRAL-Rough-v0 --policy-type COPT --design_search random --copt_num_individuals 4 | exit 0 tracebacks 0 | [symmetry] mirrored groups ['policy', 'critic', 'commands', 'morphologyObs', 'privilegedDynamicsObs', 'historyObs', 'estimatorGT'] |  Mean symmetry loss: 0.0053  Mean symmetry loss: 0.0031 
+6 Isaac-Quadruped-Copt-Rough-v0 --policy-type COPT --design_search random --copt_num_individuals 4 | exit 0 tracebacks 0 | [symmetry] mirrored groups ['policy', 'critic', 'commands', 'morphologyObs', 'privilegedDynamicsObs', 'historyObs'] |  symmetry: 0.0114  symmetry: 0.0092 
+7 Isaac-Limx-SDBRS1-Blind-Rough-v0 | exit 0 tracebacks 0 | [symmetry] mirrored groups ['policy', 'critic', 'commands'] |  Mean symmetry loss: 0.0138  Mean symmetry loss: 0.0093  Mean symmetry loss: 0.0114 
+8 Isaac-Limx-Kscale-Blind-Rough-v0 | exit 0 tracebacks 0 | [symmetry] mirrored groups ['policy', 'critic', 'commands'] |  Mean symmetry loss: 0.0159  Mean symmetry loss: 0.0133  Mean symmetry loss: 0.0121 
+DONE

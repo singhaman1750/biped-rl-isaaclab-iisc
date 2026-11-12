@@ -12,6 +12,9 @@ from environments.tasks.locomotion.mdp.symmetry.brs import compute_symmetric_sta
 from environments.tasks.locomotion.mdp.symmetry.kscale import (
     compute_symmetric_states as kscale_compute_symmetric_states,
 )
+from environments.tasks.locomotion.mdp.symmetry.tron1 import (
+    compute_symmetric_states as tron1_compute_symmetric_states,
+)
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
@@ -121,6 +124,12 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
         # obs_history_len=10,
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=True,
+            data_augmentation_func=tron1_compute_symmetric_states,
+            mirror_loss_coeff=0.5,
+        ),
     )
     encoder = EncoderCfg(
         output_detach=True,

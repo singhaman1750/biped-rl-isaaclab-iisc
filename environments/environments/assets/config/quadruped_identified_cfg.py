@@ -84,7 +84,7 @@ articulation_props = sim_utils.ArticulationRootPropertiesCfg(
 activate_contact_sensors = True
 
 init_state = ArticulationCfg.InitialStateCfg(
-    pos=(0.0, 0.0, 0.32),
+    pos=(0.0, 0.0, 0.38),
     joint_pos={
         ".._hip_joint": 0.0,
         ".._thigh_joint": 0.0,

@@ -1,0 +1,10 @@
+/tmp/symmetry_smoke/logs/rsl_rl/copt_moral/2026-10-20_10-12-51/ {'Loss/symmetry': [0.0053, 0.0031, 0.0031]}
+/tmp/symmetry_smoke/logs/rsl_rl/kscale_flat/2026-10-20_10-17-00/ {'Loss/symmetry': [0.0159, 0.0133, 0.0121]}
+/tmp/symmetry_smoke/logs/rsl_rl/quadruped_copt/2026-10-20_10-14-28/ {'Loss/symmetry': [0.0114, 0.0092, 0.0067]}
+/tmp/symmetry_smoke/logs/rsl_rl/quadruped_flat/2026-10-20_10-08-34/ {'Loss/symmetry': [0.0193, 0.0154, 0.0095]}
+/tmp/symmetry_smoke/logs/rsl_rl/quadruped_flat/2026-10-20_10-11-23/ {'Loss/symmetry': [0.0052, 0.002, 0.0015]}
+/tmp/symmetry_smoke/logs/rsl_rl/quadruped_flat/2026-10-20_10-19-41/ {'Loss/symmetry': [0.0193, 0.0154, 0.0095]}
+/tmp/symmetry_smoke/logs/rsl_rl/sd_brs1_flat/2026-10-20_10-16-05/ {'Loss/symmetry': [0.0138, 0.0093, 0.0114]}
+/tmp/symmetry_smoke/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_10-07-09/ {'Loss/symmetry': [0.0063, 0.0045, 0.0036]}
+/tmp/symmetry_smoke/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_10-09-56/ {'Loss/symmetry': [0.0035, 0.0015, 0.0011]}
+/tmp/symmetry_smoke/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_10-18-15/ {'Loss/symmetry': [0.0063, 0.0045, 0.0036]}

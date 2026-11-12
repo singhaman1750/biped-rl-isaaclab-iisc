@@ -51,19 +51,19 @@
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
           <body name="knee_FR_act" pos="0.000000 -0.050000 0.000000">
-            <joint class="hip" name="FR_thigh_joint" axis="0 1 0" range="-1.931537 3.304453"/>
+            <joint class="hip" name="FR_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
             <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
             <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
-            <body name="thigh_FR_Link" pos="0.000000 -0.030000 0.000000" quat="0.903826 0 0.427900 0">
+            <body name="thigh_FR_Link" pos="0.000000 -0.030000 0.000000" quat="0.940732 0 0.339151 0">
               <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
               <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
               <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
 
-              <body name="shank_FR_Link" pos="0 0 -0.213000" quat="0.633803 0 -0.773495 0">
+              <body name="shank_FR_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
                 <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
-                <joint class="knee" name="FR_calf_joint" axis="0 1 0" range="-0.927857 0.852375"/>
+                <joint class="knee" name="FR_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
                 <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
                 <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
 
@@ -93,19 +93,19 @@
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
           <body name="knee_FL_act" pos="0.000000 0.050000 0.000000">
-            <joint class="hip" name="FL_thigh_joint" axis="0 1 0" range="-1.931537 3.304453"/>
+            <joint class="hip" name="FL_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
             <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
             <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
-            <body name="thigh_FL_Link" pos="0.000000 0.030000 0.000000" quat="0.903826 0 0.427900 0">
+            <body name="thigh_FL_Link" pos="0.000000 0.030000 0.000000" quat="0.940732 0 0.339151 0">
               <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
               <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
               <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
 
-              <body name="shank_FL_Link" pos="0 0 -0.213000" quat="0.633803 0 -0.773495 0">
+              <body name="shank_FL_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
                 <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
-                <joint class="knee" name="FL_calf_joint" axis="0 1 0" range="-0.927857 0.852375"/>
+                <joint class="knee" name="FL_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
                 <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
                 <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
 
@@ -135,19 +135,19 @@
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
           <body name="knee_RR_act" pos="0.000000 -0.050000 0.000000">
-            <joint class="hip" name="RR_thigh_joint" axis="0 1 0" range="-1.931537 3.304453"/>
+            <joint class="hip" name="RR_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
             <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
             <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
-            <body name="thigh_RR_Link" pos="0.000000 -0.030000 0.000000" quat="0.903826 0 0.427900 0">
+            <body name="thigh_RR_Link" pos="0.000000 -0.030000 0.000000" quat="0.940732 0 0.339151 0">
               <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
               <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
               <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
 
-              <body name="shank_RR_Link" pos="0 0 -0.213000" quat="0.633803 0 -0.773495 0">
+              <body name="shank_RR_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
                 <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
-                <joint class="knee" name="RR_calf_joint" axis="0 1 0" range="-0.927857 0.852375"/>
+                <joint class="knee" name="RR_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
                 <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
                 <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
 
@@ -177,19 +177,19 @@
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
           <body name="knee_RL_act" pos="0.000000 0.050000 0.000000">
-            <joint class="hip" name="RL_thigh_joint" axis="0 1 0" range="-1.931537 3.304453"/>
+            <joint class="hip" name="RL_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
             <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
             <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
           <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
 
-            <body name="thigh_RL_Link" pos="0.000000 0.030000 0.000000" quat="0.903826 0 0.427900 0">
+            <body name="thigh_RL_Link" pos="0.000000 0.030000 0.000000" quat="0.940732 0 0.339151 0">
               <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
               <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
               <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
 
-              <body name="shank_RL_Link" pos="0 0 -0.213000" quat="0.633803 0 -0.773495 0">
+              <body name="shank_RL_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
                 <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
-                <joint class="knee" name="RL_calf_joint" axis="0 1 0" range="-0.927857 0.852375"/>
+                <joint class="knee" name="RL_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
                 <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
                 <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
 

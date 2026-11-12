@@ -1,0 +1,173 @@
+================================================================================================
+MODEL environments/environments/assets/mjcf/solefoot/tron1/base_robot.xml
+================================================================================================
+
+MASS INVENTORY
+  total 21.328 kg, trunk with its welded bodies 6.910 kg, one moving leg 7.209 kg, below the knee 2.790 kg
+  legs carry 67.6 percent of the total mass
+
+NOMINAL POSE GEOMETRY, leg R, nominal pose of the configuration, trunk level
+  thigh, hip pitch axis to knee axis      0.3487 m at -35.00 deg from the downward vertical
+  shank, knee axis to ankle axis          0.3535 m at +37.21 deg
+  knee included angle                     107.77 deg (180 is a straight leg)
+  sole pitch                              +0.00 deg
+  hip to ankle span                       0.5673 m, vertical 0.5669 m, extension ratio 0.808
+  knee behind hip / ankle ahead of hip    -0.1998 m / +0.0140 m
+  standing height, root above lowest point 0.8044 m, lowest point on foot_R_Link
+  sole depth below the foot body origin   0.0500 m (the foot_radius of the foot rewards)
+  centre of mass height / fore-aft        0.5046 m / -0.0212 m, sole spans x -0.0843 to +0.1157 m
+  foot lateral separation                 0.1799 m
+  reward base height target 0.750 m lies +0.0544 m below the standing height
+  design constants THIGH_BEND_DEG -145.000, SHANK_BEND_DEG -40.000, ANKLE_BEND_DEG +40.004
+
+JOINT LIMITS AT THE NOMINAL POSE, soft limit factor 0.9, action scale 0.25
+  joint               lower    upper  nominal  soft lo  soft hi  room lo  room hi  act lo  act hi
+  abad_R_Joint       -0.384    1.396    0.000   -0.295    1.307    0.295    1.307    1.18    5.23
+  hip_R_Joint        -1.396    1.012    0.000   -1.276    0.892    1.276    0.892    5.10    3.57
+  knee_R_Joint       -1.214    1.173    0.000   -1.094    1.053    1.094    1.053    4.38    4.21
+  ankle_R_Joint      -0.792    1.309    0.000   -0.687    1.204    0.687    1.204    2.75    4.82
+
+KNEELING GEOMETRY, symmetric sagittal sweep within the joint limits, trunk level
+  10.3 percent of the sampled postures rest on a non foot leg link
+  highest kneeling base height 0.5418 m on shank_R_Link, offsets hip +0.611 knee +0.477 ankle +1.134 rad, base height penalty rate -0.2168 per second
+  lowest kneeling base height 0.2434 m on ankle_R_act, offsets hip -1.196 knee -0.716 ankle -0.792 rad, base height penalty rate -1.2831 per second
+
+SWING EFFECTIVE INERTIA AND CONFIGURED GAINS at the nominal pose, physics dt 0.005, control Nyquist 157.1 rad/s
+  joint              I_link      arm    I_eff   tau_g      K      D     w_n   zeta    rho
+  abad_R_Joint      0.79821  0.00559  0.80380    0.24   55.0  13.50    8.27   1.02  0.968
+  hip_R_Joint       0.83429  0.00761  0.84190    2.44   80.0  13.00    9.75   0.79  0.961
+  knee_R_Joint      0.26049  0.01215  0.27264    4.70   60.0   4.00   14.83   0.49  0.963
+  ankle_R_Joint     0.00293  0.00559  0.00852    0.06   10.0   0.50   34.25   0.86  0.841
+  I in kg m^2 from the mass matrix diagonal, tau_g the gravity torque of the distal subtree in Nm,
+  rho the spectral radius of the explicitly integrated PD update, above 1 diverging.
+
+SYMMETRY FLIP SET, reflection in the x and z plane
+  hip_roll     abad_R_Joint axis [-1.  0.  0.] vs abad_L_Joint axis [1. 0. 0.], flip no, mirrored range agrees (-0.384, +1.396) / (-0.384, +1.396)
+  hip_pitch    hip_R_Joint axis [ 0. -1.  0.] vs hip_L_Joint axis [ 0. -1.  0.], flip no, mirrored range agrees (-1.396, +1.012) / (-1.396, +1.012)
+  knee         knee_R_Joint axis [ 0. -1.  0.] vs knee_L_Joint axis [ 0. -1.  0.], flip no, mirrored range agrees (-1.214, +1.173) / (-1.214, +1.173)
+  ankle_pitch  ankle_R_Joint axis [ 0. -1.  0.] vs ankle_L_Joint axis [ 0. -1.  0.], flip no, mirrored range agrees (-0.792, +1.309) / (-0.792, +1.309)
+
+SELF COLLISION AUDIT at the nominal pose, non adjacent collision geoms in penetration
+  none
+
+================================================================================================
+MODEL environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf
+================================================================================================
+
+MASS INVENTORY
+  total 21.328 kg, trunk with its welded bodies 6.910 kg, one moving leg 7.209 kg, below the knee 2.790 kg
+  legs carry 67.6 percent of the total mass
+
+NOMINAL POSE GEOMETRY, leg R, nominal pose of the configuration, trunk level
+  thigh, hip pitch axis to knee axis      0.3487 m at -35.00 deg from the downward vertical
+  shank, knee axis to ankle axis          0.3535 m at +37.21 deg
+  knee included angle                     107.77 deg (180 is a straight leg)
+  sole pitch                              +0.00 deg
+  hip to ankle span                       0.5673 m, vertical 0.5669 m, extension ratio 0.808
+  knee behind hip / ankle ahead of hip    -0.1998 m / +0.0140 m
+  standing height, root above lowest point 0.8044 m, lowest point on ankle_R_Link
+  sole depth below the foot body origin   0.0500 m (the foot_radius of the foot rewards)
+  centre of mass height / fore-aft        0.5119 m / -0.0212 m, sole spans x -0.0843 to +0.1157 m
+  foot lateral separation                 0.1799 m
+  reward base height target 0.750 m lies +0.0544 m below the standing height
+  design constants THIGH_BEND_DEG -145.000, SHANK_BEND_DEG -40.000, ANKLE_BEND_DEG +40.004
+
+JOINT LIMITS AT THE NOMINAL POSE, soft limit factor 0.9, action scale 0.25
+  joint               lower    upper  nominal  soft lo  soft hi  room lo  room hi  act lo  act hi
+  abad_R_Joint       -0.384    1.396    0.000   -0.295    1.307    0.295    1.307    1.18    5.23
+  hip_R_Joint        -1.396    1.012    0.000   -1.276    0.892    1.276    0.892    5.10    3.57
+  knee_R_Joint       -1.214    1.173    0.000   -1.094    1.053    1.094    1.053    4.38    4.21
+  ankle_R_Joint      -0.792    1.309    0.000   -0.687    1.204    0.687    1.204    2.75    4.82
+
+KNEELING GEOMETRY, symmetric sagittal sweep within the joint limits, trunk level
+  11.0 percent of the sampled postures rest on a non foot leg link
+  highest kneeling base height 0.5480 m on knee_R_Link, offsets hip +0.611 knee +0.477 ankle +1.046 rad, base height penalty rate -0.2040 per second
+  lowest kneeling base height 0.2497 m on ankle_R_actuator_Link, offsets hip -1.196 knee -0.716 ankle -0.792 rad, base height penalty rate -1.2516 per second
+
+SWING EFFECTIVE INERTIA AND CONFIGURED GAINS at the nominal pose, physics dt 0.005, control Nyquist 157.1 rad/s
+  joint              I_link      arm    I_eff   tau_g      K      D     w_n   zeta    rho
+  abad_R_Joint      0.74786  0.00559  0.75345    0.36   55.0  13.50    8.54   1.05  0.971
+  hip_R_Joint       0.77906  0.00761  0.78667    2.44   80.0  13.00   10.08   0.82  0.958
+  knee_R_Joint      0.23740  0.01215  0.24955    4.49   60.0   4.00   15.51   0.52  0.959
+  ankle_R_Joint     0.00293  0.00559  0.00852    0.06   10.0   0.50   34.25   0.86  0.841
+  I in kg m^2 from the mass matrix diagonal, tau_g the gravity torque of the distal subtree in Nm,
+  rho the spectral radius of the explicitly integrated PD update, above 1 diverging.
+
+SYMMETRY FLIP SET, reflection in the x and z plane
+  hip_roll     abad_R_Joint axis [-1.  0.  0.] vs abad_L_Joint axis [1. 0. 0.], flip no, mirrored range agrees (-0.384, +1.396) / (-0.384, +1.396)
+  hip_pitch    hip_R_Joint axis [ 0. -1.  0.] vs hip_L_Joint axis [0. 1. 0.], flip YES, mirrored range agrees (-1.396, +1.012) / (-1.012, +1.396)
+  knee         knee_R_Joint axis [ 0. -1.  0.] vs knee_L_Joint axis [ 0. -1.  0.], flip no, mirrored range DISAGREES (-1.214, +1.173) / (-0.873, +1.361)
+  ankle_pitch  ankle_R_Joint axis [ 0. -1.  0.] vs ankle_L_Joint axis [ 0. -1.  0.], flip no, mirrored range agrees (-0.792, +1.309) / (-0.792, +1.309)
+
+SELF COLLISION AUDIT at the nominal pose, non adjacent collision geoms in penetration
+  none
+
+================================================================================================
+MODEL environments/environments/assets/urdf/solefoot/tron1/base_robot_tron1.urdf
+================================================================================================
+
+MASS INVENTORY
+  total 20.813 kg, trunk with its welded bodies 9.595 kg, one moving leg 5.609 kg, below the knee 1.840 kg
+  legs carry 53.9 percent of the total mass
+
+NOMINAL POSE GEOMETRY, leg R, nominal pose of the configuration, trunk level
+  thigh, hip pitch axis to knee axis      0.3007 m at -30.00 deg from the downward vertical
+  shank, knee axis to ankle axis          0.3000 m at +30.00 deg
+  knee included angle                     119.92 deg (180 is a straight leg)
+  sole pitch                              -0.00 deg
+  hip to ankle span                       0.5200 m, vertical 0.5196 m, extension ratio 0.866
+  knee behind hip / ankle ahead of hip    -0.1500 m / +0.0000 m
+  standing height, root above lowest point 0.8397 m, lowest point on ankle_R_Link
+  sole depth below the foot body origin   0.0599 m (the foot_radius of the foot rewards)
+  centre of mass height / fore-aft        0.5291 m / +0.0007 m, sole spans x -0.0214 to -0.0214 m
+  foot lateral separation                 0.2100 m
+  reward base height target 0.750 m lies +0.0897 m below the standing height
+  design constants THIGH_BEND_DEG -145.000, SHANK_BEND_DEG -40.000, ANKLE_BEND_DEG +40.004
+
+JOINT LIMITS AT THE NOMINAL POSE, soft limit factor 0.9, action scale 0.25
+  joint               lower    upper  nominal  soft lo  soft hi  room lo  room hi  act lo  act hi
+  abad_R_Joint       -1.396    0.384    0.000   -1.307    0.295    1.307    0.295    5.23    1.18
+  hip_R_Joint        -1.396    1.012    0.000   -1.276    0.892    1.276    0.892    5.10    3.57
+  knee_R_Joint       -1.361    0.873    0.000   -1.250    0.761    1.250    0.761    5.00    3.04
+  ankle_R_Joint      -1.152    1.571    0.000   -1.016    1.435    1.016    1.435    4.06    5.74
+
+KNEELING GEOMETRY, symmetric sagittal sweep within the joint limits, trunk level
+  13.9 percent of the sampled postures rest on a non foot leg link
+  highest kneeling base height 0.5749 m on knee_L_Link, offsets hip +0.511 knee -0.617 ankle +1.344 rad, base height penalty rate -0.1533 per second
+  lowest kneeling base height 0.3102 m on abad_L_Link, offsets hip -1.396 knee +0.314 ankle -1.152 rad, base height penalty rate -0.9670 per second
+
+SWING EFFECTIVE INERTIA AND CONFIGURED GAINS at the nominal pose, physics dt 0.005, control Nyquist 157.1 rad/s
+  joint              I_link      arm    I_eff   tau_g      K      D     w_n   zeta    rho
+  abad_R_Joint      0.47860  0.00559  0.48419    0.04   55.0  13.50   10.66   1.31  0.976
+  hip_R_Joint       0.48651  0.00761  0.49413    1.01   80.0  13.00   12.72   1.03  0.956
+  knee_R_Joint      0.14716  0.01215  0.15931    2.35   60.0   4.00   19.41   0.65  0.935
+  ankle_R_Joint     0.00256  0.00559  0.00815    0.07   10.0   0.50   35.02   0.88  0.833
+  I in kg m^2 from the mass matrix diagonal, tau_g the gravity torque of the distal subtree in Nm,
+  rho the spectral radius of the explicitly integrated PD update, above 1 diverging.
+
+SYMMETRY FLIP SET, reflection in the x and z plane
+  hip_roll     abad_R_Joint axis [1. 0. 0.] vs abad_L_Joint axis [1. 0. 0.], flip YES, mirrored range agrees (-1.396, +0.384) / (-0.384, +1.396)
+  hip_pitch    hip_R_Joint axis [ 0. -1.  0.] vs hip_L_Joint axis [0. 1. 0.], flip YES, mirrored range agrees (-1.396, +1.012) / (-1.012, +1.396)
+  knee         knee_R_Joint axis [0. 1. 0.] vs knee_L_Joint axis [ 0. -1.  0.], flip YES, mirrored range agrees (-1.361, +0.873) / (-0.873, +1.361)
+  ankle_pitch  ankle_R_Joint axis [ 0. -1.  0.] vs ankle_L_Joint axis [ 0. -1.  0.], flip no, mirrored range agrees (-1.152, +1.571) / (-1.152, +1.571)
+
+SELF COLLISION AUDIT at the nominal pose, non adjacent collision geoms in penetration
+  none
+
+================================================================================================
+COMPARISON
+================================================================================================
+  quantity                                base_robot.xml         base_robot.urdf   base_robot_tron1.urdf
+  total mass, kg                                 21.3280                 21.3280                 20.8130
+  trunk mass, kg                                  6.9100                  6.9100                  9.5950
+  mass below the knee, kg                         2.7900                  2.7900                  1.8400
+  thigh angle, deg                              -35.0001                -35.0000                -29.9998
+  shank angle, deg                               37.2079                 37.2079                 29.9998
+  knee included angle, deg                      107.7727                107.7728                119.9235
+  thigh length, m                                 0.3487                  0.3487                  0.3007
+  shank length, m                                 0.3535                  0.3535                  0.3000
+  extension ratio                                 0.8079                  0.8079                  0.8657
+  ankle lead over hip, m                          0.0140                  0.0140                  0.0000
+  standing height, m                              0.8044                  0.8044                  0.8397
+  centre of mass height, m                        0.5046                  0.5119                  0.5291
+  highest kneeling height, m                      0.5418                  0.5480                  0.5749
