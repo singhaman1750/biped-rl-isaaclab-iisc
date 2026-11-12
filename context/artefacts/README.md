@@ -61,6 +61,15 @@ Attribution is by construction and by extraction together. The three contact she
 
 The directory is named for the span of the three runs rather than for one of them, the plan reasoning about the set as a sequence in which each run differs from its predecessor in a countable number of actuator ceilings, and no single run being the subject.
 
+### `render-refresh-diagnostic-2026-10-19/`
+
+Registered 2026-10-19. Renders of a three environment scene built by a diagnostic script run in `isaac-lab-base-shreyas-gpu1` against the working tree of 2026-10-19, not by a training run. Design A, shank scale 0.85 and so a 0.18 m shank, was converted and spawned in environments 0 and 1, design B, shank scale 1.15 and so 0.24 m, in environment 2, and B was then written into environment 0 by `apply_link_length_params`. Attribution is by construction, each image being written by the script that built the scene, with gravity off and every joint at zero.
+
+| File | What it holds | Cited by |
+|---|---|---|
+| `quadruped_stale_render.png` | Environment 0 before the write, after the write, and environment 2, the written shanks drawn at A's length with their feet at B's | section 9 of `../co_optimisation_audit.md`, row dated 2026-10-19 |
+| `quadruped_refreshed_render.png` | Environment 0 after the write, after `refresh_rendered_geometry`, and environment 2, the refreshed shanks reaching their feet as B's do | the same row |
+
 
 ## Removals
 

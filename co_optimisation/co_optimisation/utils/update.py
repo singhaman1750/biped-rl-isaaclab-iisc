@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import time
 
-from pxr import Gf, Sdf, Usd, UsdGeom, Vt
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdUtils, Vt
 
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.sim.utils.stage import get_current_stage
@@ -299,6 +299,83 @@ def apply_link_length_params(
     print(
         f"Total time taken for sim.reset(): {time.perf_counter() - start:.4f} seconds"
     )
+
+
+
+def refresh_rendered_geometry(
+    env: ManagerBasedRLEnv,
+    link_length_params_list: list[dict[str, dict]],
+    root_body: str,
+) -> int:
+    """Rewrite the renderer's copies of the visual geometry from the edited prototypes.
+
+    With the Fabric Scene Delegate on, as it is whenever the run renders
+    (``app.useFabricSceneDelegate`` in ``apps/isaaclab.python.headless.rendering.kit``),
+    Fabric keeps one copy of every instanced geometry prim per environment, whose
+    ``omni:fabric:localMatrix`` and ``extent`` are taken from the prototype when the
+    copy is populated.  The edits of :func:`apply_link_length_params` reach USD, PhysX
+    and Fabric's prototype prims but not these copies, so a design written in place is
+    drawn with the boxes and cylinders of the design it replaced while its bodies sit
+    where the new design puts them, a shank drawn through or short of its foot.
+    Physics is unaffected, and so are the collision copies, which are not drawn.
+
+    Only boxes are redrawn, a box's size living in the local matrix of its copy, the cube
+    itself keeping the importer's size of 2.  A cylinder's size lives in its own
+    ``radius`` and ``height``, which the RTX delegate does not re-tessellate when they
+    change, so the housings of a categorical design written in place are drawn at the
+    size of the design they replaced until the next respawn.  That defect is left
+    standing, since no housing of the quadruped changes size and the biped's
+    converted cylinders are themselves drawn through the importer's extent, which
+    names the wrong axis (MjcfUsd.cpp:813-815), leaving no rendering to match.
+
+    Call after :func:`apply_link_length_params`.  Environment ``e`` shows design
+    ``e % len(link_length_params_list)``, the round-robin assignment of the spawn.
+
+    Returns:
+        The number of Fabric prims written, 0 when the scene delegate is off.
+    """
+    import carb
+    import usdrt
+
+    if not carb.settings.get_settings().get_as_bool("/app/useFabricSceneDelegate"):
+        return 0
+    stage = get_current_stage()
+    rt_stage = usdrt.Usd.Stage.Attach(UsdUtils.StageCache.Get().Insert(stage).ToLongInt())
+    xform_cache = UsdGeom.XformCache()
+    env_paths = env.scene.env_prim_paths
+    per_design = []
+    for individual, params in enumerate(link_length_params_list):
+        entries = []
+        for link_name in params:
+            suffix = f"Robot/{root_body}/{link_name}/visuals"
+            inst = stage.GetPrimAtPath(f"{env_paths[individual]}/{suffix}")
+            proto = inst.GetPrototype() if inst else None
+            if not proto:
+                continue
+            for prim in Usd.PrimRange(proto):
+                if not prim.IsA(UsdGeom.Cube):
+                    continue
+                matrix, _ = xform_cache.ComputeRelativeTransform(prim, proto)
+                # Fabric's extent carries the scale and rotation of the copy's local matrix, not its translation.
+                extent = UsdGeom.Boundable(prim).GetExtentAttr().Get()
+                linear = Gf.Matrix4d(matrix).SetTranslateOnly(Gf.Vec3d(0.0))
+                box = Gf.BBox3d(Gf.Range3d(Gf.Vec3d(extent[0]), Gf.Vec3d(extent[1])), linear).ComputeAlignedRange()
+                entries.append((f"{suffix}/{prim.GetPath().MakeRelativePath(proto.GetPath())}", {
+                    "omni:fabric:localMatrix": usdrt.Gf.Matrix4d(*(matrix[i][j] for i in range(4) for j in range(4))),
+                    "extent": usdrt.Gf.Range3d(usdrt.Gf.Vec3d(*box.GetMin()), usdrt.Gf.Vec3d(*box.GetMax())),
+                }))
+        per_design.append(entries)
+    written = 0
+    for e, env_path in enumerate(env_paths):
+        for rel, values in per_design[e % len(per_design)]:
+            fprim = rt_stage.GetPrimAtPath(f"{env_path}/{rel}")
+            if not fprim.IsValid():
+                continue
+            for name, value in values.items():
+                if fprim.HasAttribute(name):
+                    fprim.GetAttribute(name).Set(value)
+            written += 1
+    return written
 
 
 def assert_link_lengths_applied(

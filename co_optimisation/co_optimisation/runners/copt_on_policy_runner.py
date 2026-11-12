@@ -38,6 +38,7 @@ from co_optimisation.utils.update import (
     apply_link_length_params,
     apply_standing_height,
     assert_link_lengths_applied,
+    refresh_rendered_geometry,
 )
 
 
@@ -676,6 +677,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             self.current_population.get_link_length_params(),
             self.current_population.get_root_body(),
         )
+        self._refresh_rendered_geometry()
         # restore_env_state's reset_to places the robots, so no reset here.
         self._apply_nominal_pose(reset=False)
 
@@ -699,6 +701,17 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._resumed_from_checkpoint = False
         self._restored_population = None
         self._restored_env_state = None
+
+    def _refresh_rendered_geometry(self) -> None:
+        """Redraw the in place designs, whose rendered geometry otherwise stays at the spawned one. See utils/update.py."""
+        start = time.perf_counter()
+        written = refresh_rendered_geometry(
+            self.env.unwrapped,
+            self.current_population.get_link_length_params(),
+            self.current_population.get_root_body(),
+        )
+        if written:
+            print(f"Refreshed {written} rendered geometry prims in {time.perf_counter() - start:.2f} s")
 
     def _update_morphology(self, it: int, respawn: bool = False) -> None:
         """In-place EA cycle: no delete/respawn, no manager re-binding.
@@ -755,6 +768,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     self.current_population.get_link_length_params(),
                     self.current_population.get_root_body(),
                 )
+                self._refresh_rendered_geometry()
 
                 # 4a. nominal pose and spawn height, before the reset places the robots
                 self._apply_nominal_pose(reset=False)
