@@ -365,8 +365,8 @@ class Family:
         return (self.module.generate.load_design_spec(path) if path is not None
                 else self.module.generate.load_design_spec())
 
-    def build_xml(self, spec) -> str:
-        return self.module.builder.build_xml(spec, for_isaaclab=True)
+    def build_xml(self, spec, **builder_kwargs) -> str:
+        return self.module.builder.build_xml(spec, for_isaaclab=True, **builder_kwargs)
 
     def catalog(self) -> list:
         """The simulation-complete entries, the only ones a design may pick."""
@@ -598,6 +598,10 @@ class DesignGeneratorBase(ABC):
         self._last_feasible = self.baseline
         self._last_emitted = self.baseline
         self._current_parameters: dict[str, float] | None = None
+    # Extra keyword arguments of the family's build_xml, set by the caller after
+    # construction, for example {"shank_foot_gap": 0.001} for the quadruped. Empty,
+    # the default, emits every document as before.
+    builder_kwargs: dict = {}
 
     # ---- abstract design hooks ----------------------------------------------
 
@@ -716,11 +720,11 @@ class DesignGeneratorBase(ABC):
         """
         try:
             check_nominal_pose(self.family, spec, self._dx_target, self._lean_max())
-            xml = self.family.build_xml(spec)
+            xml = self.family.build_xml(spec, **self.builder_kwargs)
         except ValueError as exc:
             print(f"[design] infeasible specification, reusing the last feasible one: {exc}")
             self._last_emitted = self._last_feasible
-            return self.family.build_xml(self._last_emitted)
+            return self.family.build_xml(self._last_emitted, **self.builder_kwargs)
         self._last_feasible = self._last_emitted = spec
         return xml
 
