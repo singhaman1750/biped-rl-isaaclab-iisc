@@ -299,7 +299,8 @@ def _best_design(log_dir: str, resume_path: str) -> tuple[dict[str, float], dict
     if not os.path.exists(path):
         raise FileNotFoundError(f"no CMA-ES history at {path}")
     history = pd.read_csv(path)
-    columns = [c for c in history.columns if c.startswith("best/")]
+    # The numeric columns alone, the actuator names of best/<group>_actuator being text.
+    columns = [c for c in history.columns if c.startswith("best/") and pd.api.types.is_numeric_dtype(history[c])]
     if history.empty or not columns:
         raise ValueError(f"{path} carries no best/ columns")
     # idxmin takes the first minimum and the history is appended in iteration order, so a

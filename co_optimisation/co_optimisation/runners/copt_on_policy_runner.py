@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import itertools
+import json
 import math
 import os
 import shutil
@@ -81,6 +82,40 @@ def _population_from_dict(state: dict) -> Population:
     )
 
 
+def _actuator_table(history: list[dict], group: str) -> str:
+    """The best individual's actuator on *group* at every generation of *history*, as a markdown pipe table.
+
+    One row per CMA-ES generation, from the "best/<group>_actuator..." entries log_design_update records,
+    so the table is rebuilt from the checkpointed history and is correct after a resume. The radius is half
+    the catalogue diameter, the radius and length are in millimetres and a value a record lacks is a dash.
+    A row without an actuator name, a record from before the actuator logging, is left out.
+    """
+    key = f"best/{group}_actuator"
+    columns = (
+        ("peak torque [N m]", "peak_torque", 1.0, "{:.2f}"),
+        ("peak speed [rad/s]", "peak_speed", 1.0, "{:.1f}"),
+        ("mass [kg]", "mass", 1.0, "{:.3f}"),
+        ("radius [mm]", "diameter", 500.0, "{:.1f}"),
+        ("length [mm]", "length", 1000.0, "{:.1f}"),
+    )
+
+    def cell(row: dict, spec: str, scale: float, fmt: str) -> str:
+        value = row.get(f"{key}_{spec}")
+        return fmt.format(value * scale) if isinstance(value, (int, float)) and value == value else "—"
+
+    header = ["generation", "iteration", "actuator", "index"] + [c[0] for c in columns]
+    lines = ["| " + " | ".join(header) + " |", "|" + "|".join("---" for _ in header) + "|"]
+    for row in history:
+        name = row.get(key)
+        if not isinstance(name, str):
+            continue
+        index = row.get(f"{key}_index")
+        cells = [str(row.get("generation", "—")), str(row.get("iteration", "—")), name.replace("|", "/"),
+                 str(int(index)) if isinstance(index, (int, float)) and index == index else "—"]
+        lines.append("| " + " | ".join(cells + [cell(row, *c[1:]) for c in columns]) + " |")
+    return "\n".join(lines)
+
+
 class CoptOnPolicyRunner(OnPolicyRunner):
     """On-policy runner with evolutionary design co-optimisation.
 
@@ -124,6 +159,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
     ) -> None:
         # Extract COPT-specific config before calling super().__init__
         copt_cfg: dict = train_cfg.get("copt", {})
+        self._base_record: dict | None = None
         self._ea_update_interval: int = copt_cfg.get("ea_update_interval", 100)
         self._ea_late_start: int = copt_cfg.get("ea_late_start", -1)
         self._num_individuals: int = copt_cfg.get("num_individuals", 16)
@@ -265,6 +301,16 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         if self.log_dir is not None:
             if not os.path.exists(os.path.join(self.log_dir, "designs")):
                 os.mkdir(os.path.join(self.log_dir, "designs"))
+            # The base robot in the columns of every design record, the reference each design is compared with.
+            base = os.path.join(self.log_dir, "designs", "base_design.csv")
+            if not self.disable_logs:
+                if not os.path.exists(base):
+                    pd.DataFrame([self._design_generator.base_record(
+                        os.path.join(self.log_dir, "designs", "base_design.xml"))]).to_csv(base, index=False)
+                self._base_record = pd.read_csv(base).iloc[0].to_dict()
+                # Once as text, a constant re-logged as scalars at every boundary drawing only flat lines.
+                shown = {k: v for k, v in self._base_record.items() if not self._is_actuator_column(k)}
+                self.writer.add_text("CMAES/base_design", "```\n" + json.dumps(shown, indent=2, default=str) + "\n```", 0)
         with torch.inference_mode():
             if getattr(self, "_resumed_from_checkpoint", False):
                 # Resume: re-spawn the checkpointed population and restore the env,
@@ -1137,9 +1183,41 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             log_string += f"""{f"{key}:":>{pad}} {text}\n"""
         log_string += f"""{"-" * width}\n"""
         print(log_string, flush=True)
+
+
+    def _log_population(self, it: int) -> None:
+        """Every column of the design records of the population on the scene but the actuators', as CMAES/ scalars.
+
+        A numeric column is logged as its mean, standard deviation, minimum and maximum over the
+        population, CMAES/population/<column>/<statistic>, and a categorical column as the share of the
+        population carrying each entry, CMAES/population/<column>/<entry>. The actuator columns stay in
+        design_parameters_<it>.csv alone, and the base robot is logged once as the text CMAES/base_design.
+        The last filter record follows as CMAES/filter/<key>.
+        """
+        table = pd.DataFrame(self.current_population.get_parameters())
+        for column in table.columns:
+            if self._is_actuator_column(column):
+                continue
+            values = table[column].dropna()
+            if values.empty:
+                continue
+            if pd.api.types.is_bool_dtype(values):
+                self.writer.add_scalar(f"CMAES/population/{column}", float(values.mean()), it)
+            elif pd.api.types.is_numeric_dtype(values):
+                for statistic, value in (("mean", values.mean()), ("std", values.std(ddof=0)),
+                                         ("min", values.min()), ("max", values.max())):
+                    self.writer.add_scalar(f"CMAES/population/{column}/{statistic}", float(value), it)
             else:
-                fitness.append(0.0)
-        return fitness
+                for entry, share in values.astype(str).value_counts(normalize=True).items():
+                    self.writer.add_scalar(f"CMAES/population/{column}/{entry}", float(share), it)
+        history = getattr(self._design_generator, "filter_history", None)
+        if history:
+            last = history[-1]
+            for key in ("rounds", "redrawn", "kept_refused"):
+                self.writer.add_scalar(f"CMAES/filter/{key}", float(last[key]), it)
+            for name, count in last["refused"].items():
+                self.writer.add_scalar(f"CMAES/filter/refused/{name}", float(count), it)
+
     def log_optimised_designs(self, width: int = 80, pad: int = 35) -> None:
         """Evaluate the population on the scene once more and write the final design to designs/optimised.
 

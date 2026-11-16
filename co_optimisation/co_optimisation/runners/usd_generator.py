@@ -456,6 +456,18 @@ DEFAULT_PARAM_RANGES: dict[str, ParamRange] = {
     "ankle_damping_scale": ("scale", (0.800, 1.200)),
 }
 
+# The catalogue specifications of an actuator the design records carry, CatalogActuator's attributes.
+ACTUATOR_SPECS: tuple[str, ...] = (
+    "peak_torque", "peak_speed", "mass", "cost", "ratio", "eta_gb", "diameter", "length", "index",
+)
+
+# The DesignSpec fields the design records carry, as far as the family's specification has them.
+SPEC_RECORD_FIELDS: tuple[str, ...] = (
+    "trunk_length", "thigh_length", "shank_length", "foot_length", "body_height",
+    "thigh_bend_offset", "knee_bend_offset", "ankle_bend_offset",
+)
+
+
 def actuator_distance(a, b) -> float:
     """The distance of two catalogue actuators in log peak torque, log peak speed and log mass.
 
@@ -463,6 +475,14 @@ def actuator_distance(a, b) -> float:
     plans/design_filtering.md section 7.1.
     """
     return math.sqrt(sum(math.log(getattr(a, k) / getattr(b, k)) ** 2 for k in ("peak_torque", "peak_speed", "mass")))
+
+
+def _document_mass(xml_text: str) -> float:
+    """The robot's mass in kg, the sum of the inertial masses of an emitted document."""
+    import xml.etree.ElementTree as ET
+
+    return float(sum(float(e.get("mass", 0.0)) for e in ET.fromstring(xml_text).iter("inertial")))
+
 
 # Names rather than a second range structure, so a caller's override of a range reaches CMA-ES.
 CMAES_PARAM_KEYS: tuple[str, ...] = (
@@ -764,7 +784,8 @@ class DesignGeneratorBase(ABC):
             fields[self.family.spec_fields[group]] = name
         design_spec = self.family.module.generate.DesignSpec
         offsets = solve_nominal_pose(self.family, design_spec.from_dict(fields), self._dx_target)
-        return design_spec.from_dict({**fields, **offsets})
+        spec = design_spec.from_dict({**fields, **offsets})
+        return design_spec.from_dict({**fields, **offsets, "body_height": self.family.nominal(spec)["height"]})
 
     def _actuator_params(self, spec, parameters: dict[str, float] | None = None) -> dict[str, dict]:
         """Simulator-side actuator parameters for every group of one design."""
@@ -1373,6 +1394,9 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
             reasons.append("tolx")
         return reasons
 
+    def _design_record(self, spec) -> dict:
+        picks = {group: getattr(spec, self.family.spec_fields[group]) for group in self.cat_groups}
+        return {**super()._design_record(spec), **picks}
 
     def search_statistics(self) -> dict | None:
         # Private state of cmaes 0.13.1, whose CatCMAwM exposes no accessor for it.
@@ -1397,6 +1421,21 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
             **self._pick_statistics(q),
         }
 
+    def _pick_statistics(self, q: np.ndarray) -> dict:
+        """The most probable entry of every group, its probability, its catalogue name and its catalogue index.
+
+        The index is the entry's own "index" of catalogs/actuators.json, not its position in cat_names, and a
+        group whose entry states none, as in the quadruped's catalogue, is left out.
+        """
+        rows = list(enumerate(self.cat_groups))
+        picks = {group: self.cat_names[int(q[row].argmax())] for row, group in rows}
+        catalog = {a.name: a for a in self.family.full_catalog()}
+        indices = {group: getattr(catalog[name], "index", None) for group, name in picks.items()}
+        return {
+            "pick_probability": {group: float(q[row].max()) for row, group in rows},
+            "pick": picks,
+            "pick_index": {group: index for group, index in indices.items() if index is not None},
+        }
 
     def optimised_design(self) -> tuple[dict[str, float], dict[str, str] | None] | None:
         q = np.asarray(self._es._q)
