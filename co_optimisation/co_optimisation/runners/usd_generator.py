@@ -135,6 +135,18 @@ def _housing(builder, actuator_mass, radius, half_length, parent=None) -> dict:
     return out
 
 
+def _trunk_entry(builder, spec, *actuators) -> dict:
+    """The root body, a box of the builder's ``trunk_body`` size, mass and inertia, centred on its origin.
+
+    The inertia is the hollow shell's plus the payload's, not a solid box's, so it replaces the one
+    ``_entry`` derives. The editor reaches a link named for the root body at the root prim itself.
+    """
+    (a, b, c), mass, inertia = builder.trunk_body(spec, *actuators)
+    out = _entry(half=(a / 2.0, b / 2.0, c / 2.0), pos=(0.0, 0.0, 0.0), mass=mass)
+    out["inertia"] = [float(v) for v in inertia]
+    return out
+
+
 def _quat_wxyz_y(rad: float) -> list[float]:
     return [math.cos(rad / 2.0), 0.0, math.sin(rad / 2.0), 0.0]
 
@@ -195,6 +207,8 @@ def _biped_links(spec) -> dict[str, dict]:
                  -(r_ankle + b.FOOT_BOX_HALF[1] + spec.clearance_ankleAct2foot_z)),
             mass=b.LAMBDA_FOOT * spec.foot_length,
         )
+    # The trunk follows the abduction pick, its width being Rule 5's, so the editor writes it too.
+    out["base_Link"] = _trunk_entry(b, spec, act_abad, act_hip)
     return out
 
 
@@ -229,10 +243,18 @@ def _quadruped_links(spec) -> dict[str, dict]:
             f"thigh_{leg}_Link": _quat_wxyz_y(fr["thigh"]),
             f"{leg}_calf_joint": _quat_wxyz_y(fr["shank"]),
         }
-        # Fixed housing sizes (quadruped/builder.py), so a pick moves the masses alone.
-        out[f"abad_{leg}_act"] = _housing(q, act_abad.mass, q.ABD_RADIUS, q.ABD_HALFLEN)
-        out[f"hip_{leg}_act"] = _housing(q, act_hip.mass, q.HIP_RADIUS, q.HIP_HALFLEN)
-        out[f"knee_{leg}_act"] = _housing(q, act_knee.mass, q.KNEE_RADIUS, q.KNEE_HALFLEN)
+        # The housings and every placement that follows their size, _cluster_layout's chain.
+        lay = q._cluster_layout(leg, spec, act_abad, act_hip, act_knee)
+        out[f"abad_{leg}_act"] = _housing(q, act_abad.mass, lay["r_abad"], lay["hl_abad"],
+                                          ("trunk", f"abad_{leg}_act", lay["abad_pos"]))
+        out[f"hip_{leg}_act"] = _housing(q, act_hip.mass, lay["r_hip"], lay["hl_hip"],
+                                         (f"abad_{leg}_act", f"{leg}_hip_joint", lay["hip_pos"]))
+        out[f"knee_{leg}_act"] = _housing(q, act_knee.mass, lay["r_knee"], lay["hl_knee"],
+                                          (f"hip_{leg}_act", f"{leg}_thigh_joint", lay["knee_pos"]))
+        out[f"thigh_{leg}_Link"].update(parent_body=f"knee_{leg}_act", parent_joint=f"thigh_{leg}_Link",
+                                         parent_pos=[float(v) for v in lay["thigh_pos"]])
+    # The trunk follows the abduction pick, its width being Rule 5's and its height Rule 4's.
+    out["trunk"] = _trunk_entry(q, spec, act_abad, act_hip)
     return out
 
 

@@ -272,6 +272,7 @@ def apply_link_length_params(
         env_path = env_paths[individual]
         joints_prim_path = f"{env_path}/Robot/joints"
         for link_name, params in link_length_params_list[individual].items():
+            # The importer nests the root body under an Xform of its own name, so the trunk is Robot/<root>/<root>.
             link_prim_path = f"{env_path}/Robot/{root_body}/{link_name}"
             for purpose in ("visuals", "collisions"):
                 inst = stage.GetPrimAtPath(f"{link_prim_path}/{purpose}")
