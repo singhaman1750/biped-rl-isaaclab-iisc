@@ -1,0 +1,62 @@
+### The three quantities the re-ranking of section 18.1 turns upon
+
+### The hip yaw against the toe-in, in stance and in swing separately
+    The left leg is mirrored on both axes, toe-in already flipping the left foot.
+
+run        foot   phase      slope    corr  intercept deg  toe-in deg
+A@9000     left   stance     0.939   0.950          4.246       2.866
+A@9000     left   swing      0.998   0.998          4.733      14.405
+A@9000     right  stance     0.932   0.955          2.939       3.416
+A@9000     right  swing      0.992   0.997          3.218      14.752
+
+B@8000     left   stance     0.913   0.960          3.710       3.142
+B@8000     left   swing      0.994   0.987          3.824      13.715
+B@8000     right  stance     0.940   0.964          2.269       2.943
+B@8000     right  swing      1.001   0.989          2.273      13.646
+
+C@8000     left   stance     0.960   0.943          6.056       0.673
+C@8000     left   swing      1.001   0.994          4.767      12.235
+C@8000     right  stance     0.968   0.936          4.683       0.067
+C@8000     right  swing      0.995   0.994          3.150      12.064
+
+
+### The commanded ankle roll target in swing against the mechanical stop
+    Where the sample is saturated the inversion gives a BOUND, the true target lying
+    at least as far out as the figure below, so the excess is understated.
+
+joint                run            stop  q_des mean   excess  beyond stop %
+left_foot_roll_02    A@9000       0.2618      0.3750   0.1260          89.50
+left_foot_roll_02    B@8000      -0.2618     -0.4303   0.1687          99.77
+left_foot_roll_02    C@8000      -0.2618     -0.4311   0.1695          99.86
+
+right_foot_roll_02   A@9000      -0.2618     -0.3780   0.1246          89.16
+right_foot_roll_02   B@8000       0.2618      0.4307   0.1690          99.89
+right_foot_roll_02   C@8000       0.2618      0.4313   0.1697          99.93
+
+left_foot_pitch_02   A@9000      -0.8727     -0.6374   0.0000           0.09
+left_foot_pitch_02   B@8000      -0.8727     -0.7740   0.0386          33.67
+left_foot_pitch_02   C@8000      -0.8727     -0.9825   0.1320          84.59
+
+right_foot_pitch_02  A@9000      -0.8727     -0.6142   0.0000           0.06
+right_foot_pitch_02  B@8000      -0.8727     -0.7628   0.0351          31.67
+right_foot_pitch_02  C@8000      -0.8727     -0.9796   0.1306          83.74
+
+
+### The three in air kernels at their own measured swing deviation
+    reward = exp(-sum of airborne |dev| / 0.2), so the gradient is value / 0.2 per
+    radian per unit weight. A term at a high value has a live gradient a weight can
+    multiply, a term at a low one has a vanished gradient a weight cannot reach.
+
+term                                 run         swing dev    value  pct of max   d/d dev   paid/s
+rew_keep_ankle_pitch_zero_in_air     A@9000         0.1418    0.492       49.2%     2.461   0.4515
+rew_keep_ankle_pitch_zero_in_air     B@8000         0.2329    0.312       31.2%     1.560   0.3660
+rew_keep_ankle_pitch_zero_in_air     C@8000         0.3406    0.182       18.2%     0.911   0.1990
+
+rew_keep_ankle_roll_zero_in_air      A@9000         0.3354    0.187       18.7%     0.935   0.0475
+rew_keep_ankle_roll_zero_in_air      B@8000         0.1788    0.409       40.9%     2.045   0.3143
+rew_keep_ankle_roll_zero_in_air      C@8000         0.1789    0.409       40.9%     2.044   0.3166
+
+rew_keep_hip_yaw_zero_in_air         A@9000         0.1911    0.385       38.5%     1.924   0.3331
+rew_keep_hip_yaw_zero_in_air         B@8000         0.1920    0.383       38.3%     1.914   0.3562
+rew_keep_hip_yaw_zero_in_air         C@8000         0.1636    0.441       44.1%     2.207   0.4307
+

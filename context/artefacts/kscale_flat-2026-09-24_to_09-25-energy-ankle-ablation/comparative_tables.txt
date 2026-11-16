@@ -1,0 +1,811 @@
+=== BEST CHECKPOINT OF EACH RUN ===
+
+### Gait and viability
+quantity                               A@9000     B@8000     C@8000
+-------------------------------------------------------------------
+base height [m]                        0.7072     0.7116     0.6673
+knee mean [rad]                        0.6972     0.6450     1.0879
+planar tracking error [m/s]            0.0373     0.0436     0.0454
+yaw tracking error [rad/s]             0.1606     0.1768     0.2172
+absolute joint power [W]                57.51      47.08      55.69
+cost of transport                       0.980      0.788      0.935
+double support [pct]                    20.30      10.67      10.16
+flight phase [pct]                       0.03       0.02       0.04
+cadence [steps/s]                        2.12       2.12       2.30
+termination rate [1/s]                 0.0000     0.0000     0.0000
+torso roll [deg]                        1.187      0.601      2.400
+lateral foot separation [m]            0.1310     0.1316     0.1396
+sole clearance in stance [mm]           -0.20      -0.21      -0.19
+
+### Foot splay, toe-in positive
+quantity                               A@9000     B@8000     C@8000
+-------------------------------------------------------------------
+both feet, all samples [deg]            8.050      8.344      7.167
+both feet, signed [deg]                 7.701      7.794      5.662
+ninety fifth percentile [deg]          23.852     21.228     21.781
+differential [deg]                     15.479     15.856     12.356
+in stance, absolute [deg]               3.716      3.995      2.884
+in stance, signed [deg]                 3.145      3.041      0.366
+in swing, absolute [deg]               14.587     13.731     12.414
+hip yaw to splay slope                  0.935      0.926      0.964
+hip yaw to splay correlation            0.952      0.962      0.939
+
+### Envelope saturation by joint [pct of samples at or above 98 pct of available torque]
+joint                          A@9000     B@8000     C@8000
+left_hip_yaw_03                  0.00       0.00       0.01
+right_hip_yaw_03                 0.00       0.00       0.01
+left_hip_roll_03                 0.17       0.23       0.29
+right_hip_roll_03                0.06       0.18       0.23
+left_hip_pitch_04                0.00       0.04       0.01
+right_hip_pitch_04               0.00       0.07       0.00
+left_knee_04                     0.00       0.01       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02               5.00      14.85      44.31
+right_foot_pitch_02              5.55      14.18      42.21
+left_foot_roll_02               19.75      50.14      88.25
+right_foot_roll_02              17.94      48.71      88.60
+-- flat ceiling reading --
+left_hip_yaw_03                  0.00       0.00       0.01
+right_hip_yaw_03                 0.00       0.00       0.01
+left_hip_roll_03                 0.17       0.23       0.29
+right_hip_roll_03                0.06       0.18       0.23
+left_hip_pitch_04                0.00       0.04       0.01
+right_hip_pitch_04               0.00       0.07       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02               3.84      11.78      42.76
+right_foot_pitch_02              4.25      11.25      40.13
+left_foot_roll_02               19.72      49.77      85.59
+right_foot_roll_02              17.91      48.17      86.55
+
+### Mean absolute torque [N.m], against the effort ceiling in the last column of each
+joint                          A@9000     B@8000     C@8000   ceiling
+left_hip_yaw_03                 3.447      2.932      4.743   42.0
+right_hip_yaw_03                3.506      3.018      5.080   42.0
+left_hip_roll_03               10.729     12.156     11.454   42.0
+right_hip_roll_03              10.972     12.437     11.802   42.0
+left_hip_pitch_04               6.130      3.953      5.791   84.0
+right_hip_pitch_04              6.298      4.091      5.879   84.0
+left_knee_04                    5.183      5.326      7.716   84.0
+right_knee_04                   5.393      5.471      8.575   84.0
+left_foot_pitch_02              4.832      7.321     11.635   17.0
+right_foot_pitch_02             4.734      7.203     11.233   17.0
+left_foot_roll_02               8.509     12.212     16.115   17.0
+right_foot_roll_02              8.460     12.129     16.153   17.0
+
+### Joint excursion, absolute deviation from the nominal pose [rad]
+joint                          A@9000     B@8000     C@8000
+left_hip_yaw_03                0.1054     0.1141     0.1281
+right_hip_yaw_03               0.1113     0.1251     0.1287
+left_hip_roll_03               0.1350     0.1323     0.1317
+right_hip_roll_03              0.1022     0.0999     0.1001
+left_hip_pitch_04              0.1528     0.1779     0.1398
+right_hip_pitch_04             0.1644     0.2276     0.1140
+left_knee_04                   0.2881     0.2923     0.2216
+right_knee_04                  0.2679     0.2804     0.2317
+left_foot_pitch_02             0.1921     0.2116     0.1856
+right_foot_pitch_02            0.1790     0.2017     0.1979
+left_foot_roll_02              0.1876     0.1454     0.1722
+right_foot_roll_02             0.1822     0.1355     0.1634
+
+### Time at a hard stop [pct of samples within one per cent of travel]
+joint                          A@9000     B@8000     C@8000
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                 7.03      10.05      18.85
+right_hip_roll_03                3.49       6.21      15.68
+left_hip_pitch_04                0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00
+left_knee_04                     0.03       0.01       0.00
+right_knee_04                    0.01       0.00       0.00
+left_foot_pitch_02               0.05      16.04      39.72
+right_foot_pitch_02              0.03      14.75      37.87
+left_foot_roll_02               37.49      49.52      50.26
+right_foot_roll_02              36.00      48.11      48.59
+
+### Outside the soft limit [pct of samples]
+joint                          A@9000     B@8000     C@8000
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                99.05      98.92      96.13
+right_hip_roll_03               98.09      98.81      94.61
+left_hip_pitch_04                0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00
+left_knee_04                     0.28       0.26       0.00
+right_knee_04                    0.06       0.04       0.00
+left_foot_pitch_02               1.80      19.95      42.32
+right_foot_pitch_02              1.14      18.37      40.31
+left_foot_roll_02               39.96      62.19      94.07
+right_foot_roll_02              38.38      61.58      93.72
+
+### Phase conditioned saturation, stance then swing [pct]
+joint                                     A@9000                B@8000                C@8000
+left_hip_yaw_03                   0.00/0.00             0.00/0.00             0.01/0.00     
+right_hip_yaw_03                  0.00/0.00             0.00/0.00             0.02/0.00     
+left_hip_roll_03                  0.23/0.08             0.37/0.06             0.49/0.05     
+right_hip_roll_03                 0.10/0.01             0.32/0.00             0.40/0.02     
+left_hip_pitch_04                 0.00/0.00             0.04/0.04             0.00/0.01     
+right_hip_pitch_04                0.01/0.00             0.12/0.01             0.01/0.00     
+left_knee_04                      0.00/0.00             0.01/0.00             0.00/0.00     
+right_knee_04                     0.00/0.00             0.00/0.00             0.01/0.00     
+left_foot_pitch_02                8.42/0.00            16.52/12.85           20.59/72.59    
+right_foot_pitch_02               9.10/0.00            16.45/11.30           18.55/71.99    
+left_foot_roll_02                 0.39/48.04           10.34/98.02           79.11/99.13    
+right_foot_roll_02                0.30/45.43            9.94/98.15           80.05/99.37    
+
+### Phase conditioned deviation from nominal, stance then swing [rad]
+joint                                     A@9000                B@8000                C@8000
+left_hip_yaw_03                 0.0568/0.1765         0.0584/0.1811         0.1066/0.1537   
+right_hip_yaw_03                0.0507/0.2056         0.0640/0.2029         0.0931/0.1735   
+left_hip_roll_03                0.1367/0.1325         0.1179/0.1496         0.1415/0.1200   
+right_hip_roll_03               0.1038/0.0997         0.0866/0.1170         0.1091/0.0886   
+left_hip_pitch_04               0.1717/0.1252         0.2242/0.1222         0.1266/0.1555   
+right_hip_pitch_04              0.2045/0.1018         0.2787/0.1625         0.1072/0.1225   
+left_knee_04                    0.3952/0.1317         0.4367/0.1185         0.1090/0.3559   
+right_knee_04                   0.3539/0.1340         0.4098/0.1154         0.1218/0.3700   
+left_foot_pitch_02              0.2259/0.1426         0.1985/0.2274         0.0644/0.3301   
+right_foot_pitch_02             0.2034/0.1410         0.1730/0.2384         0.0764/0.3510   
+left_foot_roll_02               0.0898/0.3303         0.1141/0.1831         0.1630/0.1832   
+right_foot_roll_02              0.0806/0.3405         0.1048/0.1746         0.1546/0.1746   
+
+### Phase conditioned joint speed, stance then swing [rad/s]
+joint                                     A@9000                B@8000                C@8000
+left_hip_yaw_03                  0.483/1.092           0.332/1.189           0.350/1.351    
+right_hip_yaw_03                 0.470/1.120           0.308/1.197           0.341/1.451    
+left_hip_roll_03                 0.220/0.241           0.134/0.216           0.323/0.268    
+right_hip_roll_03                0.199/0.237           0.133/0.220           0.313/0.271    
+left_hip_pitch_04                0.883/0.999           0.773/0.834           0.593/0.630    
+right_hip_pitch_04               0.843/1.013           0.769/0.856           0.590/0.650    
+left_knee_04                     1.833/1.784           1.488/1.764           1.131/1.441    
+right_knee_04                    1.717/1.731           1.451/1.750           1.070/1.438    
+left_foot_pitch_02               1.189/0.861           0.958/1.316           0.924/0.790    
+right_foot_pitch_02              1.147/0.839           0.974/1.320           0.916/0.823    
+left_foot_roll_02                1.258/0.183           0.564/0.011           0.371/0.013    
+right_foot_roll_02               1.171/0.198           0.524/0.008           0.385/0.013    
+
+### The liftoff transient, mean absolute deviation from the nominal [rad]
+    pre is the 0.30 s of stance before the event, post the 0.30 s of swing after
+joint / run                      pre        at      post      peak  t_peak[s]   events
+left_hip_yaw_03 A@9000        0.0644    0.1481    0.2149    0.2576      0.100      992
+left_hip_yaw_03 B@8000        0.0599    0.0826    0.2268    0.2764      0.120      993
+left_hip_yaw_03 C@8000        0.1051    0.0822    0.1915    0.2360      0.190     1071
+
+right_hip_yaw_03 A@9000       0.0660    0.1824    0.2461    0.2930      0.090      948
+right_hip_yaw_03 B@8000       0.0685    0.1013    0.2484    0.2983      0.120      961
+right_hip_yaw_03 C@8000       0.0942    0.0901    0.2205    0.2725      0.190     1040
+
+left_foot_roll_02 A@9000      0.1041    0.3196    0.3348    0.3361      0.120      992
+left_foot_roll_02 B@8000      0.1268    0.1832    0.1819    0.1832     -0.010      993
+left_foot_roll_02 C@8000      0.1679    0.1830    0.1829    0.1832      0.050     1071
+
+right_foot_roll_02 A@9000     0.0925    0.3306    0.3458    0.3478      0.220      948
+right_foot_roll_02 B@8000     0.1148    0.1741    0.1737    0.1744      0.030      961
+right_foot_roll_02 C@8000     0.1597    0.1742    0.1744    0.1747      0.020     1040
+
+left_hip_roll_03 A@9000       0.1343    0.1435    0.1395    0.1526      0.050      992
+left_hip_roll_03 B@8000       0.1234    0.1428    0.1587    0.1645      0.110      993
+left_hip_roll_03 C@8000       0.1442    0.1178    0.1315    0.1712     -0.260     1071
+
+right_hip_roll_03 A@9000      0.1031    0.1100    0.1066    0.1183     -0.300      948
+right_hip_roll_03 B@8000      0.0911    0.1116    0.1258    0.1325      0.110      961
+right_hip_roll_03 C@8000      0.1135    0.0855    0.1002    0.1392     -0.260     1040
+
+left_foot_pitch_02 A@9000     0.2303    0.1322    0.1610    0.3277     -0.240      992
+left_foot_pitch_02 B@8000     0.2226    0.1126    0.2593    0.3087      0.240      993
+left_foot_pitch_02 C@8000     0.0792    0.2642    0.3362    0.3475      0.190     1071
+
+right_foot_pitch_0 A@9000     0.2150    0.1380    0.1569    0.3005     -0.240      948
+right_foot_pitch_0 B@8000     0.1986    0.1198    0.2717    0.3206      0.240      961
+right_foot_pitch_0 C@8000     0.0820    0.2681    0.3565    0.3711      0.210     1040
+
+
+=== MATCHED CHECKPOINT 10000 ===
+
+### Gait and viability
+quantity                              A@10000    B@10000    C@10000
+-------------------------------------------------------------------
+base height [m]                        0.7018     0.7058     0.6503
+knee mean [rad]                        0.7541     0.7169     1.1945
+planar tracking error [m/s]            0.0352     0.0402     0.0363
+yaw tracking error [rad/s]             0.1590     0.2001     0.2376
+absolute joint power [W]                58.35      50.17      55.87
+cost of transport                       1.003      0.852      0.953
+double support [pct]                    19.80       9.99      14.33
+flight phase [pct]                       0.03       0.01       0.03
+cadence [steps/s]                        2.12       2.17       2.41
+termination rate [1/s]                 0.0000     0.0000     0.0000
+torso roll [deg]                        1.318      1.236      1.772
+lateral foot separation [m]            0.1284     0.1317     0.1397
+sole clearance in stance [mm]           -0.21      -0.23      -0.17
+
+### Foot splay, toe-in positive
+quantity                              A@10000    B@10000    C@10000
+-------------------------------------------------------------------
+both feet, all samples [deg]            7.667      8.456      7.780
+both feet, signed [deg]                 6.775      7.159      4.681
+ninety fifth percentile [deg]          25.076     25.158     21.732
+differential [deg]                     13.956     14.993     11.487
+in stance, absolute [deg]               2.969      2.907      3.724
+in stance, signed [deg]                 1.528      0.604     -1.292
+in swing, absolute [deg]               14.679     15.235     13.189
+hip yaw to splay slope                  0.929      0.948      0.934
+hip yaw to splay correlation            0.951      0.957      0.958
+
+### Envelope saturation by joint [pct of samples at or above 98 pct of available torque]
+joint                         A@10000    B@10000    C@10000
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                 0.24       0.21       0.29
+right_hip_roll_03                0.09       0.18       0.24
+left_hip_pitch_04                0.00       0.02       0.00
+right_hip_pitch_04               0.00       0.03       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02               4.25      16.85      45.87
+right_foot_pitch_02              5.45      16.35      45.76
+left_foot_roll_02               25.86      67.41      92.97
+right_foot_roll_02              24.01      68.29      93.42
+-- flat ceiling reading --
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                 0.24       0.21       0.29
+right_hip_roll_03                0.09       0.18       0.24
+left_hip_pitch_04                0.00       0.02       0.00
+right_hip_pitch_04               0.00       0.03       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02               2.79      13.90      44.61
+right_foot_pitch_02              3.53      13.01      44.07
+left_foot_roll_02               25.81      66.17      89.18
+right_foot_roll_02              23.98      66.82      90.92
+
+### Mean absolute torque [N.m], against the effort ceiling in the last column of each
+joint                         A@10000    B@10000    C@10000   ceiling
+left_hip_yaw_03                 3.682      3.182      5.624   42.0
+right_hip_yaw_03                3.723      3.292      5.764   42.0
+left_hip_roll_03               10.946     12.213     11.709   42.0
+right_hip_roll_03              11.062     12.515     11.911   42.0
+left_hip_pitch_04               5.920      4.008      6.829   84.0
+right_hip_pitch_04              6.047      4.054      6.867   84.0
+left_knee_04                    5.351      5.419      9.671   84.0
+right_knee_04                   5.680      5.624      9.947   84.0
+left_foot_pitch_02              4.795      7.784     11.161   17.0
+right_foot_pitch_02             4.784      7.538     11.148   17.0
+left_foot_roll_02               8.879     14.305     16.453   17.0
+right_foot_roll_02              8.807     14.460     16.498   17.0
+
+### Joint excursion, absolute deviation from the nominal pose [rad]
+joint                         A@10000    B@10000    C@10000
+left_hip_yaw_03                0.1232     0.1360     0.1535
+right_hip_yaw_03               0.1218     0.1371     0.1487
+left_hip_roll_03               0.1343     0.1346     0.1252
+right_hip_roll_03              0.1039     0.1045     0.0941
+left_hip_pitch_04              0.1440     0.1586     0.2443
+right_hip_pitch_04             0.1475     0.2003     0.1941
+left_knee_04                   0.2564     0.2552     0.3059
+right_knee_04                  0.2395     0.2434     0.3219
+left_foot_pitch_02             0.1782     0.1945     0.2014
+right_foot_pitch_02            0.1647     0.1857     0.2248
+left_foot_roll_02              0.1897     0.1624     0.1730
+right_foot_roll_02             0.1855     0.1545     0.1645
+
+### Time at a hard stop [pct of samples within one per cent of travel]
+joint                         A@10000    B@10000    C@10000
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                15.10      15.78      17.34
+right_hip_roll_03               12.22      13.06      13.10
+left_hip_pitch_04                0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00
+left_knee_04                     0.03       0.00       0.00
+right_knee_04                    0.01       0.00       0.00
+left_foot_pitch_02               5.17      19.21      41.09
+right_foot_pitch_02              4.11      17.81      40.27
+left_foot_roll_02               38.19      49.86      50.24
+right_foot_roll_02              37.07      48.63      49.10
+
+### Outside the soft limit [pct of samples]
+joint                         A@10000    B@10000    C@10000
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                98.55      97.75      89.17
+right_hip_roll_03               97.54      97.49      87.98
+left_hip_pitch_04                0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00
+left_knee_04                     0.21       0.09       0.00
+right_knee_04                    0.06       0.01       0.00
+left_foot_pitch_02               7.26      23.39      43.44
+right_foot_pitch_02              6.01      21.84      42.75
+left_foot_roll_02               40.63      82.24      96.11
+right_foot_roll_02              39.41      83.51      95.96
+
+### Phase conditioned saturation, stance then swing [pct]
+joint                                    A@10000               B@10000               C@10000
+left_hip_yaw_03                   0.00/0.00             0.00/0.00             0.00/0.00     
+right_hip_yaw_03                  0.01/0.00             0.00/0.00             0.00/0.00     
+left_hip_roll_03                  0.35/0.07             0.37/0.02             0.47/0.05     
+right_hip_roll_03                 0.15/0.01             0.32/0.01             0.41/0.01     
+left_hip_pitch_04                 0.00/0.00             0.02/0.03             0.00/0.01     
+right_hip_pitch_04                0.01/0.00             0.06/0.00             0.00/0.00     
+left_knee_04                      0.00/0.00             0.00/0.00             0.00/0.00     
+right_knee_04                     0.00/0.00             0.00/0.00             0.00/0.00     
+left_foot_pitch_02                7.17/0.00            15.26/18.73           16.01/84.84    
+right_foot_pitch_02               9.00/0.02            16.25/16.48           16.66/85.43    
+left_foot_roll_02                 0.35/62.99           40.76/99.10           87.76/99.77    
+right_foot_roll_02                0.27/60.35           43.53/99.36           88.84/99.66    
+
+### Phase conditioned deviation from nominal, stance then swing [rad]
+joint                                    A@10000               B@10000               C@10000
+left_hip_yaw_03                 0.0807/0.1851         0.0753/0.2081         0.1485/0.1600   
+right_hip_yaw_03                0.0630/0.2117         0.0641/0.2287         0.1299/0.1743   
+left_hip_roll_03                0.1349/0.1334         0.1261/0.1447         0.1099/0.1450   
+right_hip_roll_03               0.1044/0.1032         0.0967/0.1144         0.0794/0.1141   
+left_hip_pitch_04               0.1390/0.1512         0.1935/0.1170         0.2393/0.2507   
+right_hip_pitch_04              0.1668/0.1178         0.2398/0.1508         0.1907/0.1987   
+left_knee_04                    0.3325/0.1456         0.3665/0.1228         0.2043/0.4385   
+right_knee_04                   0.2977/0.1504         0.3358/0.1274         0.2249/0.4541   
+left_foot_pitch_02              0.1929/0.1567         0.1524/0.2447         0.0952/0.3399   
+right_foot_pitch_02             0.1691/0.1579         0.1276/0.2586         0.1230/0.3636   
+left_foot_roll_02               0.0917/0.3323         0.1450/0.1831         0.1651/0.1833   
+right_foot_roll_02              0.0825/0.3431         0.1385/0.1746         0.1570/0.1746   
+
+### Phase conditioned joint speed, stance then swing [rad/s]
+joint                                    A@10000               B@10000               C@10000
+left_hip_yaw_03                  0.555/1.239           0.401/1.518           0.467/1.488    
+right_hip_yaw_03                 0.541/1.266           0.398/1.525           0.466/1.490    
+left_hip_roll_03                 0.240/0.277           0.185/0.301           0.315/0.373    
+right_hip_roll_03                0.226/0.276           0.184/0.299           0.309/0.370    
+left_hip_pitch_04                0.814/1.011           0.783/0.774           0.558/0.618    
+right_hip_pitch_04               0.788/1.016           0.751/0.781           0.558/0.617    
+left_knee_04                     1.856/1.709           1.457/1.754           1.018/1.271    
+right_knee_04                    1.760/1.648           1.391/1.745           0.998/1.233    
+left_foot_pitch_02               1.204/0.897           0.895/1.345           0.917/0.656    
+right_foot_pitch_02              1.170/0.875           0.922/1.337           0.915/0.639    
+left_foot_roll_02                1.295/0.152           0.501/0.011           0.360/0.012    
+right_foot_roll_02               1.192/0.156           0.505/0.009           0.338/0.014    
+
+### The liftoff transient, mean absolute deviation from the nominal [rad]
+    pre is the 0.30 s of stance before the event, post the 0.30 s of swing after
+joint / run                      pre        at      post      peak  t_peak[s]   events
+left_hip_yaw_03 A@10000       0.0739    0.1526    0.2245    0.2648      0.110      988
+left_hip_yaw_03 B@10000       0.0759    0.0865    0.2644    0.3190      0.130     1011
+left_hip_yaw_03 C@10000       0.1371    0.1140    0.1905    0.2283      0.170     1124
+
+right_hip_yaw_03 A@10000      0.0672    0.1876    0.2555    0.2981      0.110      947
+right_hip_yaw_03 B@10000      0.0716    0.1054    0.2875    0.3426      0.130      997
+right_hip_yaw_03 C@10000      0.1232    0.1234    0.2091    0.2472      0.160     1064
+
+left_foot_roll_02 A@10000     0.1035    0.3276    0.3360    0.3372      0.130      988
+left_foot_roll_02 B@10000     0.1538    0.1828    0.1824    0.1829      0.010     1011
+left_foot_roll_02 C@10000     0.1695    0.1833    0.1828    0.1833      0.000     1124
+
+right_foot_roll_02 A@10000    0.0919    0.3364    0.3459    0.3474      0.190      947
+right_foot_roll_02 B@10000    0.1452    0.1739    0.1741    0.1743      0.070      997
+right_foot_roll_02 C@10000    0.1610    0.1738    0.1741    0.1743      0.020     1064
+
+left_hip_roll_03 A@10000      0.1383    0.1535    0.1432    0.1605      0.040      988
+left_hip_roll_03 B@10000      0.1369    0.1424    0.1598    0.1710      0.100     1011
+left_hip_roll_03 C@10000      0.1134    0.1327    0.1585    0.1693      0.130     1124
+
+right_hip_roll_03 A@10000     0.1094    0.1235    0.1130    0.1290      0.040      947
+right_hip_roll_03 B@10000     0.1071    0.1119    0.1287    0.1398      0.100      997
+right_hip_roll_03 C@10000     0.0835    0.1016    0.1262    0.1373      0.130     1064
+
+left_foot_pitch_02 A@10000    0.2113    0.1566    0.1799    0.2924     -0.230      988
+left_foot_pitch_02 B@10000    0.1808    0.1196    0.2640    0.3229      0.260     1011
+left_foot_pitch_02 C@10000    0.1100    0.3008    0.3407    0.3462      0.150     1124
+
+right_foot_pitch_0 A@10000    0.1898    0.1625    0.1807    0.2584     -0.230      947
+right_foot_pitch_0 B@10000    0.1544    0.1248    0.2774    0.3367      0.250      997
+right_foot_pitch_0 C@10000    0.1378    0.3255    0.3624    0.3682      0.170     1064
+
+
+=== RUN A ACROSS ITERATIONS ===
+
+### Gait and viability
+quantity                               A@8000     A@9000    A@10000    A@14000
+------------------------------------------------------------------------------
+base height [m]                        0.7103     0.7072     0.7018     0.6681
+knee mean [rad]                        0.6298     0.6972     0.7541     1.0331
+planar tracking error [m/s]            0.0424     0.0373     0.0352     0.0301
+yaw tracking error [rad/s]             0.1877     0.1606     0.1590     0.1263
+absolute joint power [W]                64.60      57.51      58.35      61.86
+cost of transport                       1.100      0.980      1.003      1.058
+double support [pct]                    18.96      20.30      19.80      19.85
+flight phase [pct]                       0.02       0.03       0.03       0.04
+cadence [steps/s]                        2.14       2.12       2.12       2.14
+termination rate [1/s]                 0.0000     0.0000     0.0000     0.0000
+torso roll [deg]                        1.600      1.187      1.318      1.286
+lateral foot separation [m]            0.1338     0.1310     0.1284     0.1334
+sole clearance in stance [mm]           -0.22      -0.20      -0.21      -0.23
+
+### Foot splay, toe-in positive
+quantity                               A@8000     A@9000    A@10000    A@14000
+------------------------------------------------------------------------------
+both feet, all samples [deg]            8.506      8.050      7.667      9.663
+both feet, signed [deg]                 8.259      7.701      6.775      2.494
+ninety fifth percentile [deg]          23.345     23.852     25.076     23.388
+differential [deg]                     16.563     15.479     13.956      9.046
+in stance, absolute [deg]               4.397      3.716      2.969      6.690
+in stance, signed [deg]                 3.989      3.145      1.528     -4.926
+in swing, absolute [deg]               14.534     14.587     14.679     14.106
+hip yaw to splay slope                  0.926      0.935      0.929      0.952
+hip yaw to splay correlation            0.935      0.952      0.951      0.975
+
+### Envelope saturation by joint [pct of samples at or above 98 pct of available torque]
+joint                          A@8000     A@9000    A@10000    A@14000
+left_hip_yaw_03                  0.00       0.00       0.00       0.00
+right_hip_yaw_03                 0.01       0.00       0.00       0.00
+left_hip_roll_03                 0.21       0.17       0.24       0.28
+right_hip_roll_03                0.11       0.06       0.09       0.11
+left_hip_pitch_04                0.02       0.00       0.00       0.00
+right_hip_pitch_04               0.01       0.00       0.00       0.00
+left_knee_04                     0.00       0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00       0.00
+left_foot_pitch_02               4.04       5.00       4.25       2.36
+right_foot_pitch_02              5.25       5.55       5.45       2.96
+left_foot_roll_02                3.95      19.75      25.86      32.01
+right_foot_roll_02               3.26      17.94      24.01      31.58
+-- flat ceiling reading --
+left_hip_yaw_03                  0.00       0.00       0.00       0.00
+right_hip_yaw_03                 0.01       0.00       0.00       0.00
+left_hip_roll_03                 0.21       0.17       0.24       0.28
+right_hip_roll_03                0.11       0.06       0.09       0.11
+left_hip_pitch_04                0.02       0.00       0.00       0.00
+right_hip_pitch_04               0.01       0.00       0.00       0.00
+left_knee_04                     0.00       0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00       0.00
+left_foot_pitch_02               2.60       3.84       2.79       1.75
+right_foot_pitch_02              3.63       4.25       3.53       2.05
+left_foot_roll_02                3.91      19.72      25.81      31.97
+right_foot_roll_02               3.19      17.91      23.98      31.54
+
+### Mean absolute torque [N.m], against the effort ceiling in the last column of each
+joint                          A@8000     A@9000    A@10000    A@14000   ceiling
+left_hip_yaw_03                 3.419      3.447      3.682      4.998   42.0
+right_hip_yaw_03                3.452      3.506      3.723      5.242   42.0
+left_hip_roll_03               10.929     10.729     10.946     11.564   42.0
+right_hip_roll_03              11.148     10.972     11.062     11.599   42.0
+left_hip_pitch_04               5.209      6.130      5.920      7.278   84.0
+right_hip_pitch_04              5.324      6.298      6.047      7.382   84.0
+left_knee_04                    5.939      5.183      5.351      9.310   84.0
+right_knee_04                   6.177      5.393      5.680      9.958   84.0
+left_foot_pitch_02              4.702      4.832      4.795      4.249   17.0
+right_foot_pitch_02             4.963      4.734      4.784      4.223   17.0
+left_foot_roll_02               7.787      8.509      8.879      9.123   17.0
+right_foot_roll_02              7.604      8.460      8.807      9.199   17.0
+
+### Joint excursion, absolute deviation from the nominal pose [rad]
+joint                          A@8000     A@9000    A@10000    A@14000
+left_hip_yaw_03                0.1003     0.1054     0.1232     0.1850
+right_hip_yaw_03               0.1142     0.1113     0.1218     0.1822
+left_hip_roll_03               0.1324     0.1350     0.1343     0.1094
+right_hip_roll_03              0.1018     0.1022     0.1039     0.0805
+left_hip_pitch_04              0.1828     0.1528     0.1440     0.2086
+right_hip_pitch_04             0.2120     0.1644     0.1475     0.1773
+left_knee_04                   0.3468     0.2881     0.2564     0.2036
+right_knee_04                  0.3420     0.2679     0.2395     0.2076
+left_foot_pitch_02             0.2150     0.1921     0.1782     0.1410
+right_foot_pitch_02            0.2081     0.1790     0.1647     0.1344
+left_foot_roll_02              0.1881     0.1876     0.1897     0.1886
+right_foot_roll_02             0.1825     0.1822     0.1855     0.1852
+
+### Time at a hard stop [pct of samples within one per cent of travel]
+joint                          A@8000     A@9000    A@10000    A@14000
+left_hip_yaw_03                  0.00       0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00       0.00
+left_hip_roll_03                 7.89       7.03      15.10      20.33
+right_hip_roll_03                4.70       3.49      12.22      17.08
+left_hip_pitch_04                0.00       0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00       0.00
+left_knee_04                     0.23       0.03       0.03       0.00
+right_knee_04                    0.20       0.01       0.01       0.00
+left_foot_pitch_02               0.03       0.05       5.17      10.62
+right_foot_pitch_02              0.02       0.03       4.11       8.72
+left_foot_roll_02               37.75      37.49      38.19      39.05
+right_foot_roll_02              36.04      36.00      37.07      38.57
+
+### Outside the soft limit [pct of samples]
+joint                          A@8000     A@9000    A@10000    A@14000
+left_hip_yaw_03                  0.00       0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00       0.00
+left_hip_roll_03                98.99      99.05      98.55      71.70
+right_hip_roll_03               98.19      98.09      97.54      68.89
+left_hip_pitch_04                0.00       0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00       0.00
+left_knee_04                    10.40       0.28       0.21       0.00
+right_knee_04                   11.47       0.06       0.06       0.00
+left_foot_pitch_02               0.11       1.80       7.26      15.38
+right_foot_pitch_02              0.07       1.14       6.01      12.86
+left_foot_roll_02               40.26      39.96      40.63      40.64
+right_foot_roll_02              38.55      38.38      39.41      39.94
+
+### Phase conditioned saturation, stance then swing [pct]
+joint                                     A@8000                A@9000               A@10000               A@14000
+left_hip_yaw_03                   0.00/0.00             0.00/0.00             0.00/0.00             0.00/0.00     
+right_hip_yaw_03                  0.01/0.00             0.00/0.00             0.01/0.00             0.00/0.00     
+left_hip_roll_03                  0.30/0.08             0.23/0.08             0.35/0.07             0.42/0.08     
+right_hip_roll_03                 0.18/0.01             0.10/0.01             0.15/0.01             0.17/0.01     
+left_hip_pitch_04                 0.02/0.01             0.00/0.00             0.00/0.00             0.00/0.00     
+right_hip_pitch_04                0.02/0.00             0.01/0.00             0.01/0.00             0.01/0.00     
+left_knee_04                      0.00/0.00             0.00/0.00             0.00/0.00             0.00/0.00     
+right_knee_04                     0.00/0.00             0.00/0.00             0.00/0.00             0.00/0.00     
+left_foot_pitch_02                6.88/0.01             8.42/0.00             7.17/0.00             2.81/1.70     
+right_foot_pitch_02               8.70/0.00             9.10/0.00             9.00/0.02             4.30/0.91     
+left_foot_roll_02                 0.33/9.07             0.39/48.04            0.35/62.99            0.35/78.33    
+right_foot_roll_02                0.50/7.44             0.30/45.43            0.27/60.35            0.34/79.26    
+
+### Phase conditioned deviation from nominal, stance then swing [rad]
+joint                                     A@8000                A@9000               A@10000               A@14000
+left_hip_yaw_03                 0.0460/0.1774         0.0568/0.1765         0.0807/0.1851         0.1949/0.1705   
+right_hip_yaw_03                0.0552/0.2039         0.0507/0.2056         0.0630/0.2117         0.1755/0.1925   
+left_hip_roll_03                0.1407/0.1207         0.1367/0.1325         0.1349/0.1334         0.0848/0.1454   
+right_hip_roll_03               0.1098/0.0896         0.1038/0.0997         0.1044/0.1032         0.0585/0.1141   
+left_hip_pitch_04               0.2346/0.1094         0.1717/0.1252         0.1390/0.1512         0.1914/0.2339   
+right_hip_pitch_04              0.2878/0.0967         0.2045/0.1018         0.1668/0.1178         0.1644/0.1969   
+left_knee_04                    0.4984/0.1319         0.3952/0.1317         0.3325/0.1456         0.1274/0.3150   
+right_knee_04                   0.4751/0.1399         0.3539/0.1340         0.2977/0.1504         0.1340/0.3198   
+left_foot_pitch_02              0.2745/0.1307         0.2259/0.1426         0.1929/0.1567         0.0890/0.2171   
+right_foot_pitch_02             0.2525/0.1405         0.2034/0.1410         0.1691/0.1579         0.0784/0.2199   
+left_foot_roll_02               0.0890/0.3286         0.0898/0.3303         0.0917/0.3323         0.0893/0.3338   
+right_foot_roll_02              0.0797/0.3387         0.0806/0.3405         0.0825/0.3431         0.0805/0.3451   
+
+### Phase conditioned joint speed, stance then swing [rad/s]
+joint                                     A@8000                A@9000               A@10000               A@14000
+left_hip_yaw_03                  0.462/0.997           0.483/1.092           0.555/1.239           0.708/1.456    
+right_hip_yaw_03                 0.451/0.999           0.470/1.120           0.541/1.266           0.684/1.492    
+left_hip_roll_03                 0.229/0.194           0.220/0.241           0.240/0.277           0.358/0.413    
+right_hip_roll_03                0.211/0.200           0.199/0.237           0.226/0.276           0.335/0.438    
+left_hip_pitch_04                1.070/1.050           0.883/0.999           0.814/1.011           0.624/0.707    
+right_hip_pitch_04               1.030/1.032           0.843/1.013           0.788/1.016           0.625/0.726    
+left_knee_04                     2.251/1.866           1.833/1.784           1.856/1.709           1.378/1.472    
+right_knee_04                    2.200/1.861           1.717/1.731           1.760/1.648           1.321/1.409    
+left_foot_pitch_02               1.388/0.889           1.189/0.861           1.204/0.897           1.026/0.808    
+right_foot_pitch_02              1.377/0.864           1.147/0.839           1.170/0.875           1.020/0.823    
+left_foot_roll_02                1.232/0.203           1.258/0.183           1.295/0.152           1.277/0.131    
+right_foot_roll_02               1.166/0.213           1.171/0.198           1.192/0.156           1.184/0.125    
+
+### The liftoff transient, mean absolute deviation from the nominal [rad]
+    pre is the 0.30 s of stance before the event, post the 0.30 s of swing after
+joint / run                      pre        at      post      peak  t_peak[s]   events
+left_hip_yaw_03 A@8000        0.0609    0.1414    0.2128    0.2518      0.110     1002
+left_hip_yaw_03 A@9000        0.0644    0.1481    0.2149    0.2576      0.100      992
+left_hip_yaw_03 A@10000       0.0739    0.1526    0.2245    0.2648      0.110      988
+left_hip_yaw_03 A@14000       0.1677    0.1213    0.1981    0.2363      0.160      998
+
+right_hip_yaw_03 A@8000       0.0689    0.1725    0.2405    0.2825      0.110      951
+right_hip_yaw_03 A@9000       0.0660    0.1824    0.2461    0.2930      0.090      948
+right_hip_yaw_03 A@10000      0.0672    0.1876    0.2555    0.2981      0.110      947
+right_hip_yaw_03 A@14000      0.1523    0.1411    0.2247    0.2624      0.160      978
+
+left_foot_roll_02 A@8000      0.1057    0.3189    0.3315    0.3328      0.210     1002
+left_foot_roll_02 A@9000      0.1041    0.3196    0.3348    0.3361      0.120      992
+left_foot_roll_02 A@10000     0.1035    0.3276    0.3360    0.3372      0.130      988
+left_foot_roll_02 A@14000     0.1016    0.3295    0.3354    0.3373      0.140      998
+
+right_foot_roll_02 A@8000     0.0919    0.3281    0.3443    0.3463      0.180      951
+right_foot_roll_02 A@9000     0.0925    0.3306    0.3458    0.3478      0.220      948
+right_foot_roll_02 A@10000    0.0919    0.3364    0.3459    0.3474      0.190      947
+right_foot_roll_02 A@14000    0.0939    0.3363    0.3430    0.3462      0.140      978
+
+left_hip_roll_03 A@8000       0.1377    0.1296    0.1260    0.1559     -0.300     1002
+left_hip_roll_03 A@9000       0.1343    0.1435    0.1395    0.1526      0.050      992
+left_hip_roll_03 A@10000      0.1383    0.1535    0.1432    0.1605      0.040      988
+left_hip_roll_03 A@14000      0.0987    0.1565    0.1613    0.1704      0.080      998
+
+right_hip_roll_03 A@8000      0.1086    0.1021    0.0950    0.1251     -0.300      951
+right_hip_roll_03 A@9000      0.1031    0.1100    0.1066    0.1183     -0.300      948
+right_hip_roll_03 A@10000     0.1094    0.1235    0.1130    0.1290      0.040      947
+right_hip_roll_03 A@14000     0.0701    0.1227    0.1287    0.1376      0.100      978
+
+left_foot_pitch_02 A@8000     0.2814    0.1197    0.1462    0.4012     -0.240     1002
+left_foot_pitch_02 A@9000     0.2303    0.1322    0.1610    0.3277     -0.240      992
+left_foot_pitch_02 A@10000    0.2113    0.1566    0.1799    0.2924     -0.230      988
+left_foot_pitch_02 A@14000    0.1113    0.2410    0.2417    0.2612      0.150      998
+
+right_foot_pitch_0 A@8000     0.2647    0.1260    0.1562    0.3833     -0.240      951
+right_foot_pitch_0 A@9000     0.2150    0.1380    0.1569    0.3005     -0.240      948
+right_foot_pitch_0 A@10000    0.1898    0.1625    0.1807    0.2584     -0.230      947
+right_foot_pitch_0 A@14000    0.1046    0.2401    0.2397    0.2592      0.150      978
+
+
+=== LATE CHECKPOINTS ===
+
+### Gait and viability
+quantity                              A@14000    B@14999    C@14999
+-------------------------------------------------------------------
+base height [m]                        0.6681     0.6873     0.6443
+knee mean [rad]                        1.0331     0.9266     1.2290
+planar tracking error [m/s]            0.0301     0.0311     0.0313
+yaw tracking error [rad/s]             0.1263     0.2290     0.2178
+absolute joint power [W]                61.86      55.08      61.50
+cost of transport                       1.058      0.939      1.053
+double support [pct]                    19.85      11.88      12.14
+flight phase [pct]                       0.04       0.04       0.04
+cadence [steps/s]                        2.14       2.31       2.37
+termination rate [1/s]                 0.0000     0.0000     0.0000
+torso roll [deg]                        1.286      1.641      1.812
+lateral foot separation [m]            0.1334     0.1354     0.1382
+sole clearance in stance [mm]           -0.23      -0.22      -0.17
+
+### Foot splay, toe-in positive
+quantity                              A@14000    B@14999    C@14999
+-------------------------------------------------------------------
+both feet, all samples [deg]            9.663      9.326      8.835
+both feet, signed [deg]                 2.494      4.629      2.396
+ninety fifth percentile [deg]          23.388     24.628     21.147
+differential [deg]                      9.046     12.033      9.512
+in stance, absolute [deg]               6.690      4.999      6.074
+in stance, signed [deg]                -4.926     -3.033     -4.675
+in swing, absolute [deg]               14.106     14.815     12.356
+hip yaw to splay slope                  0.952      0.963      0.970
+hip yaw to splay correlation            0.975      0.979      0.972
+
+### Envelope saturation by joint [pct of samples at or above 98 pct of available torque]
+joint                         A@14000    B@14999    C@14999
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                 0.28       0.33       0.50
+right_hip_roll_03                0.11       0.24       0.38
+left_hip_pitch_04                0.00       0.01       0.01
+right_hip_pitch_04               0.00       0.02       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02               2.36      29.33      46.48
+right_foot_pitch_02              2.96      29.83      45.80
+left_foot_roll_02               32.01      91.25      93.54
+right_foot_roll_02              31.58      92.97      93.74
+-- flat ceiling reading --
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                 0.28       0.33       0.50
+right_hip_roll_03                0.11       0.24       0.38
+left_hip_pitch_04                0.00       0.01       0.01
+right_hip_pitch_04               0.00       0.02       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02               1.75      29.06      46.13
+right_foot_pitch_02              2.05      29.32      45.43
+left_foot_roll_02               31.97      88.37      89.44
+right_foot_roll_02              31.54      90.95      91.57
+
+### Mean absolute torque [N.m], against the effort ceiling in the last column of each
+joint                         A@14000    B@14999    C@14999   ceiling
+left_hip_yaw_03                 4.998      4.533      5.942   42.0
+right_hip_yaw_03                5.242      4.540      6.145   42.0
+left_hip_roll_03               11.564     12.696     12.089   42.0
+right_hip_roll_03              11.599     12.740     12.228   42.0
+left_hip_pitch_04               7.278      5.320      7.305   84.0
+right_hip_pitch_04              7.382      5.487      7.367   84.0
+left_knee_04                    9.310      7.962     10.665   84.0
+right_knee_04                   9.958      7.928     11.178   84.0
+left_foot_pitch_02              4.249      8.951     11.008   17.0
+right_foot_pitch_02             4.223      8.965     10.932   17.0
+left_foot_roll_02               9.123     16.327     16.551   17.0
+right_foot_roll_02              9.199     16.456     16.576   17.0
+
+### Joint excursion, absolute deviation from the nominal pose [rad]
+joint                         A@14000    B@14999    C@14999
+left_hip_yaw_03                0.1850     0.1763     0.1753
+right_hip_yaw_03               0.1822     0.1699     0.1722
+left_hip_roll_03               0.1094     0.1245     0.1105
+right_hip_roll_03              0.0805     0.0936     0.0816
+left_hip_pitch_04              0.2086     0.1363     0.2436
+right_hip_pitch_04             0.1773     0.1246     0.1950
+left_knee_04                   0.2036     0.1709     0.3403
+right_knee_04                  0.2076     0.1707     0.3535
+left_foot_pitch_02             0.1410     0.1859     0.2038
+right_foot_pitch_02            0.1344     0.1858     0.2237
+left_foot_roll_02              0.1886     0.1718     0.1729
+right_foot_roll_02             0.1852     0.1639     0.1641
+
+### Time at a hard stop [pct of samples within one per cent of travel]
+joint                         A@14000    B@14999    C@14999
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                20.33      19.50      15.29
+right_hip_roll_03               17.08      17.01      10.78
+left_hip_pitch_04                0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02              10.62      32.87      42.83
+right_foot_pitch_02              8.72      32.57      41.71
+left_foot_roll_02               39.05      50.23      50.82
+right_foot_roll_02              38.57      49.38      49.01
+
+### Outside the soft limit [pct of samples]
+joint                         A@14000    B@14999    C@14999
+left_hip_yaw_03                  0.00       0.00       0.00
+right_hip_yaw_03                 0.00       0.00       0.00
+left_hip_roll_03                71.70      87.48      76.15
+right_hip_roll_03               68.89      87.29      72.67
+left_hip_pitch_04                0.00       0.00       0.00
+right_hip_pitch_04               0.00       0.00       0.00
+left_knee_04                     0.00       0.00       0.00
+right_knee_04                    0.00       0.00       0.00
+left_foot_pitch_02              15.38      35.46      44.80
+right_foot_pitch_02             12.86      35.21      43.62
+left_foot_roll_02               40.64      95.13      95.76
+right_foot_roll_02              39.94      95.72      95.37
+
+### Phase conditioned saturation, stance then swing [pct]
+joint                                    A@14000               B@14999               C@14999
+left_hip_yaw_03                   0.00/0.00             0.00/0.00             0.01/0.00     
+right_hip_yaw_03                  0.00/0.00             0.00/0.00             0.00/0.00     
+left_hip_roll_03                  0.42/0.08             0.58/0.02             0.88/0.02     
+right_hip_roll_03                 0.17/0.01             0.42/0.01             0.66/0.00     
+left_hip_pitch_04                 0.00/0.00             0.01/0.01             0.01/0.01     
+right_hip_pitch_04                0.01/0.00             0.04/0.00             0.01/0.00     
+left_knee_04                      0.00/0.00             0.00/0.00             0.00/0.00     
+right_knee_04                     0.00/0.00             0.00/0.00             0.00/0.00     
+left_foot_pitch_02                2.81/1.70             5.92/58.60           11.14/90.32    
+right_foot_pitch_02               4.30/0.91             7.72/58.29           11.69/90.51    
+left_foot_roll_02                 0.35/78.33           84.41/99.78           88.40/99.91    
+right_foot_roll_02                0.34/79.26           87.58/99.90           89.01/99.93    
+
+### Phase conditioned deviation from nominal, stance then swing [rad]
+joint                                    A@14000               B@14999               C@14999
+left_hip_yaw_03                 0.1949/0.1705         0.1595/0.1974         0.1943/0.1516   
+right_hip_yaw_03                0.1755/0.1925         0.1371/0.2120         0.1837/0.1571   
+left_hip_roll_03                0.0848/0.1454         0.1035/0.1507         0.0853/0.1419   
+right_hip_roll_03               0.0585/0.1141         0.0735/0.1194         0.0604/0.1095   
+left_hip_pitch_04               0.1914/0.2339         0.1242/0.1513         0.2358/0.2532   
+right_hip_pitch_04              0.1644/0.1969         0.1188/0.1320         0.1877/0.2045   
+left_knee_04                    0.1274/0.3150         0.1463/0.2017         0.2379/0.4674   
+right_knee_04                   0.1340/0.3198         0.1317/0.2209         0.2558/0.4817   
+left_foot_pitch_02              0.0890/0.2171         0.0902/0.3056         0.0922/0.3422   
+right_foot_pitch_02             0.0784/0.2199         0.0748/0.3287         0.1161/0.3648   
+left_foot_roll_02               0.0893/0.3338         0.1627/0.1832         0.1646/0.1832   
+right_foot_roll_02              0.0805/0.3451         0.1556/0.1746         0.1560/0.1746   
+
+### Phase conditioned joint speed, stance then swing [rad/s]
+joint                                    A@14000               B@14999               C@14999
+left_hip_yaw_03                  0.708/1.456           0.541/1.659           0.505/1.510    
+right_hip_yaw_03                 0.684/1.492           0.546/1.592           0.491/1.530    
+left_hip_roll_03                 0.358/0.413           0.304/0.401           0.364/0.436    
+right_hip_roll_03                0.335/0.438           0.299/0.402           0.352/0.453    
+left_hip_pitch_04                0.624/0.707           0.560/0.678           0.558/0.598    
+right_hip_pitch_04               0.625/0.726           0.632/0.754           0.569/0.614    
+left_knee_04                     1.378/1.472           1.150/1.624           1.032/1.195    
+right_knee_04                    1.321/1.409           1.125/1.578           0.998/1.184    
+left_foot_pitch_02               1.026/0.808           0.905/1.157           0.929/0.656    
+right_foot_pitch_02              1.020/0.823           0.937/1.141           0.926/0.649    
+left_foot_roll_02                1.277/0.131           0.380/0.012           0.399/0.013    
+right_foot_roll_02               1.184/0.125           0.342/0.010           0.343/0.013    
+
+### The liftoff transient, mean absolute deviation from the nominal [rad]
+    pre is the 0.30 s of stance before the event, post the 0.30 s of swing after
+joint / run                      pre        at      post      peak  t_peak[s]   events
+left_hip_yaw_03 A@14000       0.1677    0.1213    0.1981    0.2363      0.160      998
+left_hip_yaw_03 B@14999       0.1495    0.1038    0.2430    0.2937      0.160     1082
+left_hip_yaw_03 C@14999       0.1823    0.1170    0.1788    0.2163      0.160     1106
+
+right_hip_yaw_03 A@14000      0.1523    0.1411    0.2247    0.2624      0.160      978
+right_hip_yaw_03 B@14999      0.1391    0.1187    0.2654    0.3145      0.150     1068
+right_hip_yaw_03 C@14999      0.1783    0.1170    0.1871    0.2242      0.160     1069
+
+left_foot_roll_02 A@14000     0.1016    0.3295    0.3354    0.3373      0.140      998
+left_foot_roll_02 B@14999     0.1670    0.1831    0.1826    0.1832     -0.010     1082
+left_foot_roll_02 C@14999     0.1690    0.1831    0.1829    0.1833     -0.010     1106
+
+right_foot_roll_02 A@14000    0.0939    0.3363    0.3430    0.3462      0.140      978
+right_foot_roll_02 B@14999    0.1585    0.1741    0.1742    0.1746      0.130     1068
+right_foot_roll_02 C@14999    0.1599    0.1742    0.1744    0.1745      0.220     1069
+
+left_hip_roll_03 A@14000      0.0987    0.1565    0.1613    0.1704      0.080      998
+left_hip_roll_03 B@14999      0.1115    0.1333    0.1664    0.1772      0.140     1082
+left_hip_roll_03 C@14999      0.0934    0.1207    0.1555    0.1699      0.130     1106
+
+right_hip_roll_03 A@14000     0.0701    0.1227    0.1287    0.1376      0.100      978
+right_hip_roll_03 B@14999     0.0783    0.0998    0.1355    0.1471      0.140     1068
+right_hip_roll_03 C@14999     0.0653    0.0845    0.1208    0.1343      0.130     1069
+
+left_foot_pitch_02 A@14000    0.1113    0.2410    0.2417    0.2612      0.150      998
+left_foot_pitch_02 B@14999    0.1097    0.1695    0.3206    0.3459      0.240     1082
+left_foot_pitch_02 C@14999    0.1051    0.2994    0.3430    0.3472      0.120     1106
+
+right_foot_pitch_0 A@14000    0.1046    0.2401    0.2397    0.2592      0.150      978
+right_foot_pitch_0 B@14999    0.0902    0.1885    0.3442    0.3706      0.190     1068
+right_foot_pitch_0 C@14999    0.1281    0.3147    0.3653    0.3712      0.200     1069
+

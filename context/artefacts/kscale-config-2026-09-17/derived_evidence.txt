@@ -1,0 +1,68 @@
+========================================================================================================
+A. DC MOTOR ENVELOPE, now that saturation_effort and effort_limit are separate
+========================================================================================================
+joint             E    sat   v_lim  v_sim  corner v  env damp  tau@p95  tau@clamp
+hip_pitch      84.0  120.0  17.488   15.0      5.25      6.86    84.00     17.07!
+hip_roll       42.0   60.0  18.849   20.0      5.65      3.18    42.00     -3.66 
+hip_yaw        42.0   60.0  18.849   20.0      5.65      3.18    42.00     -3.66 
+knee           84.0  120.0  17.488   15.0      5.25      6.86    76.08     17.07!
+foot_pitch     11.9   17.0  37.699   44.0     11.31      0.45    11.90     -2.84 
+foot_roll      11.9   17.0  37.699   44.0     11.31      0.45    11.90     -2.84 
+
+  corner v is the speed below which the full soft limit is available.
+  env damp is saturation_effort / velocity_limit, the viscous damping a saturated joint shows.
+  tau@clamp marked ! means torque is still available at the speed the solver refuses to exceed.
+
+========================================================================================================
+B. JOINT TRAVEL AT THE NEW NOMINAL, right leg, soft factor 0.9
+========================================================================================================
+joint         nominal  soft lo  soft hi to soft- to soft+ to hard- to hard+  hold sag sag/travel
+hip_pitch     -0.2037  -2.0534   0.8840   1.8497   1.0877   2.0129   1.2509    0.0162       1.3%
+hip_roll       0.0430  -2.1450   0.0855   2.1880   0.0426   2.3119   0.1665    0.0945      56.8%
+hip_yaw        0.0000  -1.4137   1.4137   1.4137   1.4137   1.5708   1.5708    0.0479       3.1%
+knee           0.5124   0.1353   2.5700   0.3771   2.0576   0.5124   2.1929    0.0173       3.4%
+foot_pitch    -0.3087  -0.8029   0.4538   0.4942   0.7625   0.5640   0.8323    0.0466       8.3%
+foot_roll      0.0413  -0.2356   0.2356   0.2769   0.1944   0.3031   0.2205    0.1643      74.5%
+
+========================================================================================================
+C. ACTION AUTHORITY, joint position action at scale 0.4, clip unset
+========================================================================================================
+joint             K      E   q_sat   a_sat  run A a_sat                    note
+hip_pitch       200   84.0   0.420    1.05         0.75                        
+hip_roll        250   42.0   0.168    0.42         1.00saturates inside 1 sigma
+hip_yaw         100   42.0   0.420    1.05        10.00                        
+knee            300   84.0   0.280    0.70         0.75saturates inside 1 sigma
+foot_pitch      120   11.9   0.099    0.25         0.85saturates inside 1 sigma
+foot_roll       120   11.9   0.099    0.25         2.12saturates inside 1 sigma
+
+========================================================================================================
+D. AGAINST RUN A, the only configuration this robot has walked under
+========================================================================================================
+joint         K now    K A  D now   D A z_sw now  z_sw A z_st now  z_st A  b now   b A
+hip_pitch       200    200   21.5  22.4    0.705   0.732    0.702   0.729  0.093 0.096
+hip_roll        250    150   28.0  17.3    0.884   0.700    0.712   0.557  0.139 0.085
+hip_yaw         100     15    3.5   0.9    0.938   0.699    0.239   0.148  0.503 0.163
+knee            300    200   12.0  10.0    0.997   1.017    0.291   0.294  0.497 0.414
+foot_pitch      120     50    1.0   1.7    0.524   1.379    0.021   0.055  0.658 1.118
+foot_roll       120     20    1.0   0.5    0.602   0.738    0.020   0.024  0.871 0.436
+
+  b is D*dt/I_swing, the explicit integration stability number, divergent above 2.
+
+========================================================================================================
+E. TORQUE MARGIN, single support
+========================================================================================================
+joint         tau_1sup     hold   E now  worst/E  E run A  worst/E_A               verdict
+hip_pitch        8.323    3.232    84.0     0.10     60.0       0.14                    ok
+hip_roll         4.233   23.634    42.0     0.56     60.0       0.39                    ok
+hip_yaw          1.284    4.792    42.0     0.11     60.0       0.08                    ok
+knee            16.900    5.184    84.0     0.20     60.0       0.28                    ok
+foot_pitch       6.128    5.589    11.9     0.51     17.0       0.36                    ok
+foot_roll        0.000   19.710    11.9     1.66     17.0       1.16               EXCEEDS
+
+G. EFFECTIVE STANCE DAMPING INCLUDING THE DCMOTOR ENVELOPE TERM
+  foot_pitch   now kd  1.00 + env 0.45 =  1.45 -> z_st 0.031 | run A  3.40 -> 0.109 | 0.28x
+  foot_roll    now kd  1.00 + env 0.45 =  1.45 -> z_st 0.029 | run A  2.20 -> 0.106 | 0.28x
+  hip_yaw      now kd  3.50 + env 3.18 =  6.68 -> z_st 0.457 | run A  3.90 -> 0.641 | 0.71x
+  knee         now kd 12.00 + env 6.86 = 18.86 -> z_st 0.458 | run A 13.00 -> 0.382 | 1.20x
+  hip_roll     now kd 28.00 + env 3.18 = 31.18 -> z_st 0.793 | run A 20.30 -> 0.654 | 1.21x
+  hip_pitch    now kd 21.50 + env 6.86 = 28.36 -> z_st 0.926 | run A 25.40 -> 0.826 | 1.12x

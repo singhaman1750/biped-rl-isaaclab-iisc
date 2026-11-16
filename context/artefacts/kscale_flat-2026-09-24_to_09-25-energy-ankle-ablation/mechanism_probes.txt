@@ -1,0 +1,151 @@
+### The mechanism probes that section 16 of the plan turns upon
+
+### Commanded target recovered by inverting the control law
+    q_des = q + (tau + kd qdot) / kp, exact on every unsaturated sample.
+    'commanded' is the mean absolute departure of q_des from the nominal,
+    'achieved' the same for q, and 'error' the mean absolute q_des - q.
+
+joint                    run         valid%  commanded  achieved    error   ratio
+left_hip_yaw_03          A@9000      100.00     0.1117    0.1054   0.0507   1.060
+left_hip_yaw_03          B@8000      100.00     0.1168    0.1141   0.0459   1.024
+left_hip_yaw_03          C@8000       99.99     0.1086    0.1281   0.0642   0.848
+
+right_hip_yaw_03         A@9000      100.00     0.1235    0.1113   0.0514   1.110
+right_hip_yaw_03         B@8000      100.00     0.1313    0.1251   0.0464   1.050
+right_hip_yaw_03         C@8000       99.99     0.1156    0.1287   0.0678   0.898
+
+left_hip_roll_03         A@9000       99.83     0.1076    0.1350   0.0526   0.797
+left_hip_roll_03         B@8000       99.77     0.0977    0.1324   0.0505   0.738
+left_hip_roll_03         C@8000       99.71     0.1056    0.1317   0.0518   0.802
+
+left_foot_roll_02        A@9000       80.25     0.2088    0.1506   0.0627   1.387
+left_foot_roll_02        B@8000       49.86     0.1810    0.1084   0.0734   1.671
+left_foot_roll_02        C@8000       11.75     0.2436    0.1455   0.1012   1.675
+
+right_foot_roll_02       A@9000       82.06     0.2073    0.1461   0.0647   1.418
+right_foot_roll_02       B@8000       51.29     0.1738    0.0992   0.0752   1.752
+right_foot_roll_02       C@8000       11.40     0.2380    0.1369   0.1035   1.739
+
+left_foot_pitch_02       A@9000       95.00     0.2159    0.1930   0.0406   1.119
+left_foot_pitch_02       B@8000       85.15     0.2483    0.2062   0.0550   1.204
+left_foot_pitch_02       C@8000       55.69     0.1445    0.1056   0.0716   1.368
+
+
+### Are the two hip yaws in phase with one another
+    A positive correlation of the two RAW angles is a pelvis twist, the legs
+    yawing together.  A negative correlation is a splay, the legs yawing apart.
+
+run         corr(L,R) raw  corr mirrored  corr with base yaw rate   sum std  diff std
+A@9000              0.424         -0.424                   -0.156    0.2276    0.1449
+B@8000              0.374         -0.374                   -0.168    0.2141    0.1445
+C@8000              0.557         -0.557                   -0.328    0.2727    0.1455
+
+### Hip yaw against stance toe-in, with the left leg mirrored
+    toe-in already flips the left foot, so the left hip yaw must be flipped with it.
+
+run        foot      slope deg/deg  correlation          n
+A@9000     right             0.080        0.178      57010
+A@9000     right             0.932        0.955      58491
+
+B@8000     right            -0.053       -0.094      52443
+B@8000     right             0.940        0.964      53821
+
+C@8000     right             0.035        0.074      52221
+C@8000     right             0.968        0.936      53525
+
+
+### The ankle roll, what the deviation penalty did
+    'restoring' is the fraction of samples on which the torque opposes the
+    deviation from the nominal, which is the actuator pulling the joint home.
+    'against ground' is the same fraction restricted to stance.
+
+joint                  run             dev    |tau|  restoring%  stance restoring%   stop%
+left_foot_roll_02      A@9000       0.1876    8.509        9.41              14.47   37.49
+left_foot_roll_02      B@8000       0.1454   12.212        0.84               0.46   49.52
+left_foot_roll_02      C@8000       0.1722   16.115        0.73               0.53   50.26
+
+right_foot_roll_02     A@9000       0.1822    8.460        7.91              11.85   36.00
+right_foot_roll_02     B@8000       0.1355   12.129        0.66               1.14   48.11
+right_foot_roll_02     C@8000       0.1634   16.153        0.68               1.18   48.59
+
+
+### The swing ankle, position against its stops
+joint                run         nominal             stops  q_sw mean  q_sw p5  q_sw p95   @lo%   @hi%  |qdot|   sat%
+left_foot_roll_02    A@9000      -0.0784 [-0.2618, 0.2618]     0.2495   0.1939    0.2618   0.39  89.87  0.1833  48.04
+left_foot_roll_02    B@8000      -0.0784 [-0.2618, 0.2618]    -0.2615  -0.2618   -0.2618  99.74   0.00  0.0108  98.02
+left_foot_roll_02    C@8000      -0.0784 [-0.2618, 0.2618]    -0.2615  -0.2618   -0.2618  99.83   0.00  0.0126  99.13
+
+right_foot_roll_02   A@9000       0.0871 [-0.2618, 0.2618]    -0.2529  -0.2618   -0.2015  89.77   0.05  0.1979  45.43
+right_foot_roll_02   B@8000       0.0871 [-0.2618, 0.2618]     0.2617   0.2618    0.2618   0.00  99.90  0.0079  98.15
+right_foot_roll_02   C@8000       0.0871 [-0.2618, 0.2618]     0.2616   0.2618    0.2618   0.00  99.93  0.0132  99.37
+
+left_foot_pitch_02   A@9000      -0.5220 [-0.8727, 0.5236]    -0.6372  -0.8004   -0.4082   0.13   0.00  0.8607   0.00
+left_foot_pitch_02   B@8000      -0.5220 [-0.8727, 0.5236]    -0.7350  -0.8730   -0.4614  35.31   0.00  1.3163  12.85
+left_foot_pitch_02   C@8000      -0.5220 [-0.8727, 0.5236]    -0.8517  -0.8730   -0.6906  85.50   0.00  0.7898  72.59
+
+right_foot_pitch_02  A@9000      -0.4994 [-0.8727, 0.5236]    -0.6141  -0.7880   -0.3905   0.07   0.00  0.8386   0.00
+right_foot_pitch_02  B@8000      -0.4994 [-0.8727, 0.5236]    -0.7275  -0.8730   -0.4584  33.50   0.00  1.3199  11.30
+right_foot_pitch_02  C@8000      -0.4994 [-0.8727, 0.5236]    -0.8502  -0.8730   -0.6835  84.60   0.00  0.8232  71.99
+
+
+### The hip yaw, commanded against achieved, split by phase
+    The hip yaw is unsaturated everywhere, so q_des is exact on every sample.
+joint                run        phase     cmd dev  achieved    |err|  cmd/ach   |tau|
+left_hip_yaw_03      A@9000     stance     0.0722    0.0568   0.0592    1.271   5.078
+left_hip_yaw_03      A@9000     swing      0.1695    0.1765   0.0382    0.960   1.064
+left_hip_yaw_03      B@8000     stance     0.0644    0.0584   0.0506    1.103   4.587
+left_hip_yaw_03      B@8000     swing      0.1799    0.1811   0.0402    0.993   0.941
+left_hip_yaw_03      C@8000     stance     0.0665    0.1066   0.0800    0.624   7.618
+left_hip_yaw_03      C@8000     swing      0.1588    0.1537   0.0455    1.033   1.316
+
+right_hip_yaw_03     A@9000     stance     0.0789    0.0507   0.0594    1.555   5.086
+right_hip_yaw_03     A@9000     swing      0.1931    0.2056   0.0389    0.939   1.045
+right_hip_yaw_03     B@8000     stance     0.0780    0.0640   0.0509    1.218   4.658
+right_hip_yaw_03     B@8000     swing      0.1993    0.2029   0.0407    0.982   0.928
+right_hip_yaw_03     C@8000     stance     0.0668    0.0931   0.0831    0.717   8.066
+right_hip_yaw_03     C@8000     swing      0.1771    0.1735   0.0486    1.021   1.321
+
+
+### Reward budget, mean per step, and share of the negative total
+term                                     A@9000       B@8000       C@8000
+rew_lin_vel_xy                         48.96066     48.72892     48.73426
+rew_no_fly                             14.92612     14.94845     14.92346
+rew_ang_vel_z                          12.41123     12.02013     11.10143
+rew_foot_clearance                      6.85645      6.65866      6.70319
+rew_gait                               -3.89871     -3.36044     -3.66282
+rew_hip_lateral_sway                    3.10886      3.35099      3.66886
+pen_feet_distance                      -2.14889     -2.41440     -1.94682
+feet_air_time                           1.69990      2.05264      2.06233
+pen_joint_torque                       -0.48976     -1.26822     -0.92276
+TOTAL                                   0.79207      0.78154      0.76853
+pen_joint_accel                        -0.67117     -0.84589     -0.46900
+pen_foot_landing_vel                   -0.66707     -0.62575     -0.63573
+rew_keep_hip_yaw_zero_in_air            0.33311      0.35617      0.43066
+pen_joint_power                               -            -     -1.11402
+pen_ang_vel_xy                         -0.26315     -0.27614     -0.56077
+pen_joint_pos_limits                   -0.30182     -0.35566     -0.43323
+pen_feet_heading                       -0.41081     -0.40997     -0.25412
+rew_keep_ankle_pitch_zero_in_air        0.45149      0.36604      0.19897
+pen_hip_yaw_deviation                  -0.24032     -0.27118     -0.25399
+pen_ankle_roll_deviation                      -     -0.35438     -0.40905
+rew_keep_ankle_roll_zero_in_air         0.04751      0.31430      0.31661
+feet_slide                             -0.23816     -0.13958     -0.15249
+pen_flat_orientation                   -0.06300     -0.04396     -0.15807
+pen_feet_impact                        -0.04965     -0.07706     -0.11997
+pen_joint_torque_rate                  -0.04485     -0.08299     -0.05382
+keep_balance                            0.05000      0.05000      0.05000
+pen_feet_regulation                    -0.03728     -0.04991     -0.03689
+pen_foot_cross_contact_right           -0.03246     -0.02372     -0.01809
+pen_hip_roll_deviation                 -0.02169     -0.02119     -0.02121
+pen_base_height                        -0.01805     -0.02472     -0.01748
+pen_action_smoothness                  -0.01273     -0.01158     -0.03502
+pen_undesired_contacts                 -0.00417     -0.00651     -0.03311
+pen_joint_vel_l2                       -0.01202     -0.01719     -0.00752
+pen_lin_vel_z                          -0.00774     -0.00655     -0.01420
+pen_action_rate                        -0.00389     -0.00420     -0.00701
+pen_foot_cross_contact_left            -0.00102     -0.00070      0.00000
+termination_penalty                     0.00000      0.00000      0.00000
+
+A@9000     positive   88.8453  negative   -9.6384  energy group   -1.2178  energy share of negative  12.63 pct
+B@8000     positive   88.8463  negative  -10.6919  energy group   -2.2143  energy share of negative  20.71 pct
+C@8000     positive   88.1898  negative  -11.3372  energy group   -2.5671  energy share of negative  22.64 pct
