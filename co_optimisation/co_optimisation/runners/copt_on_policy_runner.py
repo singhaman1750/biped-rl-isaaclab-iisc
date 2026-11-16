@@ -159,6 +159,8 @@ class CoptOnPolicyRunner(OnPolicyRunner):
     ) -> None:
         # Extract COPT-specific config before calling super().__init__
         copt_cfg: dict = train_cfg.get("copt", {})
+        # The base robot's design record, logged to TensorBoard as text once, the reference every
+        # population is compared with, set in learn. The CMAESCfg is recorded in params/cmaes.yaml.
         self._base_record: dict | None = None
         self._ea_update_interval: int = copt_cfg.get("ea_update_interval", 100)
         self._ea_late_start: int = copt_cfg.get("ea_late_start", -1)
@@ -176,8 +178,8 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # Writes designs/eval_trace_<g>.pt, the per step reward of every environment in every pass.
         self._eval_save_trace: bool = copt_cfg.get("eval_save_trace", False)
         self._eval_result: dict | None = None
-        self._min_fitness_episode_length: int = copt_cfg.get(
-            "min_fitness_episode_length", 0
+        # Iterations trained on the final design once the search terminates, after which learn
+        # returns. None, the default, trains on to max_iterations, as every run before 2026-10-28.
         self._finetune_iterations: int | None = copt_cfg.get("finetune_iterations")
         # True from the generation boundary at which the search terminated, when the fine-tune begins.
         self._finetuning: bool = False
@@ -692,11 +694,6 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 unwrapped_env, self.current_population.get_actuator_params()
             )
 
-            # Reset fitness accumulators
-            print("Resetting Accumulators")
-            self._individual_fitness.zero_()
-            self._individual_episode_counts.zero_()
-
     def _apply_restored_state(self) -> None:
         """Re-spawn the checkpointed population and restore env state on resume.
 
@@ -1184,6 +1181,10 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         log_string += f"""{"-" * width}\n"""
         print(log_string, flush=True)
 
+    def _is_actuator_column(self, name: str) -> bool:
+        """True for an actuator pick, "<group>", or an actuator column, "<group>_actuator...", of a design record."""
+        groups = getattr(getattr(self._design_generator, "family", None), "spec_fields", {})
+        return any(name == group or name.startswith(f"{group}_actuator") for group in groups)
 
     def _log_population(self, it: int) -> None:
         """Every column of the design records of the population on the scene but the actuators', as CMAES/ scalars.

@@ -595,6 +595,9 @@ class DesignGeneratorBase(ABC):
     # the default, emits every document as before.
     builder_kwargs: dict = {}
 
+    # The FilterBase instances every population must pass, built by __init__ from its filters argument.
+    # Empty, the default, builds every population as before. A design still refused after
+    # filter_max_rounds redraws is kept, so that a search confined to refused designs cannot stall.
     filters: list = []
     filter_max_rounds: int = 100
 
@@ -625,6 +628,66 @@ class DesignGeneratorBase(ABC):
 
     def load_state(self, state: dict) -> None:
         pass
+
+    def _design_record(self, spec) -> dict:
+        """The searched parameters of the individual just drawn, for the design log."""
+        return dict(self._current_parameters or {})
+
+    def actuator_record(self, spec, actuator_params: dict[str, dict]) -> dict:
+        """The actuator of every joint group of *spec*, its catalogue specifications and its simulator parameters.
+
+        Keyed "<group>_actuator" for the catalogue name, "<group>_actuator_<spec>" for each of
+        ACTUATOR_SPECS and "<group>_actuator_<key>" for each value of *actuator_params*, the dict
+        _actuator_params returns, so that no key ends in "_scale" and none is read back as a searched
+        parameter.
+        """
+        catalog = {a.name: a for a in self.family.full_catalog()}
+        out: dict = {}
+        for group, field in self.family.spec_fields.items():
+            name = getattr(spec, field)
+            out[f"{group}_actuator"] = name
+            out.update({f"{group}_actuator_{key}": getattr(catalog.get(name), key, None) for key in ACTUATOR_SPECS})
+            out.update({f"{group}_actuator_{key}": value for key, value in actuator_params[group].items()})
+        return out
+
+    def design_record(self, spec, actuator_params: dict[str, dict], xml_text: str) -> dict:
+        """Everything a design is compared on, the absolute geometry, the nominal pose, the mass and the actuators.
+
+        The geometry is prefixed "spec_" because thigh_bend_offset and knee_bend_offset also name the
+        searched lean, which differs from the solved offset the specification carries. *xml_text* is
+        the design's emitted document, whose inertial masses give total_mass in kg.
+        """
+        fields = spec.to_dict()
+        record = {f"spec_{name}": fields[name] for name in SPEC_RECORD_FIELDS if name in fields}
+        nominal = self.family.nominal(spec)
+        record.update({f"nominal_{key}": float(nominal[key]) for key in ("height", "dx", "depth", "sole")})
+        record["total_mass"] = _document_mass(xml_text)
+        record.update(self.actuator_record(spec, actuator_params))
+        return record
+
+    def describe_design(self, parameters: dict[str, float], picks: dict[str, str] | None = None) -> dict:
+        """design_record of the design *parameters* and *picks* describe, such as optimised_design returns."""
+        spec = self._spec_from_parameters(parameters, picks)
+        return self.design_record(spec, self._actuator_params(spec, parameters),
+                                  self.family.build_xml(spec, **self.builder_kwargs))
+
+    def base_record(self, xml_path: str | None = None) -> dict:
+        """The base robot in the columns of every design record, the reference a design is compared with.
+
+        The searched parameters take their initial values, the base robot's lengths being the
+        baseline's own rather than their rounding at scale 1.0. Where *xml_path* is given the base
+        robot's document is written there and scored by every filter.
+        """
+        record = {"design": "base",
+                  **{k: self._initial_value(k) for k in SPEC_PARAM_FIELDS if k in self.param_ranges},
+                  **self.describe_design({})}
+        if xml_path is not None:
+            spec = self._spec_from_parameters({})
+            with open(xml_path, "w") as fh:
+                fh.write(self.family.build_xml(spec, **self.builder_kwargs))
+            for f in self.filters:
+                record.update({name: float(values[0]) for name, values in f.scores([xml_path]).items()})
+        return record
 
     def search_statistics(self) -> dict | None:
         """The search distribution in the units of ``param_ranges``, or None where there is none."""
@@ -785,6 +848,9 @@ class DesignGeneratorBase(ABC):
         design_spec = self.family.module.generate.DesignSpec
         offsets = solve_nominal_pose(self.family, design_spec.from_dict(fields), self._dx_target)
         spec = design_spec.from_dict({**fields, **offsets})
+        # body_height, the base's Z in the standalone MuJoCo document alone, follows the design's
+        # nominal standing height rather than staying at the baseline's. The Isaac Lab document
+        # ignores it, its spawn height being measured by apply_standing_height.
         return design_spec.from_dict({**fields, **offsets, "body_height": self.family.nominal(spec)["height"]})
 
     def _actuator_params(self, spec, parameters: dict[str, float] | None = None) -> dict[str, dict]:
@@ -1013,6 +1079,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             "verb_filenameprefix": str(Path(self.output_dir) / "cma_log") + "/",
             "maxiter": self._max_cma_iter,
             "BoundaryHandler": "BoundTransform",
+            # Empty unless the caller sets them, see __init__.
             **self._tolerances,
         })
         return cma.CMAEvolutionStrategy(self._initial_mean(), self._sigma0, opts)

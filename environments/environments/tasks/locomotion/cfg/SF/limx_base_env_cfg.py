@@ -1398,7 +1398,7 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the test environment"""
 
     # Scene settings
-    scene: SFSceneCfg = SFSceneCfg(num_envs=6400, env_spacing=env_spacing)
+    scene: SFSceneCfg = SFSceneCfg(num_envs=5120, env_spacing=env_spacing)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
