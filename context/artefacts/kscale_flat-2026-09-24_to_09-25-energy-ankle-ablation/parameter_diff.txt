@@ -1,0 +1,243 @@
+### The exhaustive parameter comparison of the three dumped configurations
+    Produced by flattening params/env.yaml of each run through ParamsLoader at
+    scripts/analysis/experiment_params.py:24 and differencing the leaf paths.
+
+total leaf paths: A=2531 B=2557 C=2583 union=2583
+differing leaf paths: 59
+
+rewards.pen_ankle_roll_deviation.__class__
+    A=<absent>
+    B='isaaclab.managers.manager_term_cfg.RewardTermCfg'
+    C='isaaclab.managers.manager_term_cfg.RewardTermCfg'
+rewards.pen_ankle_roll_deviation.func.__ref__
+    A=<absent>
+    B='isaaclab.envs.mdp.rewards.joint_deviation_l1'
+    C='isaaclab.envs.mdp.rewards.joint_deviation_l1'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.__class__
+    A=<absent>
+    B='isaaclab.managers.scene_entity_cfg.SceneEntityCfg'
+    C='isaaclab.managers.scene_entity_cfg.SceneEntityCfg'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.body_ids.__apply__
+    A=<absent>
+    B='builtins.slice'
+    C='builtins.slice'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.body_ids.args[0]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.body_ids.args[1]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.body_ids.args[2]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.body_names
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.fixed_tendon_ids.__apply__
+    A=<absent>
+    B='builtins.slice'
+    C='builtins.slice'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.fixed_tendon_ids.args[0]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.fixed_tendon_ids.args[1]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.fixed_tendon_ids.args[2]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.fixed_tendon_names
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.joint_ids.__apply__
+    A=<absent>
+    B='builtins.slice'
+    C='builtins.slice'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.joint_ids.args[0]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.joint_ids.args[1]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.joint_ids.args[2]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.joint_names[0]
+    A=<absent>
+    B='(right|left)_foot_roll_02'
+    C='(right|left)_foot_roll_02'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.name
+    A=<absent>
+    B='robot'
+    C='robot'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.object_collection_ids.__apply__
+    A=<absent>
+    B='builtins.slice'
+    C='builtins.slice'
+rewards.pen_ankle_roll_deviation.params.asset_cfg.object_collection_ids.args[0]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.object_collection_ids.args[1]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.object_collection_ids.args[2]
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.object_collection_names
+    A=<absent>
+    B=None
+    C=None
+rewards.pen_ankle_roll_deviation.params.asset_cfg.preserve_order
+    A=<absent>
+    B=False
+    C=False
+rewards.pen_ankle_roll_deviation.weight
+    A=<absent>
+    B=-1.0
+    C=-1.0
+rewards.pen_joint_accel.weight
+    A=-5e-06
+    B=-1e-05
+    C=-5e-06
+rewards.pen_joint_power.__class__
+    A=<absent>
+    B=<absent>
+    C='isaaclab.managers.manager_term_cfg.RewardTermCfg'
+rewards.pen_joint_power.func.__ref__
+    A=<absent>
+    B=<absent>
+    C='environments.tasks.locomotion.mdp.rewards.joint_powers_l1'
+rewards.pen_joint_power.params.asset_cfg.__class__
+    A=<absent>
+    B=<absent>
+    C='isaaclab.managers.scene_entity_cfg.SceneEntityCfg'
+rewards.pen_joint_power.params.asset_cfg.body_ids.__apply__
+    A=<absent>
+    B=<absent>
+    C='builtins.slice'
+rewards.pen_joint_power.params.asset_cfg.body_ids.args[0]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.body_ids.args[1]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.body_ids.args[2]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.body_names
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.fixed_tendon_ids.__apply__
+    A=<absent>
+    B=<absent>
+    C='builtins.slice'
+rewards.pen_joint_power.params.asset_cfg.fixed_tendon_ids.args[0]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.fixed_tendon_ids.args[1]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.fixed_tendon_ids.args[2]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.fixed_tendon_names
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.joint_ids.__apply__
+    A=<absent>
+    B=<absent>
+    C='builtins.slice'
+rewards.pen_joint_power.params.asset_cfg.joint_ids.args[0]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.joint_ids.args[1]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.joint_ids.args[2]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.joint_names
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.name
+    A=<absent>
+    B=<absent>
+    C='robot'
+rewards.pen_joint_power.params.asset_cfg.object_collection_ids.__apply__
+    A=<absent>
+    B=<absent>
+    C='builtins.slice'
+rewards.pen_joint_power.params.asset_cfg.object_collection_ids.args[0]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.object_collection_ids.args[1]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.object_collection_ids.args[2]
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.object_collection_names
+    A=<absent>
+    B=<absent>
+    C=None
+rewards.pen_joint_power.params.asset_cfg.preserve_order
+    A=<absent>
+    B=<absent>
+    C=False
+rewards.pen_joint_power.weight
+    A=<absent>
+    B=<absent>
+    C=-0.02
+rewards.pen_joint_torque.weight
+    A=-0.0005
+    B=-0.001
+    C=-0.0005
+rewards.pen_joint_torque_rate.weight
+    A=-0.0005
+    B=-0.001
+    C=-0.0005
+rewards.pen_joint_vel_l2.weight
+    A=-0.0005
+    B=-0.001
+    C=-0.0005
+rewards.rew_keep_ankle_roll_zero_in_air.weight
+    A=0.25
+    B=1.0
+    C=1.0
+scene.num_envs
+    A=9000
+    B=9000
+    C=6000
+scene.terrain.num_envs
+    A=9000
+    B=9000
+    C=6000

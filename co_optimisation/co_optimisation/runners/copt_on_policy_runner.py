@@ -13,53 +13,107 @@ Usage::
 
 from __future__ import annotations
 
+import contextlib
+import itertools
+import json
+import math
 import os
+import shutil
 import time
 import torch
 import warnings
 from collections import deque
 from tensordict import TensorDict
 
+import isaaclab.sim as sim_utils
+import isaaclab.utils.math as math_utils
 import pandas as pd
 from isaaclab.sim.utils.stage import get_current_stage
+
+from co_optimisation.algorithms import CoptPPO
+from co_optimisation.modules import CoptActorCritic, CoptMorALActorCritic  # noqa: F401, eval below
+from co_optimisation.runners.usd_generator import DesignGeneratorBase, Population
+from co_optimisation.utils.analysis import log_prototype_and_instance_info
+from co_optimisation.utils.env_state import capture_env_state, restore_env_state
+from co_optimisation.utils.respawn import apply_actuator_params, respawn_robots
+from co_optimisation.utils.update import (
+    apply_link_length_params,
+    apply_standing_height,
+    assert_link_lengths_applied,
+    refresh_rendered_geometry,
+)
 from rsl_rl.algorithms import PPO
 from rsl_rl.env import VecEnv
 from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.runners import OnPolicyRunner
 
-from co_optimisation.algorithms import CoptPPO
-from co_optimisation.modules import CoptActorCritic
-from co_optimisation.runners.usd_generator import (
-    DesignGeneratorBase,
-    Population,
-    RandomPopulation,
-)
-from co_optimisation.utils.analysis import log_prototype_and_instance_info
-from co_optimisation.utils.env_state import capture_env_state, restore_env_state
-from co_optimisation.utils.respawn import apply_actuator_params, respawn_robots
-from co_optimisation.utils.update import apply_link_length_params
-
 
 def _population_to_dict(pop: Population) -> dict:
     """Serialise a :class:`Population` to plain Python lists for checkpointing.
 
-    A :class:`RandomPopulation` is fully described by three parallel lists, so the
-    snapshot is loss-less and rebuilds an identical population on resume.
+    A population is fully described by its three parallel lists and the name of the
+    emitted document's root body, so the snapshot is loss-less and rebuilds an
+    identical population on resume.  The ``DesignSpec`` list is deliberately left
+    out, being a convenience for logging that the generator can recompute.
     """
     return {
         "usd_files": pop.get_usd_files(),
         "actuator_params": pop.get_actuator_params(),
         "link_length_params": pop.get_link_length_params(),
+        "root_body": pop.get_root_body(),
+        "nominal": pop.get_nominal(),
+        "xml_files": pop.get_xml_files(),
     }
 
 
-def _population_from_dict(state: dict) -> RandomPopulation:
-    """Reconstruct a :class:`RandomPopulation` from :func:`_population_to_dict`."""
-    return RandomPopulation(
+def _population_from_dict(state: dict) -> Population:
+    """Reconstruct a :class:`Population` from :func:`_population_to_dict`.
+
+    ``root_body`` defaults to the biped's when a checkpoint predates this field, that
+    being the only family the URDF-era pipeline ever ran.
+    """
+    return Population(
         state["usd_files"],
         state["actuator_params"],
         state["link_length_params"],
+        state.get("root_body", "base_Link"),
+        nominal=state.get("nominal"),
+        xml_files=state.get("xml_files"),
     )
+
+
+def _actuator_table(history: list[dict], group: str) -> str:
+    """The best individual's actuator on *group* at every generation of *history*, as a markdown pipe table.
+
+    One row per CMA-ES generation, from the "best/<group>_actuator..." entries log_design_update records,
+    so the table is rebuilt from the checkpointed history and is correct after a resume. The radius is half
+    the catalogue diameter, the radius and length are in millimetres and a value a record lacks is a dash.
+    A row without an actuator name, a record from before the actuator logging, is left out.
+    """
+    key = f"best/{group}_actuator"
+    columns = (
+        ("peak torque [N m]", "peak_torque", 1.0, "{:.2f}"),
+        ("peak speed [rad/s]", "peak_speed", 1.0, "{:.1f}"),
+        ("mass [kg]", "mass", 1.0, "{:.3f}"),
+        ("radius [mm]", "diameter", 500.0, "{:.1f}"),
+        ("length [mm]", "length", 1000.0, "{:.1f}"),
+    )
+
+    def cell(row: dict, spec: str, scale: float, fmt: str) -> str:
+        value = row.get(f"{key}_{spec}")
+        return fmt.format(value * scale) if isinstance(value, (int, float)) and value == value else "—"
+
+    header = ["generation", "iteration", "actuator", "index"] + [c[0] for c in columns]
+    lines = ["| " + " | ".join(header) + " |", "|" + "|".join("---" for _ in header) + "|"]
+    for row in history:
+        name = row.get(key)
+        if not isinstance(name, str):
+            continue
+        index = row.get(f"{key}_index")
+        cells = [str(row.get("generation", "—")), str(row.get("iteration", "—")), name.replace("|", "/"),
+                 str(int(index)) if isinstance(index, (int, float)) and index == index else "—"]
+        lines.append("| " + " | ".join(cells + [cell(row, *c[1:]) for c in columns]) + " |")
+    return "\n".join(lines)
 
 
 class CoptOnPolicyRunner(OnPolicyRunner):
@@ -68,13 +122,14 @@ class CoptOnPolicyRunner(OnPolicyRunner):
     Adds an outer EA loop on top of the standard PPO training loop.  Every
     ``ea_update_interval`` policy-update iterations the runner:
 
-    1. Evaluates per-individual fitness from accumulated episode returns.
+    1. Evaluates every design under one shared set of commands, terrain cells and initial states, see :meth:`_evaluate_population`.
     2. Calls ``design_generator.update_with_fitness()`` so the generator can
        improve future designs.
     3. Generates a new design population.
     4. Hot-swaps all robot articulations via the 10-step respawn sequence.
     5. Patches ``IdentifiedActuator`` tensor attributes for the new designs.
-    6. Resets fitness accumulators and fetches fresh observations.
+    6. Logs the generation, see :meth:`log_design_update`, and fetches fresh
+       observations.
 
     Args:
         env: The wrapped ``VecEnv`` (``RslRlVecEnvWrapper``).
@@ -104,33 +159,37 @@ class CoptOnPolicyRunner(OnPolicyRunner):
     ) -> None:
         # Extract COPT-specific config before calling super().__init__
         copt_cfg: dict = train_cfg.get("copt", {})
+        # The base robot's design record, logged to TensorBoard as text once, the reference every
+        # population is compared with, set in learn. The CMAESCfg is recorded in params/cmaes.yaml.
+        self._base_record: dict | None = None
         self._ea_update_interval: int = copt_cfg.get("ea_update_interval", 100)
         self._ea_late_start: int = copt_cfg.get("ea_late_start", -1)
         self._num_individuals: int = copt_cfg.get("num_individuals", 16)
+        # True reproduces every run to date.
+        self._reinit_lr_each_generation: bool = copt_cfg.get(
+            "reinit_lr_each_generation", True
+        )
         self._randomise_before_late_start: bool = copt_cfg.get(
             "randomise_before_late_start", False
         )
-        # Minimum step count a completed episode must reach before its return
-        # contributes to individual fitness. Defaults to 0, which reproduces the
-        # original behaviour of counting every completed episode, since a completed
-        # episode always has length >= 1. Set explicitly in the calling
-        # configuration to exclude the spurious short episodes a freshly
-        # randomised phase produces (context/copt_ppo_nonstationarity.md, section 12).
-        self._min_fitness_episode_length: int = copt_cfg.get(
-            "min_fitness_episode_length", 0
-        )
+        # Horizon of the controlled evaluation, 200 control steps at the default.
+        self._eval_duration_s: float = copt_cfg.get("eval_duration_s", 4.0)
+        self._eval_seed: int = copt_cfg.get("eval_seed", 0)
+        # Writes designs/eval_trace_<g>.pt, the per step reward of every environment in every pass.
+        self._eval_save_trace: bool = copt_cfg.get("eval_save_trace", False)
+        self._eval_result: dict | None = None
+        # Iterations trained on the final design once the search terminates, after which learn
+        # returns. None, the default, trains on to max_iterations, as every run before 2026-10-28.
+        self._finetune_iterations: int | None = copt_cfg.get("finetune_iterations")
+        # True from the generation boundary at which the search terminated, when the fine-tune begins.
+        self._finetuning: bool = False
+        # The last iteration of the fine-tune, set with _finetuning.
+        self._finetune_stop_it: int | None = None
+        self._cmaes_history: list[dict] = []
         self._design_generator = design_generator
         # Per-generation state
         self.generation: int = 0
         self.current_population: Population | None = None
-
-        # Fitness accumulators indexed by individual
-        self._individual_fitness = torch.zeros(
-            self._num_individuals, dtype=torch.float, device=device
-        )
-        self._individual_episode_counts = torch.zeros(
-            self._num_individuals, dtype=torch.long, device=device
-        )
         self.encoder_cfg = train_cfg["encoder"]
         self._copt_started = False
 
@@ -138,6 +197,9 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # Maps env_idx → individual_idx (round-robin)
         # The round robin is setup in co_optimisation.utils.respawn.respawn_robots
         self._env_to_individual: list[int] = self._assign_individuals_to_envs()
+        self._eval_design: torch.Tensor = self._build_evaluation_design()
+        # Every narrowed tracking width as configured, at which every generation is scored.
+        self._eval_tracking_widths: dict[str, float] = self._configured_tracking_widths()
         # Set by ``load`` when a checkpoint carries the extended COPT state, and
         # consumed once by ``learn`` to apply the restored population and env state.
         self._resumed_from_checkpoint: bool = False
@@ -167,12 +229,11 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         saved["copt"] = {
             "generation": self.generation,
             "copt_started": self._copt_started,
-            "individual_fitness": self._individual_fitness.detach().cpu().clone(),
-            "individual_episode_counts": self._individual_episode_counts.detach()
-            .cpu()
-            .clone(),
             "current_population": _population_to_dict(self.current_population),
             "design_generator": self._design_generator.get_state(),
+            "cmaes_history": self._cmaes_history,
+            "finetuning": self._finetuning,
+            "finetune_stop_it": self._finetune_stop_it,
         }
         saved["env_state"] = capture_env_state(self.env)
         torch.save(saved, path)
@@ -214,11 +275,12 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         c = loaded["copt"]
         self.generation = c["generation"]
         self._copt_started = c["copt_started"]
-        self._individual_fitness.copy_(c["individual_fitness"].to(self.device))
-        self._individual_episode_counts.copy_(
-            c["individual_episode_counts"].to(self.device)
-        )
+        # The fitness accumulators of earlier checkpoints are ignored, the fitness of
+        # the restored population being measured afresh at its generation boundary.
         self._design_generator.load_state(c["design_generator"])
+        self._cmaes_history = c.get("cmaes_history", [])
+        self._finetuning = c.get("finetuning", False)
+        self._finetune_stop_it = c.get("finetune_stop_it")
 
         self._restored_population = _population_from_dict(c["current_population"])
         self._restored_env_state = loaded["env_state"]
@@ -241,6 +303,16 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         if self.log_dir is not None:
             if not os.path.exists(os.path.join(self.log_dir, "designs")):
                 os.mkdir(os.path.join(self.log_dir, "designs"))
+            # The base robot in the columns of every design record, the reference each design is compared with.
+            base = os.path.join(self.log_dir, "designs", "base_design.csv")
+            if not self.disable_logs:
+                if not os.path.exists(base):
+                    pd.DataFrame([self._design_generator.base_record(
+                        os.path.join(self.log_dir, "designs", "base_design.xml"))]).to_csv(base, index=False)
+                self._base_record = pd.read_csv(base).iloc[0].to_dict()
+                # Once as text, a constant re-logged as scalars at every boundary drawing only flat lines.
+                shown = {k: v for k, v in self._base_record.items() if not self._is_actuator_column(k)}
+                self.writer.add_text("CMAES/base_design", "```\n" + json.dumps(shown, indent=2, default=str) + "\n```", 0)
         with torch.inference_mode():
             if getattr(self, "_resumed_from_checkpoint", False):
                 # Resume: re-spawn the checkpointed population and restore the env,
@@ -256,9 +328,9 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             else:
                 # Bootstrap generation zero through the respawn path, so that each
                 # design receives its own USD reference arc and therefore its own
-                # instancing prototype. This is done as SOLEFOOT_IDENTIFIED_CFG_URDF
-                # is used to spawn the base environment which contains only a single 
-                # prototype
+                # instancing prototype. This is done because the task configuration
+                # spawns one asset, SOLEFOOT_IDENTIFIED_CFG, and therefore one
+                # prototype, which the in-place editor cannot divide.
                 self._reload_morphology()
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(
@@ -310,7 +382,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             late_start_toggled=False
             is_morph_update_time = (
                 (it + 1) % self._ea_update_interval == 0
-            ) and (is_late_start_toggle_time or self._randomise_before_late_start)
+            ) and (is_late_start_toggle_time or self._randomise_before_late_start) and not self._finetuning
             with torch.inference_mode():
                 for step in range(self.num_steps_per_env):
                     # Sample actions
@@ -350,24 +422,6 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                         if (step < self.num_steps_per_env - 1) or (
                             not is_morph_update_time
                         ):
-                            # ---- COPT: accumulate per-individual fitness --------
-                            completed_env_ids = new_ids[:, 0]
-                            for env_idx in completed_env_ids.tolist():
-                                if (
-                                    cur_episode_length[env_idx]
-                                    < self._min_fitness_episode_length
-                                ):
-                                    # Spurious short episode, most likely a freshly
-                                    # randomised phase timing out within a few steps.
-                                    # Excluded from fitness rather than counted.
-                                    continue
-                                ind_idx = self._env_to_individual[env_idx]
-                                self._individual_fitness[ind_idx] += cur_reward_sum[
-                                    env_idx
-                                ]
-                                self._individual_episode_counts[ind_idx] += 1
-                            # ---- end COPT injection ----------------------------
-
                             rewbuffer.extend(
                                 cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist()
                             )
@@ -407,6 +461,19 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             learn_time = stop - start
             self.current_learning_iteration = it
 
+            if self.log_dir is not None and not self.disable_logs:
+                boundary = (it + 1) % self.save_interval == 0
+                # Before the evaluation and the swap, so that model_<it>.pt, design_parameters_<it>.csv
+                # and cmaes_history row <it> all describe the population trained up to iteration it.
+                if self.current_population is not None and (is_morph_update_time or (boundary and self._finetuning)):
+                    pd.DataFrame(self.current_population.get_parameters()).to_csv(
+                        os.path.join(self.log_dir, "designs", f"design_parameters_{it}.csv"),
+                        index_label="individual",
+                    )
+                    self._log_population(it)
+                if boundary:
+                    self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
+
             # ---- COPT: EA generation update ---------------------------------
             if is_morph_update_time:
                 if (
@@ -420,7 +487,15 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     self._design_generator.toggle_late_start()
                     late_start_toggled = True
                 with torch.inference_mode():
+                    if self._copt_started and self.current_population is not None:
+                        self._eval_result = self._evaluate_population()
                     self._update_morphology(it + 1, respawn=late_start_toggled)
+                    if (self._finetune_iterations is not None and not self._finetuning
+                            and getattr(self._design_generator, "_terminated", False)):
+                        self._finetuning = True
+                        self._finetune_stop_it = it + self._finetune_iterations
+                        print(f"CMA-ES terminated at iteration {it}, fine-tuning on the final design "
+                              f"until iteration {self._finetune_stop_it}")
                     self.env.episode_length_buf = torch.randint_like(
                         self.env.episode_length_buf, high=int(self.env.max_episode_length)
                     )
@@ -436,24 +511,11 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     if self.alg.rnd:
                         cur_ereward_sum[:] = 0
                         cur_ireward_sum[:] = 0
-                    link_lengths = self.current_population.get_link_length_params()
-                    keys = None
-                    if len(link_lengths) > 0:
-                        keys = link_lengths[0].keys()
-                    df = pd.DataFrame(self.current_population.get_link_length_params())
-                    df.to_csv(
-                        os.path.join(self.log_dir, "designs", f"link_lengths_{it}.csv"),
-                        header=False,
-                        columns=keys,
-                    )
             # ---- end COPT injection -----------------------------------------
 
             if self.log_dir is not None and not self.disable_logs:
-                # Log information
+                # Log information, the model being saved before the design swap above
                 self.log(locals())
-                # Save model
-                if it % self.save_interval == 0:
-                    self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
 
             # Clear episode infos
             ep_infos.clear()
@@ -466,12 +528,18 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     for path in git_file_paths:
                         self.writer.save_file(path)
 
+            if self._finetuning and it >= self._finetune_stop_it:
+                print(f"Fine-tuning complete at iteration {it}")
+                break
+
         if self.log_dir is not None and not self.disable_logs:
             self.save(
                 os.path.join(
                     self.log_dir, f"model_{self.current_learning_iteration}.pt"
                 )
             )
+        # After the save, so the checkpoint holds the training state rather than the evaluation's.
+        self.log_optimised_designs()
 
     def _construct_algorithm(self, obs: TensorDict) -> PPO:
         # TODO Check if we can just run this method from the parent class by updating the configuration?
@@ -503,7 +571,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
         # Initialize the policy
         actor_critic_class = eval(self.policy_cfg.pop("class_name"))
-        actor_critic: CoptActorCritic = actor_critic_class(
+        actor_critic: CoptActorCritic | CoptMorALActorCritic = actor_critic_class(
             obs,
             self.cfg["obs_groups"],
             self.env.num_actions,
@@ -560,20 +628,51 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 ``env_idx % num_individuals``.
         """
         unwrapped_env = self.env.unwrapped
+        # spawn_multi_usd_file assigns designs in traversal order and fitness is
+        # attributed by env_id % N, so the two agree only in numeric order.
+        scene = unwrapped_env.scene
+        matched = sim_utils.find_matching_prim_paths(scene.env_regex_ns)
+        assert matched == list(scene.env_prim_paths), (
+            "environment prims are traversed out of numeric order, so the design "
+            f"assignment would not match the fitness attribution: {matched[:12]}"
+        )
         unwrapped_env._suppress_terrain_curriculum = True
+        unwrapped_env._suppress_curriculum = True
         try:
             self.respawn_robots(unwrapped_env, population.get_usd_files())
         finally:
             unwrapped_env._suppress_terrain_curriculum = False
+            unwrapped_env._suppress_curriculum = False
+
+    def _apply_nominal_pose(self, reset: bool) -> None:
+        """Measure every environment's nominal pose, set its spawn height and publish the height.
+
+        ``copt_nominal_base_height`` (num_envs,) is read by the nominal pose terms of
+        mdp/rewards.py. *reset* re-places the robots where the caller's own reset has
+        already run.
+        """
+        unwrapped_env = self.env.unwrapped
+        family = self._design_generator.family
+        standing = apply_standing_height(
+            unwrapped_env,
+            self.current_population.get_nominal(),
+            family.foot_bodies,
+            family.hip_bodies,
+            family.pitch_joints,
+        )
+        unwrapped_env.copt_nominal_base_height = standing
+        if reset:
+            unwrapped_env._suppress_terrain_curriculum = True
+            unwrapped_env._suppress_curriculum = True
+            try:
+                unwrapped_env.reset()
+            finally:
+                unwrapped_env._suppress_terrain_curriculum = False
+                unwrapped_env._suppress_curriculum = False
 
     def _reload_morphology(self) -> None:
         """Run one EA cycle: evaluate fitness, generate new population, respawn."""
-        if self.current_population is not None :
-            fitness = self._compute_individual_fitness()
-            print("Updating Design Population")
-            self._design_generator.update_with_fitness(fitness)
-
-        elif self.current_population is None and self._ea_late_start < 0:
+        if self.current_population is None and self._ea_late_start < 0:
             self._design_generator.sample_batch()
 
         # Generate new population
@@ -587,6 +686,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             unwrapped_env = self.env.unwrapped  # ManagerBasedRLEnv
             print("Spawning sampled population")
             self._respawn_population(self.current_population)
+            self._apply_nominal_pose(reset=True)
 
             # Patch actuator params
             print("Applying Sampled Actuator Parameters")
@@ -594,18 +694,13 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                 unwrapped_env, self.current_population.get_actuator_params()
             )
 
-            # Reset fitness accumulators
-            print("Resetting Accumulators")
-            self._individual_fitness.zero_()
-            self._individual_episode_counts.zero_()
-
     def _apply_restored_state(self) -> None:
         """Re-spawn the checkpointed population and restore env state on resume.
 
         Mirrors the in-place sequence of :meth:`_update_morphology` but without
-        advancing the design generator, incrementing the generation counter, or
-        zeroing the fitness accumulators, all of which were already restored in
-        :meth:`load`.  The usual ``unwrapped_env.reset()`` is replaced by
+        advancing the design generator or incrementing the generation counter, both
+        of which were already restored in :meth:`load`.  The usual
+        ``unwrapped_env.reset()`` is replaced by
         :func:`restore_env_state`, which runs ``reset_to`` internally so the robots
         are placed at their checkpointed poses and the curriculum, command, reward,
         counter, and RNG state are written back.
@@ -620,11 +715,23 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self.current_population = self._restored_population
         print("Re-applying checkpointed morphology population")
         apply_link_length_params(
-            unwrapped_env, self.current_population.get_link_length_params()
+            unwrapped_env,
+            self.current_population.get_link_length_params(),
+            self.current_population.get_root_body(),
         )
+        self._refresh_rendered_geometry()
+        # restore_env_state's reset_to places the robots, so no reset here.
+        self._apply_nominal_pose(reset=False)
 
         print("Restoring environment, curriculum, and RNG state")
         restore_env_state(self.env, self._restored_env_state)
+
+        # The authoring API reports success whether or not physics ever reads the
+        # attribute, so the realised body separations are read back out of the
+        # simulation after the reset. See utils/update.py.
+        assert_link_lengths_applied(
+            unwrapped_env, self.current_population.get_link_length_params()
+        )
 
         print("Applying checkpointed actuator parameters")
         apply_actuator_params(
@@ -636,6 +743,17 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._resumed_from_checkpoint = False
         self._restored_population = None
         self._restored_env_state = None
+
+    def _refresh_rendered_geometry(self) -> None:
+        """Redraw the in place designs, whose rendered geometry otherwise stays at the spawned one. See utils/update.py."""
+        start = time.perf_counter()
+        written = refresh_rendered_geometry(
+            self.env.unwrapped,
+            self.current_population.get_link_length_params(),
+            self.current_population.get_root_body(),
+        )
+        if written:
+            print(f"Refreshed {written} rendered geometry prims in {time.perf_counter() - start:.2f} s")
 
     def _update_morphology(self, it: int, respawn: bool = False) -> None:
         """In-place EA cycle: no delete/respawn, no manager re-binding.
@@ -663,58 +781,550 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             sim.stop()
             sim._disable_app_control_on_stop_handle = False
 
+        evaluated = None
         if self._ea_late_start <= it:
             if not self._copt_started:
                 self.alg.reinit_learning_rate()
                 self._design_generator.sample_batch()
                 self._copt_started = True
-            else:
-                fitness = self._compute_individual_fitness()
+            elif self.current_population is not None:
+                fitness = self._eval_result["fitness"].tolist()
+                evaluated = self.current_population
+                evaluated_generation = self.generation - 1
                 print("Updating Design Population")
+                update_start = time.time()
                 self._design_generator.update_with_fitness(fitness)
-        else:
+                update_time = time.time() - update_start
+        elif self._reinit_lr_each_generation:
             self.alg.reinit_learning_rate()
+        population_start = time.time()
+        previous_population = self.current_population
         self.current_population = self._design_generator.generate_population(
             self.generation
         )
+        if self.current_population is None:
+            # A terminated search proposes nothing, so the last population stays and is
+            # re-applied below, which restarts the simulation stopped at step 1.
+            self.current_population = previous_population
         self.generation += 1
         if self.current_population is not None:
             if respawn:
                 print("Respawning population (prototype count is changing)")
                 self._respawn_population(self.current_population)  # includes reset
+                self._apply_nominal_pose(reset=True)
             else:
                 print(
                     "Applying link length parameters in place"
                 )  # 4. author + sim.reset() (inside)
                 apply_link_length_params(
-                    unwrapped_env, self.current_population.get_link_length_params()
+                    unwrapped_env,
+                    self.current_population.get_link_length_params(),
+                    self.current_population.get_root_body(),
                 )
+                self._refresh_rendered_geometry()
+
+                # 4a. nominal pose and spawn height, before the reset places the robots
+                self._apply_nominal_pose(reset=False)
 
                 # 5. reset episodes — suppress terrain promotion/demotion because the
                 # episodes are truncated by the morphology swap and the walked-distance
-                # signal is meaningless at this boundary.
+                # signal is meaningless at this boundary, and every other curriculum
+                # term, which would read the same truncated sums (mdp/curriculums.py).
                 unwrapped_env._suppress_terrain_curriculum = True
+                unwrapped_env._suppress_curriculum = True
                 unwrapped_env.reset()
                 unwrapped_env._suppress_terrain_curriculum = False
+                unwrapped_env._suppress_curriculum = False
+
+                # 5a. read the realised separations back out of the simulation, the
+                # only check that distinguishes an edit that was authored from an
+                # edit that took effect. See utils/update.py.
+                assert_link_lengths_applied(
+                    unwrapped_env, self.current_population.get_link_length_params()
+                )
 
             print("Applying Sampled Actuator Parameters")  # 6. actuators AFTER reset
             apply_actuator_params(
                 unwrapped_env, self.current_population.get_actuator_params()
             )
 
-            self._individual_fitness.zero_()  # 7. zero accumulators
-            self._individual_episode_counts.zero_()
+        if evaluated is not None:
+            population_time = time.time() - population_start
+            self.log_design_update(locals())
+        self._eval_result = None
 
-    def _compute_individual_fitness(self) -> list[float]:
-        """Return mean episode return per individual (0.0 if no episodes completed)."""
-        fitness: list[float] = []
-        for i in range(self._num_individuals):
-            count = self._individual_episode_counts[i].item()
-            if count > 0:
-                fitness.append((self._individual_fitness[i] / count).item())
+    def _configured_tracking_widths(self) -> dict[str, float]:
+        """The width of every kernel reduce_tracking_rewards_std narrows, as configured before any narrowing."""
+        env = self.env.unwrapped
+        widths = {}
+        for cfg in env.curriculum_manager._term_cfgs:
+            if getattr(cfg.func, "__name__", "") == "reduce_tracking_rewards_std":
+                name = cfg.params["term_name"]
+                widths[name] = env.reward_manager.get_term_cfg(name).params["std"]
+        return widths
+
+    def _fix_tracking_widths(self, env) -> list[tuple[object, float]]:
+        """Set each narrowed kernel to its configured width, returning the training widths to restore."""
+        saved = []
+        for name, width in self._eval_tracking_widths.items():
+            term = env.reward_manager.get_term_cfg(name)
+            saved.append((term, term.params["std"]))
+            term.params["std"] = width
+        return saved
+
+    def _build_evaluation_design(self) -> torch.Tensor:
+        """A Latin hypercube on the unit cube of (vx, vy, wz, yaw), one point per cell an evaluation visits.
+
+        Returns (R, P, m, 4), point (r, q, j) the command and initial yaw of instance j in difficulty
+        row r and column pass q, fixed for the run and mapped onto the command ranges at each
+        evaluation. R and P are 1 on a plane.
+        """
+        m = self.env.num_envs // self._num_individuals
+        origins = self.env.unwrapped.scene.terrain.terrain_origins
+        rows, passes = (origins.shape[0], -(-origins.shape[1] // m)) if origins is not None else (1, 1)
+        count = rows * passes * m
+        generator = torch.Generator().manual_seed(self._eval_seed)
+        axes = [
+            (torch.randperm(count, generator=generator) + torch.rand(count, generator=generator)) / count
+            for _ in range(4)
+        ]
+        return torch.stack(axes, dim=1).view(rows, passes, m, 4).to(self.env.device)
+
+    def _evaluation_columns(self, cols: int) -> torch.Tensor:
+        """Terrain column of each instance in each column pass, every column visited in every row.
+
+        Returns (P, m) for P = ceil(cols / m) passes. Slot j * P + q is spread evenly over the
+        columns, so the instances of one pass stand in distinct columns whenever m <= cols, every
+        column is visited at least once, and the columns visited twice, when m does not divide
+        cols, are spread evenly across the grid and so across the sub-terrains.
+        """
+        m = self.env.num_envs // self._num_individuals
+        passes = -(-cols // m)
+        q = torch.arange(passes, device=self.env.device).unsqueeze(1)
+        j = torch.arange(m, device=self.env.device).unsqueeze(0)
+        return (j * passes + q) * cols // (passes * m)
+
+    @contextlib.contextmanager
+    def _video_paused(self):
+        """Pause every wrapper of the chain that carries a paused flag, for the duration of the block.
+
+        Gymnasium 1.2.1 wrappers do not forward attribute lookups, so hasattr finds the flag on the
+        recorder alone, PausableRecordVideo of scripts/rsl_rl/highest_terrain_camera_wrapper.py, and
+        the chain is walked through the env attribute each wrapper and RslRlVecEnvWrapper hold.
+        """
+        recorders, layer, seen = [], self.env, set()
+        while layer is not None and id(layer) not in seen:
+            seen.add(id(layer))
+            if hasattr(layer, "paused"):
+                recorders.append(layer)
+            layer = getattr(layer, "env", None)
+        for recorder in recorders:
+            recorder.paused = True
+        try:
+            yield
+        finally:
+            for recorder in recorders:
+                recorder.paused = False
+
+    def _evaluate_population(self) -> dict:
+        """Score every design on one shared set of terrain cells, commands and initial states.
+
+        Instance j of every design, environment j * N + k for design k, stands in column
+        col[q, j] in column pass q, and every column pass is made in every difficulty row, so
+        each cell of a pass holds one instance of every design and every design meets every cell
+        of the grid at least once. Each visited cell carries its own command and initial yaw.
+        Returns per design (N,) the fitness, the mean return over the R x P x m visited cells,
+        the survival fraction and the mean linear and yaw rate tracking errors, and in addition
+        the split-half rank correlation of the fitness over the even and odd columns, per row the
+        mean return and survival, and the wall time. Every narrowed tracking kernel is held at its configured
+        width. The widths, the terrain assignment, the step counter and the interval event timers
+        are restored, and the reset of the design swap that follows overwrites everything else.
+        """
+        env = self.env.unwrapped
+        robot = env.scene["robot"]
+        terrain = env.scene.terrain
+        command = env.command_manager.get_term("base_velocity")
+        n = self._num_individuals
+        m = env.num_envs // n
+        rows, passes = self._eval_design.shape[:2]
+        replica = torch.arange(env.num_envs, device=env.device) // n
+        steps = int(round(self._eval_duration_s / env.step_dt))
+        start = time.time()
+
+        common_step_counter = env.common_step_counter
+        interval_time_left = [t.clone() for t in env.event_manager._interval_term_time_left]
+        grid = terrain.terrain_origins is not None
+        if grid:
+            assignment = (
+                terrain.terrain_levels.clone(),
+                terrain.terrain_types.clone(),
+                terrain.env_origins.clone(),
+            )
+            col = self._evaluation_columns(terrain.terrain_origins.shape[1])
+        else:
+            col = torch.arange(m, device=env.device).unsqueeze(0)
+
+        ranges = command.cfg.ranges
+        lo = torch.tensor(
+            [ranges.lin_vel_x[0], ranges.lin_vel_y[0], ranges.ang_vel_z[0], -math.pi], device=env.device
+        )
+        hi = torch.tensor(
+            [ranges.lin_vel_x[1], ranges.lin_vel_y[1], ranges.ang_vel_z[1], math.pi], device=env.device
+        )
+        design = lo + (hi - lo) * self._eval_design  # (R, P, m, 4)
+        ret = torch.zeros(rows, passes, env.num_envs, device=self.device)
+        survived = torch.zeros_like(ret)
+        length = torch.zeros_like(ret)
+        lin_err = torch.zeros_like(ret)
+        yaw_err = torch.zeros_like(ret)
+        trace = (
+            torch.zeros(rows, passes, steps, env.num_envs, dtype=torch.float16, device=self.device)
+            if self._eval_save_trace
+            else None
+        )
+        widths = self._fix_tracking_widths(env)
+        env._suppress_terrain_curriculum = True
+        env._suppress_curriculum = True
+        self.eval_mode()
+        try:
+            with self._video_paused():
+                for r, q in itertools.product(range(rows), range(passes)):
+                    if grid:
+                        terrain.terrain_levels[:] = r
+                        terrain.terrain_types[:] = col[q][replica]
+                        terrain.env_origins[:] = terrain.terrain_origins[terrain.terrain_levels, terrain.terrain_types]
+                    condition = design[r, q][replica]
+                    env.reset()
+                    # The reset events draw a planar offset, a yaw, a velocity and joint offsets
+                    # per environment, on which the designs would otherwise be ranked.
+                    root = robot.data.default_root_state.clone()
+                    root[:, :3] += env.scene.env_origins
+                    zero = torch.zeros_like(condition[:, 3])
+                    root[:, 3:7] = math_utils.quat_from_euler_xyz(zero, zero, condition[:, 3])
+                    root[:, 7:] = 0.0
+                    robot.write_root_state_to_sim(root)
+                    robot.write_joint_state_to_sim(
+                        robot.data.default_joint_pos.clone(), torch.zeros_like(robot.data.default_joint_vel)
+                    )
+                    command.vel_command_b[:] = condition[:, :3]
+                    command.is_heading_env[:] = False
+                    command.is_standing_env[:] = False
+                    command.time_left[:] = float("inf")
+                    for t in env.event_manager._interval_term_time_left:
+                        t[:] = float("inf")
+                    env.observation_manager.reset()
+                    obs = TensorDict(
+                        env.observation_manager.compute(update_history=True), batch_size=[env.num_envs]
+                    ).to(self.device)
+
+                    target = condition[:, :3].to(self.device)
+                    alive = torch.ones(env.num_envs, dtype=torch.bool, device=self.device)
+                    for t in range(steps):
+                        actions = self.alg.policy.act_inference(obs)
+                        obs, rewards, dones, _ = self.env.step(actions.to(self.env.device))
+                        obs, rewards = obs.to(self.device), rewards.to(self.device)
+                        dones = dones.to(self.device).bool()
+                        # step resets a terminated environment, so its state no longer belongs to the episode.
+                        counted = alive & ~dones
+                        lin_err[r, q] += counted * torch.norm(
+                            target[:, :2] - robot.data.root_lin_vel_b[:, :2].to(self.device), dim=1
+                        )
+                        yaw_err[r, q] += counted * torch.abs(
+                            target[:, 2] - robot.data.root_ang_vel_b[:, 2].to(self.device)
+                        )
+                        ret[r, q] += alive * rewards
+                        if trace is not None:
+                            trace[r, q, t] = alive * rewards
+                        length[r, q] += counted
+                        alive &= ~dones
+                    survived[r, q] = alive.float()
+        finally:
+            for term, std in widths:
+                term.params["std"] = std
+            env._suppress_terrain_curriculum = False
+            env._suppress_curriculum = False
+            env.common_step_counter = common_step_counter
+            for t, saved in zip(env.event_manager._interval_term_time_left, interval_time_left):
+                t.copy_(saved)
+            if grid:
+                for t, saved in zip(
+                    (terrain.terrain_levels, terrain.terrain_types, terrain.env_origins), assignment
+                ):
+                    t.copy_(saved)
+            self.train_mode()
+
+        shape = (rows, passes, m, n)
+        ret, survived = ret.view(shape), survived.view(shape)
+        steps_alive = length.view(shape).sum((0, 1, 2)).clamp(min=1)
+
+        # The even and the odd columns, so the halves share no terrain sample and each holds every
+        # row and every sub-terrain in equal share.
+        even = (col % 2 == 0).to(self.device)  # (P, m)
+        split = float("nan")
+        if even.any() and (~even).any():
+            halves = (ret[:, even].mean((0, 1)), ret[:, ~even].mean((0, 1)))
+            ranks = torch.stack([h.argsort().argsort().float() for h in halves])
+            split = torch.corrcoef(ranks)[0, 1].item()
+        if trace is not None and self.log_dir is not None:
+            torch.save(
+                {"reward": trace.cpu(), "column": col.cpu(), "design": design.cpu(), "num_designs": n,
+                 "step_dt": env.step_dt},
+                os.path.join(self.log_dir, "designs", f"eval_trace_{self.generation:04d}.pt"),
+            )
+        return {
+            "fitness": ret.mean((0, 1, 2)),
+            "survival": survived.mean((0, 1, 2)),
+            "lin_vel_error": lin_err.view(shape).sum((0, 1, 2)) / steps_alive,
+            "yaw_rate_error": yaw_err.view(shape).sum((0, 1, 2)) / steps_alive,
+            "split_half_rank_correlation": split,
+            "row_return": {r: ret[r].mean().item() for r in range(rows)},
+            "row_survival": {r: survived[r].mean().item() for r in range(rows)},
+            "time": time.time() - start,
+        }
+
+    def log_design_update(self, locs: dict, width: int = 80, pad: int = 35) -> None:
+        """Write one CMA-ES generation to the CMAES head, the design logs and the terminal.
+
+        Called by _update_morphology after update_with_fitness, with its locals, so the
+        fitness is that of the evaluated population and the statistics those of the
+        distribution that sampled the next.
+        """
+        it = self.current_learning_iteration
+        fitness = torch.tensor(locs["fitness"], dtype=torch.float)
+        evaluation = self._eval_result
+        parameters = locs["evaluated"].get_parameters()
+        if len(parameters) != len(fitness):
+            # A population restored from a checkpoint that predates the parameter record.
+            parameters = [{} for _ in range(len(fitness))]
+
+        record = {
+            "iteration": it,
+            "generation": locs["evaluated_generation"],
+            "fitness_mean": fitness.mean().item(),
+            "fitness_std": fitness.std().item(),
+            "fitness_max": fitness.max().item(),
+            "fitness_min": fitness.min().item(),
+            "fitness_median": fitness.median().item(),
+            "split_half_rank_correlation": evaluation["split_half_rank_correlation"],
+            "infeasible": sum(not p.get("feasible", True) for p in parameters),
+        }
+        for key in ("survival", "lin_vel_error", "yaw_rate_error"):
+            record[f"eval/{key}"] = evaluation[key].mean().item()
+        for r, value in evaluation["row_return"].items():
+            record[f"eval/return_row_{r}"] = value
+        for r, value in evaluation["row_survival"].items():
+            record[f"eval/survival_row_{r}"] = value
+        for key, value in (self._design_generator.search_statistics() or {}).items():
+            if isinstance(value, dict):
+                record.update({f"{key}/{name}": v for name, v in value.items()})
             else:
-                fitness.append(0.0)
-        return fitness
+                record[key] = value
+        best = parameters[int(fitness.argmax())]
+        record.update({
+            f"best/{name}": float(v)
+            for name, v in best.items()
+            if isinstance(v, float)
+        })
+        # The catalogue name of the best individual's actuator on every group, for cmaes_history.csv.
+        record.update({
+            f"best/{name}": v
+            for name, v in best.items()
+            if name.endswith("_actuator") and self._is_actuator_column(name)
+        })
+        # The same actuator's catalogue index, the "index" of catalogs/actuators.json that pick_index/<group> reports
+        # for the distribution's mode, left out where the catalogue states none, as the quadruped's.
+        record.update({
+            f"best/{name}": int(v)
+            for name, v in best.items()
+            if name.endswith("_actuator_index") and self._is_actuator_column(name) and v is not None and v == v
+        })
+        record["eval_time"] = evaluation["time"]
+        record["update_time"] = locs["update_time"]
+        record["population_time"] = locs["population_time"]
+        self._cmaes_history.append(record)
+
+        if self.log_dir is not None and not self.disable_logs:
+            for key, value in record.items():
+                if key.startswith("pick_index/") or (
+                    key.startswith("best/") and self._is_actuator_column(key[len("best/"):])
+                ):
+                    continue
+                if key != "iteration" and isinstance(value, (int, float)):
+                    # The distribution mean, CMA-ES's estimate of the optimum, under the searched name itself.
+                    tag = key[len("mean/"):] if key.startswith("mean/") else key
+                    self.writer.add_scalar(f"CMAES/{tag}", value, it)
+            # The actuator progression of each optimised group, one table per group in the TEXT tab, whose
+            # slider steps through the history as it stood at each generation.
+            family = getattr(self._design_generator, "family", None)
+            for group in getattr(family, "groups", ()):
+                self.writer.add_text(f"CMAES/actuators/{group}", _actuator_table(self._cmaes_history, group), it)
+            designs = os.path.join(self.log_dir, "designs")
+            pd.DataFrame(self._cmaes_history).to_csv(
+                os.path.join(designs, "cmaes_history.csv"), index=False
+            )
+            table = pd.DataFrame(parameters)
+            table["fitness"] = fitness.tolist()
+            for key in ("survival", "lin_vel_error", "yaw_rate_error"):
+                table[f"eval_{key}"] = evaluation[key].tolist()
+            table.to_csv(
+                os.path.join(designs, f"cmaes_generation_{record['generation']:04d}.csv"),
+                index_label="individual",
+            )
+
+        title = f" \033[1m CMA-ES generation {record['generation']} at learning iteration {it} \033[0m "
+        log_string = f"""{"#" * width}\n{title.center(width, " ")}\n\n"""
+        for key, value in record.items():
+            if key in ("iteration", "generation"):
+                continue
+            text = f"{value:.4f}" if isinstance(value, float) else f"{value}"
+            log_string += f"""{f"{key}:":>{pad}} {text}\n"""
+        log_string += f"""{"-" * width}\n"""
+        print(log_string, flush=True)
+
+    def _is_actuator_column(self, name: str) -> bool:
+        """True for an actuator pick, "<group>", or an actuator column, "<group>_actuator...", of a design record."""
+        groups = getattr(getattr(self._design_generator, "family", None), "spec_fields", {})
+        return any(name == group or name.startswith(f"{group}_actuator") for group in groups)
+
+    def _log_population(self, it: int) -> None:
+        """Every column of the design records of the population on the scene but the actuators', as CMAES/ scalars.
+
+        A numeric column is logged as its mean, standard deviation, minimum and maximum over the
+        population, CMAES/population/<column>/<statistic>, and a categorical column as the share of the
+        population carrying each entry, CMAES/population/<column>/<entry>. The actuator columns stay in
+        design_parameters_<it>.csv alone, and the base robot is logged once as the text CMAES/base_design.
+        The last filter record follows as CMAES/filter/<key>.
+        """
+        table = pd.DataFrame(self.current_population.get_parameters())
+        for column in table.columns:
+            if self._is_actuator_column(column):
+                continue
+            values = table[column].dropna()
+            if values.empty:
+                continue
+            if pd.api.types.is_bool_dtype(values):
+                self.writer.add_scalar(f"CMAES/population/{column}", float(values.mean()), it)
+            elif pd.api.types.is_numeric_dtype(values):
+                for statistic, value in (("mean", values.mean()), ("std", values.std(ddof=0)),
+                                         ("min", values.min()), ("max", values.max())):
+                    self.writer.add_scalar(f"CMAES/population/{column}/{statistic}", float(value), it)
+            else:
+                for entry, share in values.astype(str).value_counts(normalize=True).items():
+                    self.writer.add_scalar(f"CMAES/population/{column}/{entry}", float(share), it)
+        history = getattr(self._design_generator, "filter_history", None)
+        if history:
+            last = history[-1]
+            for key in ("rounds", "redrawn", "kept_refused"):
+                self.writer.add_scalar(f"CMAES/filter/{key}", float(last[key]), it)
+            for name, count in last["refused"].items():
+                self.writer.add_scalar(f"CMAES/filter/refused/{name}", float(count), it)
+
+    def log_optimised_designs(self, width: int = 80, pad: int = 35) -> None:
+        """Evaluate the population on the scene once more and write the final design to designs/optimised.
+
+        The final design is the one the search recommends, optimised_design(), the distribution
+        mean, and it is the design every later evaluation of the run uses. It heads
+        final_results.txt, it is the single row of final_design.csv, and its MJCF is
+        distribution_mean.xml. After a fine-tune every individual slot carries it, so the
+        evaluation of the population on the scene is its evaluation under the fine-tuned policy,
+        averaged over every environment. Without a fine-tune the population on the scene is the
+        last generation sampled, which the evaluation ranks, and the final design is recorded
+        unevaluated. optimised_designs.csv and individual_<k>.xml record the population on the
+        scene in either case, individual k having run in environments k + N * j.
+        """
+        if not self._copt_started or self.current_population is None:
+            return
+        population = self.current_population
+        with torch.inference_mode():
+            evaluation = self._evaluate_population()
+        fitness = evaluation["fitness"].cpu()
+        order = fitness.argsort(descending=True).tolist()
+        best = order[0]
+        parameters = population.get_parameters()
+        if len(parameters) != len(fitness):
+            parameters = [{} for _ in range(len(fitness))]
+        write = self.log_dir is not None and not self.disable_logs
+        out = os.path.join(self.log_dir, "designs", "optimised") if write else None
+        if write:
+            os.makedirs(out, exist_ok=True)
+
+        final = {}
+        optimised = self._design_generator.optimised_design()
+        if optimised is not None:
+            values, picks = optimised
+            feasible = (self._design_generator.emit_design(values, picks, os.path.join(out, "distribution_mean.xml"))
+                        if write else None)
+            # The terminating generation is the last history row once the fine-tune has begun.
+            terminal = self._cmaes_history[-1] if self._finetuning and self._cmaes_history else {}
+            on_scene = self._finetuning
+            final = {
+                "source": "distribution_mean",
+                **{name: float(v) for name, v in values.items()},
+                **(picks or {}),
+                **self._design_generator.describe_design(values, picks),
+                "feasible": feasible,
+                "fine_tuned": on_scene,
+                "fitness": fitness.mean().item() if on_scene else None,
+                "fitness_std_over_slots": fitness.std().item() if on_scene else None,
+                **{f"eval_{key}": (evaluation[key].mean().item() if on_scene else None)
+                   for key in ("survival", "lin_vel_error", "yaw_rate_error")},
+                "termination_iteration": terminal.get("iteration"),
+                "termination_generation": terminal.get("generation"),
+                "stop": terminal.get("stop"),
+                "finetune_start_iteration": (self._finetune_stop_it - self._finetune_iterations
+                                             if on_scene else None),
+                "checkpoint_iteration": self.current_learning_iteration,
+            }
+
+        rows = [(f"final design/{key}", value) for key, value in final.items()]
+        rows += [
+            ("generation", self.generation - 1),
+            ("learning iteration", self.current_learning_iteration),
+            ("best individual", best),
+            ("best fitness", fitness[best].item()),
+        ]
+        rows += [(f"best/{name}", value) for name, value in parameters[best].items()]
+        rows += [
+            ("fitness_mean", fitness.mean().item()),
+            ("fitness_std", fitness.std().item()),
+            ("split_half_rank_correlation", evaluation["split_half_rank_correlation"]),
+        ]
+        for key in ("survival", "lin_vel_error", "yaw_rate_error"):
+            rows.append((f"eval/{key}", evaluation[key].mean().item()))
+        for r, value in evaluation["row_return"].items():
+            rows.append((f"eval/return_row_{r}", value))
+        for key, value in (self._design_generator.search_statistics() or {}).items():
+            if isinstance(value, dict):
+                rows += [(f"{key}/{name}", v) for name, v in value.items()]
+            else:
+                rows.append((key, value))
+        rows.append(("evaluation time", evaluation["time"]))
+
+        title = " Optimised population "
+        text = f"""{"#" * width}\n{title.center(width, " ")}\n\n"""
+        for key, value in rows:
+            shown = f"{value:.4f}" if isinstance(value, float) else f"{value}"
+            text += f"""{f"{key}:":>{pad}} {shown}\n"""
+        text += f"""\n{"Ranking, individual and fitness":>{pad}}\n"""
+        for k in order:
+            text += f"""{f"{k}:":>{pad}} {fitness[k].item():.4f}\n"""
+        text += f"""{"-" * width}\n"""
+        print(text, flush=True)
+        if not write:
+            return
+
+        for k, path in enumerate(population.get_xml_files()):
+            shutil.copy(path, os.path.join(out, f"individual_{k:04d}.xml"))
+        table = pd.DataFrame(parameters)
+        table["fitness"] = fitness.tolist()
+        for key in ("survival", "lin_vel_error", "yaw_rate_error"):
+            table[f"eval_{key}"] = evaluation[key].tolist()
+        table["rank"] = fitness.argsort(descending=True).argsort().tolist()
+        table.to_csv(os.path.join(out, "optimised_designs.csv"), index_label="individual")
+        if final:
+            pd.DataFrame([final]).to_csv(os.path.join(out, "final_design.csv"), index=False)
+        with open(os.path.join(out, "final_results.txt"), "w") as fh:
+            fh.write(text)
 
     def _assign_individuals_to_envs(self) -> list[int]:
         """Round-robin assignment: env_idx → individual_idx."""

@@ -23,9 +23,8 @@ figures recorded in the twentieth, twenty first and twenty second passes of
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 import numpy as np
+from dataclasses import dataclass, field
 
 # Keys of the dump that carry index metadata or a constant of the run rather than a per
 # step series. They are written once and stored flat, so a consumer reads
@@ -45,12 +44,15 @@ METADATA_KEYS = (
     # unbounded default and made the whole saturation family inert.
     "joint_effort_limits_sim",
     "joint_velocity_limits_sim",
+    "joint_saturation_effort",
     "joint_position_limits",
     "joint_soft_position_limits",
     "default_joint_pos",
     "body_masses",
     "step_dt",
     "contact_force_history_length",
+    "sole_normal_link",
+    "action_terms",
     # Which frame each per body vector channel is expressed in. Absent on any dump
     # written before 2026-08-07, under which the three feet channels are world frame.
     "frame_convention",
@@ -179,16 +181,6 @@ class GaitData:
         the frame is a different quantity. Where only the frame is available the caller is
         told so by `has_sole_clearance`, and every dependent record is labelled accordingly.
 
-        HISTORICAL CAUTION, applying to any dump written before the robot profile resolver
-        landed in play.py. That version applied the SD_BRS1 sole table to whatever robot was
-        played, its guard testing a table literal rather than the configured global, so on
-        such a dump the PRESENCE of this channel is not evidence that the robot has a sole,
-        and it must be trusted on SD_BRS1 and read as the frame height on anything else. See
-        section 1.3 of context/gait_metrics.md. A dump written since carries the channel only
-        where the robot's own foot geometry is known, `_ROBOT_PROFILES` at play.py:199 holding
-        a sole support set for the SD_BRS1 and the KScale and a sphere radius for the
-        quadruped, whose clearance is the frame height less that radius exactly. The TRON1
-        still carries no geometry and so still writes no channel.
         """
         if self.feet_sole_clearances is not None:
             return self.feet_sole_clearances

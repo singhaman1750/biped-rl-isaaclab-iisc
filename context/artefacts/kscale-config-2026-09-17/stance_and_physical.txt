@@ -1,0 +1,216 @@
+### kscale_stance_analysis.py --gains configured --control-period 0.01 --action-scale 0.4
+gain set      configured
+URDF          environments/environments/assets/urdf/solefoot/kscale/kscale.urdf
+total mass    20.2814 kg, weight 198.89 N
+nominal pose  base height 0.76630 m
+
+Static stance load, centre of pressure beneath the ankle roll axis
+joint                   tau_2sup  tau_1sup       K  sag_2sup  sag_1sup   effort               verdict
+right_hip_pitch_04         5.776     8.323   200.0     0.029     0.042     84.0                    ok
+right_hip_roll_03          1.659     4.233   250.0     0.007     0.017     42.0                    ok
+right_hip_yaw_03          -0.601    -1.284   100.0     0.006     0.013     42.0                    ok
+right_knee_04              8.308    16.900   300.0     0.028     0.056     84.0                    ok
+right_foot_pitch_02        3.147     6.128   120.0     0.026     0.051     11.9                    ok
+right_foot_roll_02         0.000     0.000   120.0     0.000     0.000     11.9                    ok
+
+Settled configuration under body weight, symmetric double support
+  hip pitch -0.1590  knee 0.5479  ankle pitch -0.2789
+  base height 0.75965 m against a nominal 0.76630 m, sag 6.7 mm
+
+Single support hold torque and gravitational stiffness about each joint axis
+joint                    M_prox  tau_hold   k_grav  effort  sag at K                 verdict
+right_hip_pitch_04        12.30     3.232   -23.66    84.0     0.016                        ok
+right_hip_roll_03         12.82    23.634   -19.66    42.0     0.095                        ok
+right_hip_yaw_03          15.26     4.792     0.55    42.0     0.048                        ok
+right_knee_04             17.65     5.184    30.94    84.0     0.017                        ok
+right_foot_pitch_02       19.74     5.589    83.42    11.9     0.047                        ok
+right_foot_roll_02        19.85    19.710    84.40    11.9     0.164 HOLD EXCEEDS EFFORT LIMIT
+  A positive gravitational stiffness is destabilising, so a joint whose stiffness
+  does not exceed it cannot hold the assembly above it upright at any deflection.
+
+Stance reflected inertia against swing inertia, and the damping each implies
+joint                    I_swing  I_stance   ratio      K      D  z_swing  z_stance  w_stance
+right_hip_pitch_04       1.16161   1.17330    1.01  200.0  21.50    0.705     0.702     13.06
+right_hip_roll_03        1.00422   1.54513    1.54  250.0  28.00    0.884     0.712     12.72
+right_hip_yaw_03         0.03480   0.53437   15.36  100.0   3.50    0.938     0.239     13.68
+right_knee_04            0.12066   1.41283   11.71  300.0  12.00    0.997     0.291     14.57
+right_foot_pitch_02      0.00760   4.70450  618.83  120.0   1.00    0.523     0.021      5.05
+right_foot_roll_02       0.00574   5.15001  897.00  120.0   1.00    0.602     0.020      4.83
+
+Damping derivation, the stance target against the effort limited ceiling
+joint                       K  I_stance   D_z070   qd_p95  D_max_eff      D   qd_sat           binding
+right_hip_pitch_04      200.0    1.1733    21.45    3.019      27.82  21.50     3.91     stance target
+right_hip_roll_03       250.0    1.5451    27.52    0.927      45.31  28.00     1.50     stance target
+right_hip_yaw_03        100.0    0.5344    10.23    5.159       8.14   3.50    12.00      effort limit
+right_knee_04           300.0    1.4128    28.82    5.791      14.51  12.00     7.00      effort limit
+right_foot_pitch_02     120.0    4.7045    33.26    9.561       1.24   1.00    11.90      effort limit
+right_foot_roll_02      120.0    5.1500    34.80    9.592       1.24   1.00    11.90      effort limit
+
+Ankle roll lateral criterion, centre of pressure held at the edge of the sole
+  demand 4.21 Nm, deflection at K = 120.0 is 0.035 rad against a travel of -0.2618 to +0.2618 rad
+  minimum stiffness to stay inside the travel 16.07 Nm/rad
+
+Saturation headroom at an action scale of 0.40 rad, and bandwidth against a Nyquist bound of 314.16 rad/s
+joint                       K  K*scale  tau_2sup      sum  effort  headroom   q_sat  w_stance   w/nyq
+right_hip_pitch_04      200.0    80.00     5.776    85.78    84.0     -2.1%   0.420     13.06   0.042
+right_hip_roll_03       250.0   100.00     1.659   101.66    42.0   -142.0%   0.168     12.72   0.040
+right_hip_yaw_03        100.0    40.00     0.601    40.60    42.0      3.3%   0.420     13.68   0.044
+right_knee_04           300.0   120.00     8.308   128.31    84.0    -52.7%   0.280     14.57   0.046
+right_foot_pitch_02     120.0    48.00     3.147    51.15    11.9   -329.8%   0.099      5.05   0.016
+right_foot_roll_02      120.0    48.00     0.000    48.00    11.9   -303.4%   0.099      4.83   0.015
+
+Feasible stiffness band at an action scale of 0.40 rad, the load floor taken at a sag budget of 0.05 rad
+joint                   K_min_load  K_min_grav   K_auth  K_max_nyq  K_max_noclip      K           verdict
+right_hip_pitch_04           115.5         0.0      8.1   114646.4         195.6  200.0                ok
+right_hip_roll_03             33.2         0.0     59.1    99112.8         100.9  250.0                ok
+right_hip_yaw_03              12.0         0.5     12.0     3434.5         103.5  100.0                ok
+right_knee_04                166.2        30.9     13.0    11908.6         189.2  300.0                ok
+right_foot_pitch_02           62.9        83.4     14.0      750.3          21.9  120.0                ok
+right_foot_roll_02             0.0        84.4     49.3      566.6          29.7  120.0                ok
+  The no clip ceiling is reported as a diagnostic and is not a constraint. Where it
+  falls below a floor the joint clips under a full scale action, which is accepted,
+  a joint unable to hold its stance load failing always rather than occasionally.
+
+Why a stiffness is NOT sized from a logged torque, section 11.1
+joint                   p90 tau    sat      K  dev at K   K@0.05   K@0.10   K@0.20          note
+right_hip_pitch_04        60.34  0.464  200.0     0.302   1206.8    603.4    301.7     SATURATED
+right_hip_roll_03         60.30  0.493  250.0     0.241   1206.1    603.0    301.5     SATURATED
+right_hip_yaw_03          12.13  0.000  100.0     0.121    242.7    121.3     60.7         valid
+right_knee_04             28.11  0.003  300.0     0.094    562.1    281.1    140.5         valid
+right_foot_pitch_02       17.12  0.501  120.0     0.143    342.4    171.2     85.6     SATURATED
+right_foot_roll_02        17.03  0.509  120.0     0.142    340.5    170.3     85.1     SATURATED
+  The K columns are what a disturbance quotient would ask for and are reported as a
+  diagnostic, not a requirement. A saturated joint reports a lower bound on its torque
+  rather than a measurement of it, and at an unsaturated joint the logged torque is
+  dominated by the policy's own commanded offset rather than by anything external, so
+  neither case yields a disturbance. Section 11.1 gives the reconstruction that
+  separates the two and the reason this table decides no gain in this document.
+
+Damping ceilings of section 11.1, the smallest of the four being taken
+joint                       K   stance   effort  swing_cr   integ      D   D_cfg             binding
+right_hip_pitch_04      200.0    21.45    27.82     30.48  200.64  21.45    21.5       stance target
+right_hip_roll_03       250.0    27.52    45.31     31.69  173.46  27.52    28.0       stance target
+right_hip_yaw_03        100.0    10.23     8.14      3.73    6.01   3.73     3.5      swing critical
+right_knee_04           300.0    28.82    14.51     12.03   20.84  12.03    12.0      swing critical
+right_foot_pitch_02     120.0    33.26     1.24      1.91    1.31   1.24     1.0        effort limit
+right_foot_roll_02      120.0    34.80     1.24      1.66    0.99   0.99     1.0   swing integration
+
+Swing mode stability of section 11.1.1, explicit PD at a physics dt of 0.005 s
+joint                    I_swing   b_nom  b_worst  rho_nom  rho_worst  P(diverge)     verdict
+right_hip_pitch_04       1.16161   0.093    0.107   0.9526     0.9449        0.0%      stable
+right_hip_roll_03        1.00422   0.139    0.161   0.9277     0.9157        0.0%      stable
+right_hip_yaw_03         0.03480   0.503    0.582   0.8163     0.8332        0.0%      stable
+right_knee_04            0.12066   0.497    0.576   0.8471     0.8576        0.0%      stable
+right_foot_pitch_02      0.00760   0.658    0.762   0.5851     0.4883        0.0%      stable
+right_foot_roll_02       0.00574   0.871    1.008   0.3593     0.4072        0.0%      stable
+  The stability number b is D dt / I_swing and the mode diverges above 2, oscillating
+  at the integrator's Nyquist frequency above 1. The derivation of section 11.1 holds
+  the worst randomised draw at or below 1, which places the nominal set at 0.86 of it.
+  Worst per joint divergence fraction over the randomisation envelope, 0.0 per cent.
+
+Torque speed derating of section 11.10, DCMotor at saturation_effort = effort_limit
+joint                    qd_p95   v_old   tau_old   v_new   tau_new    gain
+right_hip_pitch_04        3.019    20.0     35.66    40.0     77.66    2.2x
+right_hip_roll_03         0.927    20.0     20.03    40.0     41.03    2.0x
+right_hip_yaw_03          5.159    20.0     15.58    40.0     36.58    2.3x
+right_knee_04             5.791    20.0     29.84    40.0     71.84    2.4x
+right_foot_pitch_02       9.561    10.0      0.26    20.0      6.21   23.8x
+right_foot_roll_02        9.592    10.0      0.24    20.0      6.19   25.5x
+  The old columns are the original limits, half the effort and half the velocity of
+  the doubled set of section 5.2, and the available torque is the four quadrant curve
+  the DCMotor base class applies, falling linearly to zero at the velocity limit.
+
+### kscale_physical_analysis.py
+URDF environments/environments/assets/urdf/solefoot/kscale/kscale.urdf
+root assy_formfg___kd_b_102b_torso_btm
+
+total mass 20.281 kg over 13 links, torso 4.319 kg
+
+============================================================================================
+STANDING GEOMETRY
+============================================================================================
+
+  zero pose
+    torso origin above the lowest point : 0.7751 m
+    lowest point of each foot           : -0.7751, -0.7751
+    foot separation vector              : [+0.0001, -0.2520, +0.0000]
+    foot separation, lateral component  : 0.2520 m
+    ankle origin height                 : 0.0430 m
+
+  nominal pose
+    torso origin above the lowest point : 0.7663 m
+    lowest point of each foot           : -0.7663, -0.7663
+    foot separation vector              : [+0.0001, -0.1992, -0.0000]
+    foot separation, lateral component  : 0.1992 m
+    ankle origin height                 : 0.0430 m
+
+    hip pitch origin, root frame        : [+0.0246, -0.0550, -0.0595]
+    hip lateral half separation         : 0.0550 m
+    hip to ankle span at the nominal pose: 0.6638 m
+
+============================================================================================
+SEGMENT LENGTHS, from the joint origin offsets of one leg
+============================================================================================
+  right_hip_pitch_04         offset from its parent 0.08469 m
+  right_hip_roll_03          offset from its parent 0.08244 m
+  right_hip_yaw_03           offset from its parent 0.14423 m
+  right_knee_04              offset from its parent 0.21417 m
+  right_foot_pitch_02        offset from its parent 0.29051 m
+  right_foot_roll_02         offset from its parent 0.04243 m
+
+============================================================================================
+EFFECTIVE INERTIA AND ACTUATOR GAINS, at the nominal pose
+============================================================================================
+control period 0.02 s, Nyquist frequency 157.08 rad/s, target zeta 0.7
+inertia includes the armature, which PhysX adds to the mass matrix diagonal
+
+  joint                    I_link    arm    I_eff   tau_g      K      D     w_n   zeta     K_min      K*     D*   w_n*  zeta*
+  ---------------------------------------------------------------------------------------------------------------------------
+  right_hip_pitch_04      1.15161  0.010  1.16161    3.23  200.0   21.5   13.12   0.71      21.5   196.3  21.14   13.0   0.70
+  right_hip_roll_03       0.99422  0.010  1.00422    0.91  250.0   28.0   15.78   0.88       6.1   147.0  17.01   12.1   0.70
+  right_hip_yaw_03        0.02480  0.010  0.03480    0.08  100.0    3.5   53.61   0.94       0.5    21.7   1.22   25.0   0.70
+  right_knee_04           0.10566  0.015  0.12066    0.28  300.0   12.0   49.86   1.00       1.9    24.7   2.42   14.3   0.70
+  right_foot_pitch_02     0.00260  0.005  0.00760    0.17  120.0    1.0  125.64   0.52       1.1     7.0   0.32   30.4   0.70
+  right_foot_roll_02      0.00074  0.005  0.00574    0.00  120.0    1.0  144.57   0.60       0.0     5.0   0.24   29.5   0.70
+
+  I in kg m^2, tau_g in Nm, K in Nm/rad, D in Nms/rad, w_n in rad/s. Starred is proposed.
+  tau_g is the gravitational torque of the distal subtree about the axis at this pose.
+  K_min is the stiffness holding that load within the 0.15 rad error budget, capped at the effort limit.
+
+  Proposed configuration block:
+    hip_pitch    stiffness    196.3   damping   21.14
+    hip_roll     stiffness    147.0   damping   17.01
+    hip_yaw      stiffness     21.7   damping    1.22
+    knee         stiffness     24.7   damping    2.42
+    foot_pitch   stiffness      7.0   damping    0.32
+    foot_roll    stiffness      5.0   damping    0.24
+
+============================================================================================
+SYMMETRY FLIP SET, reflection in the x and z plane, M = diag(1, -1, 1)
+============================================================================================
+
+  joint                            left world axis                    mirrored            right world axis  flip
+  hip_pitch_04            [-0.000, -1.000, -0.000]    [+0.000, -1.000, +0.000]    [-0.000, +1.000, -0.000]  YES
+  hip_roll_03             [+1.000, -0.000, +0.000]    [-1.000, -0.000, -0.000]    [+1.000, -0.000, +0.000]  YES
+  hip_yaw_03              [-0.000, -0.000, +1.000]    [+0.000, -0.000, -1.000]    [-0.000, +0.000, +1.000]  YES
+  knee_04                 [+0.000, +1.000, +0.000]    [-0.000, +1.000, -0.000]    [+0.000, +1.000, -0.000]  no
+  foot_pitch_02           [+0.000, +1.000, +0.000]    [-0.000, +1.000, -0.000]    [+0.000, +1.000, -0.000]  no
+  foot_roll_02            [-1.000, +0.000, -0.000]    [+1.000, +0.000, +0.000]    [-1.000, +0.000, -0.000]  YES
+
+============================================================================================
+COLLISION AUDIT, axis aligned bounding boxes
+============================================================================================
+
+  zero pose
+    lowest point over all links : -0.7751 m in the root frame
+    overlap assy_formfg___kd_b_102b_torso_btm / kd_d_201r_6061, extent 0.116 x 0.003 x 0.089 m
+    overlap assy_formfg___kd_b_102b_torso_btm / rs03, extent 0.116 x 0.003 x 0.089 m
+    overlap foot_6061 / kd_d_401r_6061, extent 0.096 x 0.085 x 0.035 m
+    overlap foot_6061_2 / kd_d_401l_6061, extent 0.096 x 0.085 x 0.035 m
+
+  nominal pose
+    lowest point over all links : -0.7663 m in the root frame
+    overlap assy_formfg___kd_b_102b_torso_btm / kd_d_201r_6061, extent 0.102 x 0.009 x 0.095 m
+    overlap assy_formfg___kd_b_102b_torso_btm / rs03, extent 0.102 x 0.009 x 0.095 m
+    overlap foot_6061 / kd_d_401r_6061, extent 0.164 x 0.085 x 0.036 m
+    overlap foot_6061_2 / kd_d_401l_6061, extent 0.164 x 0.085 x 0.036 m

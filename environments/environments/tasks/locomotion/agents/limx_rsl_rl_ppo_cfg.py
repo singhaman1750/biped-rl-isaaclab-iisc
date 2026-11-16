@@ -12,6 +12,7 @@ from environments.tasks.locomotion.mdp.symmetry.brs import compute_symmetric_sta
 from environments.tasks.locomotion.mdp.symmetry.kscale import (
     compute_symmetric_states as kscale_compute_symmetric_states,
 )
+from environments.tasks.locomotion.mdp.symmetry.tron1 import compute_symmetric_states as tron1_compute_symmetric_states
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
@@ -121,6 +122,12 @@ class SF_TRON1AFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
         # obs_history_len=10,
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=True,
+            data_augmentation_func=tron1_compute_symmetric_states,
+            mirror_loss_coeff=0.5,
+        ),
     )
     encoder = EncoderCfg(
         output_detach=True,
@@ -153,19 +160,28 @@ class SFCoptBaseRunnerCfg(SF_TRON1AFlatPPORunnerCfg):
     )
 
 
+@configclass
+class SFCoptRunnerCfg(SFCoptBaseRunnerCfg):
+    """The true morphology read by the actor directly, no estimator, for CoptActorCritic."""
+
+    experiment_name: str = "copt_direct"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "morphologyObs"],
+        "critic": ["critic"],
+    }
+
 
 @configclass
-class SFCoptMorphologyRunnerCfg(SFCoptBaseRunnerCfg):
-    """Experiment 1, morphology inferred from proprioceptive history alone."""
+class SFCoptMorALRunnerCfg(SFCoptBaseRunnerCfg):
+    """Experiment 1, morphology inferred from proprioceptive history alone, for CoptMorALActorCritic."""
 
     experiment_name: str = "copt_moral"
     obs_groups: dict[str, list[str]] = {
         "policy": ["policy"],
         "critic": ["critic"],
-        "encoderIn": ["historyObs"],
+        "encoderIn": ["policy"],
         "gtEncoderOut": ["morphologyObs"],
     }
-
 
 
 @configclass
@@ -179,7 +195,6 @@ class SFCoptMorphologyFromDynamicsRunnerCfg(SFCoptBaseRunnerCfg):
         "encoderIn": ["historyObs", "privilegedDynamicsObs"],
         "gtEncoderOut": ["morphologyObs"],
     }
-
 
 
 @configclass

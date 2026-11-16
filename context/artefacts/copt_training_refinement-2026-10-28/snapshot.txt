@@ -1,0 +1,5 @@
+snapshot 2026-10-28T07:59Z
+copt_moral/2026-10-23_08-31-17 32 generations, last row 18799, checkpoints 20
+copt_moral/2026-10-26_04-55-55 34 generations, last row 19599, checkpoints 20
+quadruped_copt/2026-10-23_10-36-49 26 generations, last row 16399, checkpoints 17
+quadruped_copt/2026-10-26_04-55-55 29 generations, last row 17599, checkpoints 18

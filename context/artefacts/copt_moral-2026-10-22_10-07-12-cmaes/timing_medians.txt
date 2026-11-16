@@ -1,0 +1,5 @@
+Perf/collection time: median 3.90 s over 5515 records from iteration 6000
+Perf/learning_time: median 1.68 s over 5515 records from iteration 6000
+CMAES/eval_time: median 52.95 s over 13 records from iteration 6000
+CMAES/population_time: median 75.55 s over 13 records from iteration 6000
+starting widths: linear 0.4000, angular 0.4000

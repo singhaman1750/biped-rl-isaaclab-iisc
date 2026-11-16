@@ -1,0 +1,37 @@
+designs 2800 xml missing 0 mass mismatches vs CSV total_mass 0
+designs with overlapping bodies at the nominal pose: 19
+designs with survival < 0.5: 31 of which overlapping: 19
+overlapping designs with survival >= 0.5: 0
+
+gen ind  abad | hip | knee | ankle                       survival fitness  pairs
+ 15  18  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | Unitree-A1         0.000    -0.14  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 15  41  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | TMotor-AK10-9      0.000    -0.67  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 17  21  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | TMotor-AK80-9      0.000    -0.12  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 18  51  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | TRON1-ANKLE        0.000    -0.10  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 20  20  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.09  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 24  11  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 28  25  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | TRON1-HIP          0.000    -0.73  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 30  61  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 32  31  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | HEBI-X8-16         0.000    -0.20  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 32  53  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 34   1  TMotor-AK10-9 | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 36  23  ODrive-D5065-DD | ODrive-D5065-DD | TRON1-KNEE | Bota-Roboticer-50  0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 38  10  TMotor-AK10-9 | ODrive-D5065-DD | TRON1-KNEE | Bota-Roboticer-50  0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 40  36  TMotor-AK10-9 | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 43  45  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 43  58  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 44  37  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 45  14  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.07  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 46   9  TRON1-ABAD | ODrive-D5065-DD | TRON1-KNEE | MIT-Cheetah-3      0.000    -0.08  [('abad_L_act', 'knee_L_act'), ('abad_R_act', 'knee_R_act')]
+ 15   8  TRON1-ABAD | TRON1-HIP | HEBI-X8-16 | TMotor-AK80-6      0.487    58.28  (no overlap) []
+ 15  13  ANYdrive-3 | TRON1-HIP | ANYdrive-3 | TRON1-ABAD         0.390    33.61  (no overlap) []
+ 15  24  TMotor-AK10-9 | Unitree-A1 | TRON1-ANKLE | TRON1-ABAD         0.282    27.71  (no overlap) []
+ 15  46  HEBI-X8-16 | HEBI-X8-16 | TRON1-KNEE | TRON1-HIP          0.405    29.02  (no overlap) []
+ 16  30  MIT-Cheetah-3 | TMotor-AK80-6 | TRON1-KNEE | TRON1-HIP          0.338    23.07  (no overlap) []
+ 29  47  TRON1-ABAD | TRON1-HIP | Unitree-A1 | TMotor-AK10-9      0.000    -0.40  (no overlap) []
+ 44  75  ANYdrive-3 | TRON1-HIP | HEBI-X8-16 | MIT-Cheetah-3      0.415    44.71  (no overlap) []
+ 47   0  TRON1-ABAD | TRON1-HIP | TRON1-KNEE | TMotor-AK10-9      0.340    -4.36  (no overlap) []
+ 48   5  TRON1-ABAD | TRON1-HIP | TRON1-KNEE | TMotor-AK10-9      0.000    -1.91  (no overlap) []
+ 48  10  TRON1-ABAD | TRON1-HIP | TRON1-KNEE | TRON1-ABAD         0.000    -2.97  (no overlap) []
+ 48  21  TRON1-ABAD | TRON1-HIP | TRON1-KNEE | TRON1-ABAD         0.000    -3.00  (no overlap) []
+ 48  77  TRON1-ABAD | TRON1-HIP | Unitree-B1 | TRON1-HIP          0.000    -1.05  (no overlap) []

@@ -60,6 +60,8 @@ class CoptPPO(PPO):
         symmetry_cfg: dict | None = None,
         # Distributed training parameters
         multi_gpu_cfg: dict | None = None,
+        # 1.0 reproduces the unweighted sum every run to date trained with.
+        estimator_loss_coef: float = 1.0,
     ) -> None:
         super().__init__(
             policy,
@@ -82,6 +84,7 @@ class CoptPPO(PPO):
             multi_gpu_cfg,
         )
         self.init_learning_rate = learning_rate
+        self.estimator_loss_coef = estimator_loss_coef
         self.num_individuals = num_individuals
         num_envs = len(env_to_individual)
         self._ind_env_mask: list[torch.Tensor] = [
@@ -250,16 +253,20 @@ class CoptPPO(PPO):
 
             # Estimator loss against the configured ground truth set, so that a
             # change of target is a change of obs_groups["gtEncoderOut"] alone.
-            model_estimation_loss = torch.nn.functional.mse_loss(
-                predicted_model_info,
-                self.policy.get_estimator_target(obs_batch).detach(),
-            )
+            if predicted_model_info is None:
+                # An actor critic without an estimator, CoptActorCritic, adds no loss.
+                model_estimation_loss = torch.zeros((), device=self.device)
+            else:
+                model_estimation_loss = torch.nn.functional.mse_loss(
+                    predicted_model_info,
+                    self.policy.get_estimator_target(obs_batch).detach(),
+                )
 
             loss = (
                 surrogate_loss
                 + self.value_loss_coef * value_loss
                 - self.entropy_coef * entropy_batch.mean()
-                + model_estimation_loss
+                + self.estimator_loss_coef * model_estimation_loss
             )
 
             # Symmetry loss, identical to the base PPO
@@ -348,4 +355,7 @@ class CoptPPO(PPO):
 
     def reinit_learning_rate(self):
         self.learning_rate = self.init_learning_rate
+        # As CoptOnPolicyRunner.load writes it, a no-op under both schedules today.
+        for group in self.optimizer.param_groups:
+            group["lr"] = self.learning_rate
 

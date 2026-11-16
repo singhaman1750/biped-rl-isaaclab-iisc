@@ -3,6 +3,7 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import copy
 import pickle
 import sys
 import yaml
@@ -54,6 +55,8 @@ parser.add_argument(
     default=None,
     help="Relative path to checkpoint file.",
 )
+# The design search and the co-optimisation loop are configured by co_optimisation.config.CMAESCfg,
+# one subclass per robot, rather than by arguments. See plans/copt_training_refinement.md.
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -79,7 +82,7 @@ import os
 import torch
 from datetime import datetime
 
-from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper
+from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper, PausableRecordVideo
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -90,21 +93,22 @@ from isaaclab.envs import (
 from isaaclab.utils.dict import print_dict
 from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
-from rsl_rl.runners import DistillationRunner, OnPolicyRunner
+from rsl_rl_debug.runners import DebugOnPolicyRunner
 
 from co_optimisation.algorithms import CoptPPO
+from co_optimisation.config import CMAES_CFG_BY_FAMILY, CMAESCfg, without_termination
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
-    CMAESDesignGenerator,
+    CatCMAESDesignGenerator,
+    CatOnlyCMAESDesignGenerator,
     GrowingDesignDistCMAESDesignGenerator,
-    RandomDesignGenerator,
 )
 
 # Import extensions to set up environment tasks
 from environments.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
 from himloco.runners import HIMOnPolicyRunner
-from rsl_rl_debug.runners import DebugOnPolicyRunner
+from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -123,6 +127,25 @@ def dump_yaml(filename, data, sort_keys=False):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w") as f:
         yaml.dump(data, f, sort_keys=sort_keys)
+
+
+def _cmaes_cfg(family: str, agent_cfg, log_root_path: str) -> CMAESCfg:
+    """The run's co-optimisation configuration, restored from params/cmaes.pkl of a resumed run.
+
+    A resumed run begun before params/cmaes.pkl existed continues as it was launched, with the
+    robot's configuration less the tolerances and the fine-tune, which those runs never had.
+    """
+    if agent_cfg.resume:
+        resume_path = args_cli.checkpoint_path or get_checkpoint_path(
+            log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint
+        )
+        saved = os.path.join(os.path.dirname(resume_path), "params", "cmaes.pkl")
+        if os.path.exists(saved):
+            with open(saved, "rb") as f:
+                return pickle.load(f)
+        print(f"[WARNING] No params/cmaes.pkl beside {resume_path}, resuming without CMA-ES tolerances or fine-tune.")
+        return without_termination(CMAES_CFG_BY_FAMILY[family]())
+    return CMAES_CFG_BY_FAMILY[family]()
 
 
 # @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
@@ -183,7 +206,7 @@ def main():
         }
         print("[INFO] Recording videos during training.")
         # print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        env = PausableRecordVideo(env, **video_kwargs)
 
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
@@ -199,49 +222,111 @@ def main():
         # attribute a throughput difference to the environment and MDP stack rather than
         # to the policy architecture. See context/go1_quadruped_throughput.md.
         runner_cls = DebugOnPolicyRunner
+        agent_cfg.policy.class_name = "DebugActorCritic"
     runner = None
-    if args_cli.policy_type == "COPT":
+    _COPT_ACTOR_CRITIC = {"COPT": "CoptActorCritic", "COPT-MORAL": "CoptMorALActorCritic"}
+    if args_cli.policy_type in _COPT_ACTOR_CRITIC:
 
-        _base_urdf = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "/workspace/isaaclab/biped/environments/environments/assets/urdf/solefoot/tron1/base_robot.urdf",
+        # The family selects which of the vendored generator's two packages supplies
+        # the geometry, the mass model and the actuator catalogue. Its own
+        # variable_params.json is the baseline, and it reproduces the donor robot.
+        # An unknown task is refused here, its failure otherwise being an
+        # unresolvable articulation root deep in the importer's output.
+        _FAMILY_BY_TASK = {
+            "Isaac-Quadruped-Copt": "quadruped",
+            "Isaac-Limx-SF-Copt": "biped",
+        }
+        _family = next(
+            (fam for key, fam in _FAMILY_BY_TASK.items() if key in args_cli.task), None
         )
-        _num_individuals = 256
+        if _family is None:
+            raise ValueError(
+                f"Task {args_cli.task!r} maps to no design generator family. "
+                f"Known keys: {sorted(_FAMILY_BY_TASK)}."
+            )
+        cmaes_cfg = _cmaes_cfg(_family, agent_cfg, log_root_path)
+        _num_individuals = cmaes_cfg.num_individuals
         # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
         # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
-        ea_update_interval = 480
-        ea_late_start = 12000
-        param_ranges = {
-            "thigh_length_scale": (0.75, 1.25),
-            "shank_length_scale": (0.75, 1.25),
-        }
-        design_generator = GrowingDesignDistCMAESDesignGenerator(
-            base_urdf_path=_base_urdf,
+        ea_update_interval = cmaes_cfg.ea_update_interval
+        ea_late_start = cmaes_cfg.ea_late_start
+        generator_kwargs = dict(
+            family=_family,
             num_individuals=_num_individuals,
-            param_ranges=param_ranges,
+            param_ranges=dict(cmaes_cfg.param_ranges),
             output_dir=os.path.join(log_dir, "copt_usds"),
-            sigma0=0.25,
-            seed=42,
+            filters=list(cmaes_cfg.filters),
+            filter_params=dict(cmaes_cfg.filter_params),
+        )
+        late_start_pop_size = env.num_envs // cmaes_cfg.late_start_prior_divisor
+        tolerances = dict(tolx=cmaes_cfg.tolx, tolfun=cmaes_cfg.tolfun, tolfunhist=cmaes_cfg.tolfunhist)
+        # The co-optimisation type, see CMAESCfg.design_search.
+        generator_cls = {
+            "leg_geometry": GrowingDesignDistCMAESDesignGenerator,
+            "actuator_leg_geometry": CatCMAESDesignGenerator,
+            "actuator": CatOnlyCMAESDesignGenerator,
+        }.get(cmaes_cfg.design_search)
+        if generator_cls is None:
+            raise ValueError(f"design_search {cmaes_cfg.design_search!r} is none of 'leg_geometry', "
+                             "'actuator_leg_geometry' and 'actuator'")
+        # Every type stops on the tolerances, the categorical ones on CatCMAESDesignGenerator._stop_reasons.
+        termination = dict(
+            **tolerances,
+            final_population="mean" if cmaes_cfg.finetune_iterations is not None else "last",
+            tolcat=cmaes_cfg.tolcat,
+        )
+        design_generator = generator_cls(
+            **generator_kwargs,
+            sigma0=cmaes_cfg.sigma0,
+            seed=cmaes_cfg.seed,
             late_start=True,
             late_start_it=int(ea_late_start / ea_update_interval),
-            late_start_prior_pop_size=int(env.num_envs / 4),
-            max_cma_iter=(agent_cfg.max_iterations - ea_late_start)
-            / ea_update_interval,
+            late_start_prior_pop_size=late_start_pop_size,
+            max_cma_iter=(cmaes_cfg.max_cma_iter if cmaes_cfg.max_cma_iter is not None
+                          else (agent_cfg.max_iterations - ea_late_start) / ea_update_interval),
+            **termination,
         )
-        agent_cfg.policy.class_name = "CoptActorCritic"
+        population_sizes = (late_start_pop_size, _num_individuals)
+        if cmaes_cfg.shank_foot_gap is not None:
+            design_generator.builder_kwargs = {"shank_foot_gap": cmaes_cfg.shank_foot_gap}
+        # Environment i runs design i % population size and fitness is averaged per
+        # design, so a population that does not divide the scene is ranked on
+        # unequal evidence.
+        for n in population_sizes:
+            if env.num_envs % n:
+                raise ValueError(
+                    f"--num_envs {env.num_envs} is not a multiple of the {n} designs a "
+                    f"generation of design_search {cmaes_cfg.design_search} carries."
+                )
+        agent_cfg.policy.class_name = _COPT_ACTOR_CRITIC[args_cli.policy_type]
         agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
+        # 1.0 is the unweighted sum every run to date trained with.
+        agent_cfg_dict["algorithm"]["estimator_loss_coef"] = 1.0
         agent_cfg_dict["copt"] = {
             "ea_update_interval": ea_update_interval,
             "ea_late_start": ea_late_start,
             "num_individuals": _num_individuals,
-            "randomise_before_late_start": True,
-            "min_fitness_episode_length": 25,
+            "randomise_before_late_start": cmaes_cfg.randomise_before_late_start,
+            "reinit_lr_each_generation": cmaes_cfg.reinit_lr_each_generation,
+            "eval_duration_s": cmaes_cfg.eval_duration_s,
+            "eval_seed": cmaes_cfg.eval_seed,
+            # The tolerances are read by the generator, recorded here so that copt_agent.yaml names them.
+            "tolx": cmaes_cfg.tolx,
+            "tolfun": cmaes_cfg.tolfun,
+            "tolfunhist": cmaes_cfg.tolfunhist,
+            "tolcat": cmaes_cfg.tolcat,
+            "finetune_iterations": cmaes_cfg.finetune_iterations,
+            # The whole configuration, recorded so that copt_agent.yaml carries it beside params/cmaes.yaml.
+            "cmaes": cmaes_cfg.to_dict(),
         }
+        if cmaes_cfg.shank_foot_gap is not None:
+            # Read by nothing in the runner, recorded so that copt_agent.yaml names the geometry.
+            agent_cfg_dict["copt"]["shank_foot_gap"] = cmaes_cfg.shank_foot_gap
         runner = CoptOnPolicyRunner(
             env,
             design_generator,
-            agent_cfg_dict,
+            copy.deepcopy(agent_cfg_dict),
             log_dir=log_dir,
             device=agent_cfg.device,
         )
@@ -273,6 +358,11 @@ def main():
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
+    if args_cli.policy_type in _COPT_ACTOR_CRITIC:
+        # agent.yaml serialises the configclass, without the copt block the runner receives.
+        dump_yaml(os.path.join(log_dir, "params", "copt_agent.yaml"), agent_cfg_dict)
+        dump_yaml(os.path.join(log_dir, "params", "cmaes.yaml"), cmaes_cfg)
+        dump_pickle(os.path.join(log_dir, "params", "cmaes.pkl"), cmaes_cfg)
 
     # run training
     runner.learn(

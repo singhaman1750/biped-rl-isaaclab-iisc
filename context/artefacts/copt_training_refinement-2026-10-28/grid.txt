@@ -1,0 +1,72 @@
+
+==== copt_moral/2026-10-23_08-31-17
+late per coordinate normalised std (median of last 8): {'thigh_length_scale': 0.0419, 'shank_length_scale': 0.0362, 'thigh_bend_offset': 0.0191, 'knee_bend_offset': 0.0697}
+binding coordinate per gen (last 8): ['knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset']
+distinct (thigh, shank, pairs) lengths per gen, last 8: [(4, 4, 10), (4, 4, 10), (4, 4, 13), (5, 5, 14), (4, 5, 12), (3, 4, 9), (4, 4, 10), (3, 3, 8)]
+distinct per gen, first 4: [(14, 17, 60), (13, 17, 59), (11, 14, 46), (9, 11, 42)]
+late evaluation noise std 0.332
+  tolx 0.02: first gen None (it None)
+  tolx 0.03: first gen None (it None)
+  tolx 0.04: first gen None (it None)
+  tolx 0.05: first gen None (it None)
+  tolfunhist 0.25: first gen None (it None)
+  tolfunhist 0.3: first gen None (it None)
+  tolfunhist 0.4: first gen None (it None)
+  tolfunhist 0.5: first gen None (it None)
+  tolfunhist 0.75: first gen 37 (it 15199)
+  tolfunhist 1.0: first gen 37 (it 15199)
+  tolfunhist 1.25: first gen 36 (it 14799)
+
+==== copt_moral/2026-10-26_04-55-55
+late per coordinate normalised std (median of last 8): {'thigh_length_scale': 0.0214, 'shank_length_scale': 0.0067, 'thigh_bend_offset': 0.0219, 'knee_bend_offset': 0.033}
+binding coordinate per gen (last 8): ['knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset', 'knee_bend_offset']
+distinct (thigh, shank, pairs) lengths per gen, last 8: [(3, 2, 5), (3, 2, 5), (3, 2, 5), (3, 2, 5), (3, 2, 5), (2, 2, 3), (3, 2, 4), (3, 2, 4)]
+distinct per gen, first 4: [(14, 16, 70), (14, 16, 69), (13, 15, 62), (12, 15, 52)]
+late evaluation noise std 0.289
+  tolx 0.02: first gen None (it None)
+  tolx 0.03: first gen 43 (it 17599)
+  tolx 0.04: first gen 33 (it 13599)
+  tolx 0.05: first gen 32 (it 13199)
+  tolfunhist 0.25: first gen None (it None)
+  tolfunhist 0.3: first gen None (it None)
+  tolfunhist 0.4: first gen None (it None)
+  tolfunhist 0.5: first gen None (it None)
+  tolfunhist 0.75: first gen 45 (it 18399)
+  tolfunhist 1.0: first gen 45 (it 18399)
+  tolfunhist 1.25: first gen 39 (it 15999)
+
+==== quadruped_copt/2026-10-23_10-36-49
+late per coordinate normalised std (median of last 8): {'thigh_length_scale': 0.0361, 'shank_length_scale': 0.0474, 'thigh_bend_offset': 0.0608, 'knee_bend_offset': 0.0241}
+binding coordinate per gen (last 8): ['thigh_bend_offset', 'thigh_bend_offset', 'thigh_bend_offset', 'thigh_bend_offset', 'thigh_bend_offset', 'thigh_bend_offset', 'thigh_bend_offset', 'thigh_bend_offset']
+distinct (thigh, shank, pairs) lengths per gen, last 8: [(2, 2, 4), (2, 2, 3), (1, 2, 2), (2, 2, 4), (2, 2, 3), (2, 2, 3), (1, 1, 1), (1, 1, 1)]
+distinct per gen, first 4: [(12, 12, 46), (12, 12, 59), (10, 9, 50), (10, 10, 48)]
+late evaluation noise std 0.101
+  tolx 0.02: first gen None (it None)
+  tolx 0.03: first gen None (it None)
+  tolx 0.04: first gen 40 (it 16399)
+  tolx 0.05: first gen 38 (it 15599)
+  tolfunhist 0.25: first gen None (it None)
+  tolfunhist 0.3: first gen None (it None)
+  tolfunhist 0.4: first gen None (it None)
+  tolfunhist 0.5: first gen 35 (it 14399)
+  tolfunhist 0.75: first gen 32 (it 13199)
+  tolfunhist 1.0: first gen 30 (it 12399)
+  tolfunhist 1.25: first gen 29 (it 11999)
+
+==== quadruped_copt/2026-10-26_04-55-55
+late per coordinate normalised std (median of last 8): {'thigh_length_scale': 0.0095, 'shank_length_scale': 0.0159, 'thigh_bend_offset': 0.0085, 'knee_bend_offset': 0.0086}
+binding coordinate per gen (last 8): ['shank_length_scale', 'shank_length_scale', 'shank_length_scale', 'shank_length_scale', 'shank_length_scale', 'shank_length_scale', 'shank_length_scale', 'shank_length_scale']
+distinct (thigh, shank, pairs) lengths per gen, last 8: [(1, 1, 1), (1, 1, 1), (1, 1, 1), (1, 1, 1), (1, 1, 1), (1, 1, 1), (1, 1, 1), (1, 1, 1)]
+distinct per gen, first 4: [(10, 10, 59), (12, 10, 54), (11, 10, 47), (10, 11, 46)]
+late evaluation noise std 0.084
+  tolx 0.02: first gen 35 (it 14399)
+  tolx 0.03: first gen 34 (it 13999)
+  tolx 0.04: first gen 29 (it 11999)
+  tolx 0.05: first gen 27 (it 11199)
+  tolfunhist 0.25: first gen 42 (it 17199)
+  tolfunhist 0.3: first gen 39 (it 15999)
+  tolfunhist 0.4: first gen 39 (it 15999)
+  tolfunhist 0.5: first gen 34 (it 13999)
+  tolfunhist 0.75: first gen 29 (it 11999)
+  tolfunhist 1.0: first gen 27 (it 11199)
+  tolfunhist 1.25: first gen 26 (it 10799)

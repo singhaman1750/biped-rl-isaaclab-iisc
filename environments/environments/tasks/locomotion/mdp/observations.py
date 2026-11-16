@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -17,6 +18,8 @@ from isaaclab.sensors import (
     RayCasterCamera,
     TiledCamera,
 )
+from isaaclab.sim.utils.stage import get_current_stage
+from pxr import Usd, UsdPhysics
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
@@ -54,7 +57,8 @@ def robot_mass(
     """mass of the robot"""
     asset: Articulation = env.scene[asset_cfg.name]
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    return asset.data.default_mass.to(device)
+    # body_ids is slice(None) for a term that names no bodies.
+    return asset.data.default_mass[:, asset_cfg.body_ids].to(device)
 
 
 def robot_inertia(
@@ -63,7 +67,7 @@ def robot_inertia(
     """inertia of the robot"""
     asset: Articulation = env.scene[asset_cfg.name]
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    inertia_tensor = asset.data.default_inertia.to(device)
+    inertia_tensor = asset.data.default_inertia[:, asset_cfg.body_ids].to(device)
     return inertia_tensor.view(inertia_tensor.shape[0], -1)
 
 
@@ -267,3 +271,57 @@ class robot_link_lengths(ManagerTermBase):
             self._cache = delta.norm(dim=-1).clone()
             torch.set_printoptions(precision=10)
         return self._cache
+
+
+class robot_nominal_pose(ManagerTermBase):
+    """The fold of each named body about +y against its parent at zero joint position, (num_envs, num_bodies).
+
+    The co-optimisation documents fold the leg in the body frames (``pose_frames`` of
+    both design_generator builders), so ``default_joint_pos`` is zero for every design
+    and the nominal pose lives in the joint frames alone. Neither ``ArticulationData``
+    nor the PhysX articulation view exposes a joint frame, so the fold is read on the
+    stage from each body's incoming joint as ``localRot0 * localRot1^-1``, the
+    importer authoring ``localRot0`` as the body quat composed with ``localRot1``
+    (MjcfImporter.cpp:1341-1366). The read runs whenever the articulation has been
+    re-initialised, which a respawn and an in place swap both do, since either may
+    change the frames.
+    """
+
+    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self._view = None
+        self._fold: torch.Tensor | None = None
+
+    def __call__(self, env: ManagerBasedEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+        asset: Articulation = env.scene[asset_cfg.name]
+        if self._view is not asset.root_physx_view:
+            self._fold = self._read(env, asset, asset_cfg)
+            self._view = asset.root_physx_view
+        return self._fold
+
+    @staticmethod
+    def _read(env: ManagerBasedEnv, asset: Articulation, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+        stage = get_current_stage()
+        ids = asset_cfg.body_ids
+        bodies = asset.body_names[ids] if isinstance(ids, slice) else [asset.body_names[i] for i in ids]
+        rel = asset.cfg.prim_path[len(env.scene.env_regex_ns):]
+        root = stage.GetPrimAtPath(env.scene.env_prim_paths[0] + rel)
+        joints = {}
+        for prim in Usd.PrimRange(root):
+            if prim.IsA(UsdPhysics.Joint):
+                targets = UsdPhysics.Joint(prim).GetBody1Rel().GetTargets()
+                if targets and targets[0].name in bodies:
+                    joints[targets[0].name] = prim.GetPath().MakeRelativePath(root.GetPath()).pathString
+        missing = [b for b in bodies if b not in joints]
+        if missing:
+            raise ValueError(f"no joint under {root.GetPath()} has {missing} as its child body")
+        fold = torch.empty(env.num_envs, len(bodies), dtype=torch.float64)
+        for i, env_path in enumerate(env.scene.env_prim_paths):
+            for k, body in enumerate(bodies):
+                joint = stage.GetPrimAtPath(f"{env_path}{rel}/{joints[body]}")
+                q = joint.GetAttribute("physics:localRot0").Get() * joint.GetAttribute("physics:localRot1").Get().GetInverse()
+                x, y, z = q.GetImaginary()
+                if max(abs(x), abs(z)) > 1e-4:
+                    raise ValueError(f"{joint.GetPath()} folds about an axis other than y, {q}")
+                fold[i, k] = math.remainder(2.0 * math.atan2(y, q.GetReal()), 2.0 * math.pi)
+        return fold.to(device=env.device, dtype=torch.float32)

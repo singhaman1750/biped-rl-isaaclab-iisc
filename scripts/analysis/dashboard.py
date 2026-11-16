@@ -1,11 +1,11 @@
 import argparse
 import glob
+import numpy as np
 import os
 import re
 from dataclasses import dataclass
 
 import dash
-import numpy as np
 import pandas as pd
 import plotly.colors as pcolors
 import plotly.graph_objects as go
@@ -53,8 +53,8 @@ class RobotProfile:
     feet_names: tuple = ()
     # Peak of the raised cosine clearance reference, which is the gait command's
     # swing_height read at mdp/rewards.py:495. None where the robot declares no gait
-    # command, in which case its dump carries no feet_sole_clearances either, play.py
-    # gating that channel on the sole table at play.py:431.
+    # command. Its dump still carries feet_sole_clearances since 2026-10-21, play.py
+    # measuring a sole table where the robot has one and a foot sphere otherwise.
     sole_clearance_target: float = None
     contact_force_threshold: float = 1.0
 
@@ -90,11 +90,12 @@ _TRON_JOINT_NAMES = (
     "knee_L_Joint", "knee_R_Joint", "ankle_L_Joint", "ankle_R_Joint",
 )
 
-# The feet as cfg/SF/limx_base_env_cfg.py:1203 resolves them. NOTE that play.py:176
-# resolves the wider "ankle_.*", which also matches ankle_[LR]_actuator_Link, so a TRON1
-# dump records FOUR feet against these two. The feet windows follow the recorded names,
-# and this list stands only for a dump that records none.
-_TRON_FEET_NAMES = ("ankle_L_Link", "ankle_R_Link")
+# The feet as cfg/SF/limx_base_env_cfg.py resolves them. Corrected 2026-09-25, when
+# the TRON1 moved onto the emitted MuJoCo asset: the four body resolution this comment
+# recorded, under which "ankle_.*" also matched ankle_[LR]_actuator_Link and a dump
+# therefore recorded FOUR feet against these two, is repaired, every foot term now
+# resolving "foot_.*_Link". A dump written before that date records the old four names.
+_TRON_FEET_NAMES = ("foot_L_Link", "foot_R_Link")
 
 # The KScale and quadruped profiles carry no fallback names deliberately. Both robots
 # entered the tree after play.py began recording the articulation order on 2026-07-31, so
@@ -390,6 +391,184 @@ def create_joint_plot(experiments_dict, metric_key, env_id, zoom_range=None, smo
         
     return fig
 
+def create_tracking_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0,
+                         hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
+    """The COMMANDED joint target against the ACHIEVED position, one panel per joint.
+
+    This is the panel that separates a posture the policy chose from one the mechanism
+    imposed upon it, and the two are indistinguishable in the joint position panel beside
+    it. A joint whose achieved position sits at a mechanical stop may be there because the
+    policy asked for the stop, which is a choice about the gait, or because the policy
+    asked for something inside the travel and the ground or the actuator ceiling prevented
+    it, which is a deficit of authority. The first is addressed by changing the action
+    space or the reward, the second by changing the gains or the geometry, and the two
+    remedies have nothing in common. Section 16.6 of ../../plans/kscale_gait_shaping.md is
+    the worked example, the swing hip yaw excursion having been read as a gain deficit for
+    three revisions of that document and turning out on measurement to be commanded and
+    tracked to within four per cent.
+
+    Three reference levels are drawn on each panel and each answers a different question.
+    The hard limits say where the travel ends, so a commanded trace outside them is a
+    target the joint cannot reach at any torque, which is the condition section 11.2 of
+    that plan identifies as converting an end stop into a free and infinitely stiff
+    reference. The soft limits are where `pen_joint_pos_limits` begins to charge. The
+    nominal is the posture the action offset and the deviation penalties are measured
+    from.
+
+    The channel is absent from every dump written before 2026-09-28, play.py having begun
+    to record it on that date for section 18.2 of the same plan, and such a dump is
+    reported as lacking the channel rather than drawn with the achieved position alone,
+    which would read as perfect tracking.
+    """
+    hidden_experiments = hidden_experiments or []
+
+    joint_names = resolve_joint_names(experiments_dict, profile)
+    if not joint_names:
+        joint_names = [f"joint {i}"
+                       for i in range(channel_width(experiments_dict, "joint_positions"))]
+    num_joints = len(joint_names)
+    if num_joints == 0:
+        return go.Figure().update_layout(title="No joint positions in any dump for this seed")
+
+    exp_names = sorted(experiments_dict.keys())
+    carrying = [n for n in exp_names if "joint_position_targets" in experiments_dict[n]]
+    if not carrying:
+        return go.Figure().update_layout(
+            title="No commanded target in any dump for this seed. play.py has recorded "
+                  "joint_position_targets since 2026-09-28, and a dump written before that "
+                  "date must be replayed to carry it."
+        )
+
+    num_cols = 4 if num_legs >= 4 else 2
+    grid_rows = (num_joints + num_cols - 1) // num_cols
+
+    # The per joint diagnostics, taken as the worst across the loaded runs so that one
+    # number per panel is unambiguous however many runs are open. The error is the mean
+    # absolute departure of the achieved position from the commanded one, and the excess
+    # is the fraction of samples whose command lies outside the joint's own travel.
+    worst_err = [float("nan")] * num_joints
+    worst_out = [float("nan")] * num_joints
+    for name in carrying:
+        data = experiments_dict[name]
+        cmd = get_env_data(data.get("joint_position_targets"), env_id)
+        pos = get_env_data(data.get("joint_positions"), env_id)
+        if cmd.size == 0 or pos.size == 0 or cmd.shape[1] != num_joints:
+            continue
+        limits = np.asarray(data.get("joint_position_limits", []), dtype=float)
+        for j in range(num_joints):
+            with np.errstate(invalid="ignore"):
+                err = float(np.nanmean(np.abs(cmd[:, j] - pos[:, j])))
+            worst_err[j] = err if np.isnan(worst_err[j]) else max(worst_err[j], err)
+            if limits.ndim == 2 and limits.shape[0] > j:
+                beyond = (cmd[:, j] < limits[j, 0]) | (cmd[:, j] > limits[j, 1])
+                out = 100.0 * float(np.nanmean(beyond.astype(float)))
+                worst_out[j] = out if np.isnan(worst_out[j]) else max(worst_out[j], out)
+
+    titles = []
+    for j, name in enumerate(joint_names):
+        parts = [pretty_joint_name(name)]
+        if not np.isnan(worst_err[j]):
+            parts.append(f"err<{worst_err[j]:.3f}")
+        if not np.isnan(worst_out[j]) and worst_out[j] > 0.005:
+            parts.append(f"beyond stop {worst_out[j]:.1f}%")
+        titles.append(" · ".join(parts))
+
+    fig = make_subplots(
+        rows=grid_rows, cols=num_cols,
+        subplot_titles=titles,
+        shared_xaxes="all",
+        vertical_spacing=0.08,
+        horizontal_spacing=0.08,
+    )
+
+    colors = pcolors.qualitative.Plotly + pcolors.qualitative.D3
+
+    # The reference levels come from the first run that carries them. They are a property
+    # of the articulation rather than of the policy, so drawing one set per run would stack
+    # identical lines, and where two runs genuinely disagree the figure title says which
+    # one the lines belong to rather than drawing both.
+    ref_name = next((n for n in exp_names
+                     if np.asarray(experiments_dict[n].get("joint_position_limits", []),
+                                   dtype=float).ndim == 2), None)
+
+    for exp_idx, exp_name in enumerate(exp_names):
+        data = experiments_dict[exp_name]
+        pos = get_env_data(data.get("joint_positions"), env_id)
+        cmd = get_env_data(data.get("joint_position_targets"), env_id)
+        if pos.size == 0 or pos.ndim < 2 or pos.shape[1] != num_joints:
+            continue
+        pos = apply_smoothing(pos, smoothing)
+        has_cmd = cmd.size > 0 and cmd.ndim == 2 and cmd.shape[1] == num_joints
+        if has_cmd:
+            cmd = apply_smoothing(cmd, smoothing)
+        color = colors[exp_idx % len(colors)]
+        is_visible = 'legendonly' if exp_name in hidden_experiments else True
+
+        for j in range(num_joints):
+            row, col = (j // num_cols) + 1, (j % num_cols) + 1
+            show_leg = (j == 0)
+            # The achieved position is the solid trace and the commanded target the dashed
+            # one, both in the run's own colour, so that a reader compares the two within a
+            # run before comparing either across runs, which is the comparison that
+            # distinguishes a choice from a deficit.
+            fig.add_trace(
+                go.Scattergl(
+                    y=pos[:, j], mode='lines', name=f"{exp_name} achieved",
+                    legendgroup=exp_name, showlegend=show_leg,
+                    line=dict(color=color, width=1.5), opacity=0.9, visible=is_visible,
+                ),
+                row=row, col=col,
+            )
+            if has_cmd:
+                fig.add_trace(
+                    go.Scattergl(
+                        y=cmd[:, j], mode='lines', name=f"{exp_name} commanded",
+                        legendgroup=exp_name, showlegend=show_leg,
+                        line=dict(color=color, width=1.2, dash="dot"), opacity=0.65,
+                        visible=is_visible,
+                    ),
+                    row=row, col=col,
+                )
+
+    # The reference levels are drawn AFTER the traces and not before them. add_hline
+    # carries exclude_empty_subplots=True by default, so a line added to a panel that holds
+    # no trace yet is silently dropped, and drawing them first produced a figure with every
+    # reference missing and no error of any kind.
+    if ref_name is not None:
+        ref = experiments_dict[ref_name]
+        hard = np.asarray(ref.get("joint_position_limits", []), dtype=float)
+        soft = np.asarray(ref.get("joint_soft_position_limits", []), dtype=float)
+        nominal = np.asarray(ref.get("default_joint_pos", []), dtype=float)
+        for j in range(num_joints):
+            row, col = (j // num_cols) + 1, (j % num_cols) + 1
+            if hard.ndim == 2 and hard.shape[0] > j:
+                for level in hard[j]:
+                    fig.add_hline(y=float(level), row=row, col=col,
+                                  line=dict(color="#d62728", width=1, dash="dot"))
+            if soft.ndim == 2 and soft.shape[0] > j:
+                for level in soft[j]:
+                    fig.add_hline(y=float(level), row=row, col=col,
+                                  line=dict(color="#ff7f0e", width=1, dash="dot"))
+            if nominal.ndim == 1 and nominal.shape[0] > j:
+                fig.add_hline(y=float(nominal[j]), row=row, col=col,
+                              line=dict(color="#7f7f7f", width=1, dash="dash"))
+
+    missing = [n for n in exp_names if n not in carrying]
+    title = f"Commanded target against achieved position (Env {env_id})"
+    if ref_name is not None:
+        title += f" · limits and nominal from {ref_name}"
+    if missing:
+        title += f" · no commanded target in {', '.join(missing)}"
+    fig.update_layout(height=500 * grid_rows, title_text=title)
+    fig.update_yaxes(title_text="Position (rad)")
+    fig.update_xaxes(title_text="Time (steps)")
+    for annotation in fig.layout.annotations:
+        annotation.font.size = 11
+    if zoom_range:
+        fig.update_xaxes(range=zoom_range)
+    return fig
+
+
 def create_base_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0, hidden_experiments=None):
     """
     Creates a 3x2 grid for Base and Commanded Velocities.
@@ -561,6 +740,120 @@ def create_base_position_plot(experiments_dict, env_id, zoom_range=None, smoothi
     if zoom_range:
         fig.update_xaxes(range=zoom_range)
     return fig
+
+# Contact bar colours by foot index, after the red, olive, blue and green of the contact
+# schedule figure of Liang et al., arXiv 2403.20001. A biped takes the first two.
+CONTACT_SCHEDULE_COLORS = ("#d62728", "#bcbd22", "#1f77b4", "#2ca02c")
+
+
+def _contact_runs(contact):
+    """Start and length, in steps, of every run of True in a one dimensional series."""
+    edges = np.diff(np.concatenate(([0], contact.astype(np.int8), [0])))
+    starts = np.flatnonzero(edges == 1)
+    return starts, np.flatnonzero(edges == -1) - starts
+
+
+def create_contact_schedule_plot(experiments_dict, env_id, zoom_range=None,
+                                 hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
+    """The foot contact schedule over the whole dump, one row per foot, one panel per run.
+
+    A foot is in contact where the logged peak contact force exceeds the profile's
+    threshold, the test stats.contact_state applies, so the schedule agrees with the duty
+    factor and flight fraction of the statistics table. Each panel title carries the duty
+    factor of every foot and the flight fraction, the share of steps on which no foot is
+    loaded, and dotted verticals mark the episode resets. The last panel is the commanded
+    against the measured forward speed, so that a change of gait is read against the speed
+    at which it occurs, as the velocity axis of the paper's figure is.
+    """
+    hidden_experiments = hidden_experiments or []
+
+    feet_names = resolve_feet_names(experiments_dict, profile)
+    if not feet_names:
+        width = channel_width(experiments_dict, "feet_contact_forces") or num_legs
+        feet_names = [f"foot {i}" for i in range(width)]
+    exp_names = [n for n in sorted(experiments_dict)
+                 if n not in hidden_experiments and "feet_contact_forces" in experiments_dict[n]]
+    if not exp_names:
+        return go.Figure().update_layout(title="No feet contact forces in any visible dump for this seed")
+
+    titles, schedules = [], []
+    for exp_name in exp_names:
+        forces = get_env_data(experiments_dict[exp_name]["feet_contact_forces"], env_id)
+        if forces.ndim != 3:
+            schedules.append(None)
+            titles.append(f"{exp_name} · no contact forces for env {env_id}")
+            continue
+        contact = np.linalg.norm(forces, axis=-1) > profile.contact_force_threshold  # (T, F)
+        schedules.append(contact)
+        duty = ", ".join(f"{n} {d:.2f}" for n, d in zip(feet_names, contact.mean(axis=0)))
+        flight = 100.0 * float((~contact.any(axis=1)).mean())
+        titles.append(f"{exp_name} · duty {duty} · flight {flight:.1f}%")
+    titles.append("Forward Velocity")
+
+    num_rows = len(exp_names) + 1
+    fig = make_subplots(
+        rows=num_rows, cols=1,
+        subplot_titles=titles,
+        shared_xaxes=True,
+        vertical_spacing=min(0.06, 0.3 / num_rows),
+        row_heights=[len(feet_names)] * len(exp_names) + [3],
+    )
+
+    colors = pcolors.qualitative.Plotly + pcolors.qualitative.D3
+
+    for row, (exp_name, contact) in enumerate(zip(exp_names, schedules), start=1):
+        data = experiments_dict[exp_name]
+        if contact is not None:
+            steps = contact.shape[0]
+            for foot_idx, foot_name in enumerate(feet_names[:contact.shape[1]]):
+                color = CONTACT_SCHEDULE_COLORS[foot_idx % len(CONTACT_SCHEDULE_COLORS)]
+                # The light band is the whole dump, so a gap in it reads as the foot aloft.
+                fig.add_trace(
+                    go.Bar(x=[steps], y=[foot_name], base=[0], orientation="h", width=0.6,
+                           marker_color=color, opacity=0.15, showlegend=False, hoverinfo="skip"),
+                    row=row, col=1,
+                )
+                starts, lengths = _contact_runs(contact[:, foot_idx])
+                fig.add_trace(
+                    go.Bar(x=lengths, y=[foot_name] * len(starts), base=starts, orientation="h",
+                           width=0.6, marker_color=color, showlegend=False, name=foot_name,
+                           hovertemplate="from step %{base} for %{x} steps<extra>%{y}</extra>"),
+                    row=row, col=1,
+                )
+            fig.update_yaxes(categoryorder="array", categoryarray=list(reversed(feet_names)),
+                             row=row, col=1)
+            # Drawn after the bars, add_vline dropping a line on a panel that holds no trace.
+            for step in np.flatnonzero(get_env_data(data.get("episode_dones"), env_id)):
+                fig.add_vline(x=float(step), line=dict(color="grey", dash="dot", width=1),
+                              row=row, col=1)
+
+        color = colors[(row - 1) % len(colors)]
+        measured = get_env_data(data.get("base_linear_velocity"), env_id)
+        if measured.ndim == 2:
+            fig.add_trace(
+                go.Scattergl(y=measured[:, 0], mode="lines", name=f"{exp_name} measured",
+                             legendgroup=exp_name, line=dict(color=color, width=1.5)),
+                row=num_rows, col=1,
+            )
+        commanded = get_env_data(data.get("commanded_linear_velocity"), env_id)
+        if commanded.ndim == 2:
+            fig.add_trace(
+                go.Scattergl(y=commanded[:, 0], mode="lines", name=f"{exp_name} commanded",
+                             legendgroup=exp_name, line=dict(color=color, width=1.2, dash="dash")),
+                row=num_rows, col=1,
+            )
+
+    fig.update_layout(
+        barmode="overlay",
+        height=45 * len(feet_names) * len(exp_names) + 120 * num_rows + 200,
+        title_text=f"Foot Contact Schedule (Env {env_id})",
+    )
+    fig.update_yaxes(title_text="Velocity (m/s)", row=num_rows, col=1)
+    fig.update_xaxes(title_text="Time (steps)", row=num_rows, col=1)
+    if zoom_range:
+        fig.update_xaxes(range=zoom_range)
+    return fig
+
 
 def create_feet_plot(experiments_dict, env_id, zoom_range=None, smoothing=0.0,
                      hidden_experiments=None, num_legs=2, profile=DEFAULT_PROFILE):
@@ -1033,7 +1326,12 @@ def main():
     metric_tabs_list.append(dcc.Tab(label="Base Position", value='base_position'))
     for k, v in JOINT_METRICS.items():
         metric_tabs_list.append(dcc.Tab(label=v, value=k))
+    # Placed immediately after the joint metrics because it is read against them, the
+    # joint position panel showing what the machine did and this one showing what it was
+    # asked to do.
+    metric_tabs_list.append(dcc.Tab(label="Commanded vs Achieved", value='tracking'))
     metric_tabs_list.append(dcc.Tab(label="Feet", value='feet'))
+    metric_tabs_list.append(dcc.Tab(label="Contact Schedule", value='contact_schedule'))
     metric_tabs_list.append(dcc.Tab(label="Torque vs Velocity", value='torque_velocity'))
     metric_tabs_list.append(dcc.Tab(label="Rewards", value='rewards'))
     metric_tabs_list.append(dcc.Tab(label="Feet Distance", value='feet_distance'))
@@ -1168,9 +1466,17 @@ def main():
             return create_base_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments)
         elif metric_type == 'base_position':
             return create_base_position_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments)
+        elif metric_type == 'tracking':
+            return create_tracking_plot(experiments_dict, env_id, zoom_range, smoothing,
+                                        hidden_experiments, num_legs=profile.num_legs,
+                                        profile=profile)
         elif metric_type == 'feet':
             return create_feet_plot(experiments_dict, env_id, zoom_range, smoothing, hidden_experiments,
                                     num_legs=profile.num_legs, profile=profile)
+        elif metric_type == 'contact_schedule':
+            return create_contact_schedule_plot(experiments_dict, env_id, zoom_range,
+                                                hidden_experiments, num_legs=profile.num_legs,
+                                                profile=profile)
         elif metric_type == 'torque_velocity':
             # Do not pass Time-based zoom range to Velocity axis
             return create_torque_velocity_plot(experiments_dict, env_id, smoothing, hidden_experiments,

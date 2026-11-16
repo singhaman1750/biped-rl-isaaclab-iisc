@@ -1,0 +1,40 @@
+# /tmp/symmetry_smoke/logs/rsl_rl/copt_moral/2026-10-20_10-12-51/
+model_0.pt
+model_2.pt
+    data_augmentation_func: environments.tasks.locomotion.mdp.symmetry.tron1:compute_symmetric_states
+# /tmp/symmetry_smoke/logs/rsl_rl/kscale_flat/2026-10-20_10-17-00/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.kscale.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/quadruped_copt/2026-10-20_10-14-28/
+model_0.pt
+model_2.pt
+    data_augmentation_func: environments.tasks.locomotion.mdp.symmetry.quadruped:compute_symmetric_states
+# /tmp/symmetry_smoke/logs/rsl_rl/quadruped_flat/2026-10-20_10-08-34/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.quadruped.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/quadruped_flat/2026-10-20_10-11-23/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.quadruped.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/quadruped_flat/2026-10-20_10-19-41/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.quadruped.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/sd_brs1_flat/2026-10-20_10-16-05/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.brs.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_10-07-09/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.tron1.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_10-09-56/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.tron1.compute_symmetric_states ''
+# /tmp/symmetry_smoke/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_10-18-15/
+model_0.pt
+model_2.pt
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.tron1.compute_symmetric_states ''

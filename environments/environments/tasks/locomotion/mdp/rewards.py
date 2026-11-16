@@ -365,6 +365,29 @@ def feet_air_time(
     return reward
 
 
+def feet_air_time_nominal(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    threshold_min: float,
+    threshold_max: float,
+    reference_height: float,
+    target_height_attr: str = "copt_nominal_base_height",
+) -> torch.Tensor:
+    """:func:`feet_air_time` with both thresholds scaled by sqrt(h / reference_height).
+
+    h is each environment's standing height, which the co-optimisation runner
+    writes after every design swap, the pendulum period sqrt(h / g) setting the
+    stride timing. While it is unset the result is :func:`feet_air_time`'s
+    exactly. Named rather than numbered, ``feet_air_time_v2`` being taken.
+
+    Defect left standing in :func:`feet_air_time`, called by two configurations,
+    is the donor's stride timing asked of every design.
+    """
+    k = _nominal_height_ratio(env, reference_height, target_height_attr)
+    return feet_air_time(env, command_name, sensor_cfg, threshold_min * k, threshold_max * k)
+
+
 def feet_air_time_v2(
     env: ManagerBasedRLEnv,
     command_name: str,
@@ -393,6 +416,31 @@ def feet_air_time_v2(
     # no reward for zero command
     reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
     return reward
+
+
+def _nominal_height_ratio(env, reference_height: float, target_height_attr: str):
+    height = getattr(env, target_height_attr, None)
+    if height is None:
+        return 1.0
+    return torch.sqrt(height / reference_height).unsqueeze(1)
+
+
+def feet_air_time_v3(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    threshold_min: float,
+    threshold_max: float,
+    reference_height: float,
+    target_height_attr: str = "copt_nominal_base_height",
+) -> torch.Tensor:
+    """:func:`feet_air_time_v2` scaled as :func:`feet_air_time_nominal` scales :func:`feet_air_time`.
+
+    Defect left standing in :func:`feet_air_time_v2`, called by the quadruped's
+    plain and HIM tasks, is the donor's stride timing asked of every design.
+    """
+    k = _nominal_height_ratio(env, reference_height, target_height_attr)
+    return feet_air_time_v2(env, command_name, sensor_cfg, threshold_min * k, threshold_max * k)
 
 
 def feet_slide(env, sensor_cfg: SceneEntityCfg, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
@@ -634,6 +682,12 @@ def foot_clearance_reward_v3(
 
     Returns:
         The computed reward tensor, summed over the feet.
+
+    Note:
+        This term requires a gait command and a swing clock the policy is usually shown, and
+        grades a swing the schedule imposes. :func:`foot_clearance_reward_v5` tracks the same
+        reference with the phase read from the foot's air time, for an environment that carries
+        no gait command.
     """
     asset: Articulation = env.scene[asset_cfg.name]
     pts_w, _ = _sole_points_world(asset, asset_cfg.body_ids, sole_offsets)
@@ -847,6 +901,258 @@ def foot_clearance_reward_v4(
     return torch.sum(reward, dim=1)
 
 
+def foot_clearance_reward_v5(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    swing_height: float,
+    swing_duration: float,
+    std: float,
+    sole_offsets: list[list[float]],
+    force_threshold: float = 1.0,
+) -> torch.Tensor:
+    """Reward the swing foot for tracking a raised cosine clearance reference, with no gait clock.
+
+    This is :func:`foot_clearance_reward_v3` with the swing phase read from the foot instead of
+    from a clock. The reference is the same raised cosine ``swing_height * sin^2(pi * phi)``
+    and the same Gaussian kernel is placed on the lowest sole point, so every argument of that
+    docstring about the form of the reference holds here unchanged. What differs is where the
+    phase ``phi`` comes from. v3 reconstructs it from the gait command's frequency, offset and
+    duration and the episode step counter, which obliges the environment to carry a gait
+    command term, a clock the policy is also shown, and a swing the schedule imposes whether
+    or not the foot has left the ground. Here the foot is in swing when the contact sensor
+    reports it airborne, and ``phi`` is the time since lift off over ``swing_duration``,
+    clamped to one. The environment therefore needs no gait command and no phase observation.
+
+    Two consequences follow from timing the swing by the foot itself.
+
+    First, the reference clock starts at lift off and not at a scheduled instant, so a foot
+    that never leaves the ground earns nothing and a foot that leaves late is graded on its own
+    swing rather than on one it has already missed.
+
+    Second, ``swing_duration`` is a ceiling and not a schedule. A foot that stays aloft beyond
+    it meets a reference of zero for as long as it remains there, so it is paid for landing by
+    that time and is charged for loitering above the ground, which is the exploit the reference
+    form exists to close. A foot that lands sooner is simply no longer in swing and the term
+    returns zero for it. To reproduce the clock of the TRON1 gait command, 1 Hz at a stance
+    fraction of 0.62 with a commanded swing height of 0.05 m, use ``swing_duration`` 0.38 and
+    ``swing_height`` 0.05, since the clock's swing lasts ``(1 - duration) / frequency``.
+
+    Args:
+        env: The environment object.
+        asset_cfg: Robot asset configuration resolving the feet bodies.
+        sensor_cfg: Contact sensor configuration resolving the same feet in the SAME ORDER as
+            ``asset_cfg``. The sensor must have ``track_air_time=True``.
+        swing_height: Apex of the clearance reference (m), the sole clearance at ``phi`` 0.5.
+        swing_duration: Time (s) after lift off at which the reference returns to zero.
+        std: Width of the Gaussian tracking kernel (m), sized as for v3.
+        sole_offsets: Sole support points in the foot body frame, as for v2.
+        force_threshold: Contact force magnitude (N) above which a foot counts as grounded,
+            read from the history maximum as in v2 and v3 so that contact chatter cannot flicker
+            a grounded foot into earning.
+
+    Returns:
+        The computed reward tensor, summed over the feet.
+
+    Note:
+        As v2 and v3, the clearance is an absolute world height and equals the height above
+        the ground only on flat terrain. :func:`foot_clearance_reward_v4` references the local
+        terrain and this term does not.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    pts_w, _ = _sole_points_world(asset, asset_cfg.body_ids, sole_offsets)
+    sole_clearance = pts_w[..., 2].min(dim=2)[0]                        # (N, F)
+
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]  # (N, F), 0 on the ground
+    in_swing = air_time > 0.0
+    phi_swing = torch.clamp(air_time / swing_duration, 0.0, 1.0)
+    # raised cosine, sin^2, NOT sin, as in v3
+    height_ref = swing_height * torch.square(torch.sin(torch.pi * phi_swing))
+
+    reward = torch.exp(-torch.square(sole_clearance - height_ref) / std**2)
+    reward = reward * in_swing.float()
+
+    in_contact = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0]
+        > force_threshold
+    )
+    reward = reward * ~in_contact
+    return torch.sum(reward, dim=1)
+
+
+class HipLateralSwayReward(ManagerTermBase):
+    """Reward the torso for swaying side to side over the stance foot, in time with the gait.
+
+    The robot currently has no lateral weight-shift and compensates with hip yaw (the
+    pigeon-toed splay tracked in plans/kscale_integration.md). Ankle roll can't hold single
+    support either (see KScale.md 10.3-10.6), so hip roll leaning is really the only joint
+    that can supply a lateral weight shift. This reward pays for that lean directly as a
+    torso position, not a joint angle, so the policy is free to use whatever mix of joints
+    gets it there.
+
+    Target: torso's sideways offset from the midpoint of the two feet, in the robot's own
+    heading frame (not world y, which drifts as the robot turns) -- traces a sine wave at
+    the gait frequency, one full swing left-right per stride, amplitude 3cm (rough
+    human-scale estimate, not derived -- tune once you see what the policy does). Reward is
+    a Gaussian bump around that target, same shape as the existing foot clearance reward.
+
+    Self-correction: if the tracked error stays high for ~50 steps (frequency changed,
+    robot got shoved, whatever), we quietly re-anchor the target's phase to wherever the
+    torso actually is, instead of letting the target sail off and turn into a penalty with
+    no useful gradient. This only adjusts this reward's own clock, not the real gait clock,
+    so foot placement/contact timing are unaffected.
+    """
+
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.asset_cfg: SceneEntityCfg = cfg.params["asset_cfg"]
+        self.feet_cfg: SceneEntityCfg = cfg.params["feet_cfg"]
+        self.command_name: str = cfg.params["command_name"]
+
+        self.asset: Articulation = env.scene[self.asset_cfg.name]
+        torso_ids = self.asset_cfg.body_ids
+        assert len(torso_ids) == 1, f"expected exactly one torso body, got body_ids={torso_ids}"
+        self.torso_id = torso_ids[0]
+        self.feet_ids = self.feet_cfg.body_ids
+        assert len(self.feet_ids) == 2, f"expected exactly two feet, got body_ids={self.feet_ids}"
+
+        self._error_ema = torch.zeros(env.num_envs, device=env.device)
+        self._lag_steps = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        self._phase_offset = torch.zeros(env.num_envs, device=env.device)
+
+    def reset(self, env_ids=None) -> None:
+        """Clear the resync state so a new episode starts trusting the gait clock.
+
+        Args:
+            env_ids: Indices of environments to reset. Defaults to None, in which case all
+                environments are reset.
+        """
+        if env_ids is None:
+            env_ids = slice(None)
+        self._error_ema[env_ids] = 0.0
+        self._lag_steps[env_ids] = 0
+        self._phase_offset[env_ids] = 0.0
+
+    def _lateral_offset_b(self) -> torch.Tensor:
+        """Torso lateral offset from the feet midpoint, in the base's yaw aligned frame."""
+        torso_pos_w = self.asset.data.body_pos_w[:, self.torso_id]          # (N, 3)
+        feet_pos_w = self.asset.data.body_pos_w[:, self.feet_ids]           # (N, 2, 3)
+        stance_center_w = feet_pos_w.mean(dim=1)                             # (N, 3)
+        diff_w = torso_pos_w - stance_center_w
+        yaw_q = math_utils.yaw_quat(self.asset.data.root_quat_w)
+        diff_b = math_utils.quat_apply_inverse(yaw_q, diff_w)
+        return diff_b[:, 1]
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        asset_cfg: SceneEntityCfg,
+        feet_cfg: SceneEntityCfg,
+        command_name: str,
+        std: float = 0.03,
+        amplitude: float = 0.03,
+        phase_shift: float = 0.0,
+        resync_threshold: float = 0.04,
+        resync_patience: int = 50,
+        ema_alpha: float = 0.05,
+    ) -> torch.Tensor:
+        """Compute the reward.
+
+        Args:
+            env: The RL environment instance.
+            asset_cfg: Robot asset configuration resolving the torso body; unused beyond
+                resolving in ``__init__``, kept so the term reads like every other in this
+                file from the config side.
+            feet_cfg: Robot asset configuration resolving the two feet bodies that define the
+                base of support.
+            command_name: Name of the gait command term supplying the frequency the sway
+                phase is locked to.
+            std: Width of the Gaussian tracking kernel (m), sized to the tracking error the
+                policy is producing rather than to the amplitude, per the kernel width lesson
+                in this class's own docstring.
+            amplitude: Sway amplitude (m), see the class docstring.
+            phase_shift: Phase offset (cycles) between the gait clock and the sway target, see
+                the class docstring.
+            resync_threshold: EMA tracking error (m) above which the torso is judged unable to
+                keep up.
+            resync_patience: Consecutive control steps the EMA must stay above
+                ``resync_threshold`` before the phase reference is resynchronised.
+            ema_alpha: Smoothing factor of the tracking-error EMA, ``0 < ema_alpha <= 1``, one
+                minus the retained weight of the previous estimate.
+
+        Returns:
+            The reward tensor, shape (N,).
+        """
+        gait_params = env.command_manager.get_command(command_name)
+        frequencies = gait_params[:, 0]
+        gait_indices = torch.remainder(env.episode_length_buf * env.step_dt * frequencies, 1.0)
+        phase = gait_indices - self._phase_offset
+
+        lateral_offset = self._lateral_offset_b()
+        target = amplitude * torch.sin(2 * torch.pi * (phase + phase_shift))
+
+        error = lateral_offset - target
+        reward = torch.exp(-torch.square(error) / std**2)
+
+        # resync bookkeeping: track how long the torso has been unable to keep up, and where
+        # it has, retarget the phase to wherever on the sine the measured offset already sits,
+        # so the next step's target picks up from where the torso actually is rather than from
+        # where an undisturbed clock says it should be.
+        abs_error = torch.abs(error)
+        self._error_ema.mul_(1.0 - ema_alpha).add_(abs_error, alpha=ema_alpha)
+        lagging = self._error_ema > resync_threshold
+        self._lag_steps[lagging] += 1
+        self._lag_steps[~lagging] = 0
+
+        needs_resync = self._lag_steps >= resync_patience
+        if needs_resync.any():
+            achieved_phase = torch.asin(
+                torch.clamp(lateral_offset / amplitude, -1.0, 1.0)
+            ) / (2 * torch.pi) - phase_shift
+            self._phase_offset = torch.where(
+                needs_resync, gait_indices - achieved_phase, self._phase_offset
+            )
+            self._lag_steps[needs_resync] = 0
+
+        return reward
+
+
+
+def foot_clearance_reward_v6(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    height_sensor_cfg: SceneEntityCfg,
+    target_height: float,
+    std: float,
+    tanh_mult: float,
+    sensor_cfg: SceneEntityCfg | None = None,
+    force_threshold: float = 1.0,
+    sole_offsets: list[list[float]] | None = None,
+    num_neighbours: int = 4,
+    max_horizontal_dist: float | None = 0.5,
+    reduction: str = "max",
+    target_height_frac: float | None = None,
+    target_height_attr: str = "copt_nominal_base_height",
+) -> torch.Tensor:
+    """:func:`foot_clearance_reward_v4` with the target ``target_height_frac * h``.
+
+    h is each environment's standing height, written by the co-optimisation
+    runner. While either is unset the result is :func:`foot_clearance_reward_v4`'s
+    exactly.
+
+    Defect left standing in :func:`foot_clearance_reward_v4`, called by the
+    quadruped's plain and HIM tasks, is a fixed target that is a smaller share
+    of a taller design's leg.
+    """
+    height = getattr(env, target_height_attr, None)
+    if target_height_frac is not None and height is not None:
+        target_height = (target_height_frac * height).unsqueeze(1)
+    return foot_clearance_reward_v4(
+        env, asset_cfg, height_sensor_cfg, target_height, std, tanh_mult, sensor_cfg,
+        force_threshold, sole_offsets, num_neighbours, max_horizontal_dist, reduction,
+    )
+
 def joint_powers_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize joint powers on the articulation using L1-kernel"""
 
@@ -854,6 +1160,41 @@ def joint_powers_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEnt
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.sum(torch.abs(torch.mul(asset.data.applied_torque, asset.data.joint_vel)), dim=1)
 
+
+def cost_of_transport_exp(
+    env: ManagerBasedRLEnv,
+    sigma_lin: float = 1000.0,
+    sigma_ang: float = 500.0,
+    min_denominator: float = 1.0e-6,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Velocity normalised energy reward, Eq. 4 of Liang et al., arXiv 2403.20001.
+
+    The absolute joint power over a weighted sum of the measured forward and yaw speeds,
+    a cost of transport whose denominator also credits turning in place, mapped through
+    a negative exponential into (0, 1].
+
+    The denominator is the MEASURED speed, as the paper takes it, so the reward vanishes
+    at standstill and a standing command earns nothing from it. The power is summed over
+    every joint, joint_powers_l1 ignoring asset_cfg.joint_ids.
+
+    Args:
+        env: The environment object.
+        sigma_lin: Scale of the forward speed in the denominator (W s/m).
+        sigma_ang: Scale of the yaw rate in the denominator (W s/rad).
+        min_denominator: Floor on the denominator, guarding the division at standstill.
+        asset_cfg: Configuration for the robot asset.
+
+    Returns:
+        The computed reward tensor.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    power = joint_powers_l1(env, asset_cfg)
+    speed = (
+        sigma_lin * torch.abs(asset.data.root_lin_vel_b[:, 0])
+        + sigma_ang * torch.abs(asset.data.root_ang_vel_b[:, 2])
+    )
+    return torch.exp(-power / torch.clamp(speed, min=min_denominator))
 
 
 def unbalance_feet_air_time(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
@@ -1749,6 +2090,28 @@ def feet_regulation(env: ManagerBasedRLEnv,
     return reward
 
 
+def feet_regulation_v2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    foot_radius: float,
+    base_height_target: float,
+    height_decay_scale: float | None = None,
+    target_height_attr: str = "copt_nominal_base_height",
+) -> torch.Tensor:
+    """:func:`feet_regulation` with its height gate scaled by each environment's standing height.
+
+    The height is the one the co-optimisation runner writes. While it is unset,
+    or *height_decay_scale* is given, the result is :func:`feet_regulation`'s exactly.
+
+    Defect left standing in :func:`feet_regulation`, which four configurations
+    call, is a gate scaled by a constant target the design no longer stands at.
+    """
+    height = getattr(env, target_height_attr, None)
+    if height_decay_scale is None and height is not None:
+        height_decay_scale = height.unsqueeze(1)
+    return feet_regulation(env, asset_cfg, foot_radius, base_height_target, height_decay_scale)
+
+
 def base_height_rough_l2(
     env: ManagerBasedRLEnv,
     target_height: float,
@@ -1786,6 +2149,36 @@ def base_height_rough_l2(
     height = torch.nan_to_num(height, nan=target_height, posinf=target_height, neginf=target_height)
     # mean clearance over all ray samples, then squared deviation from target
     return torch.square(height.mean(dim=1) - target_height)
+
+
+def base_height_rough_l2_v2(
+    env: ManagerBasedRLEnv,
+    target_height: float,
+    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    target_height_attr: str = "copt_nominal_base_height",
+) -> torch.Tensor:
+    """:func:`base_height_rough_l2` with each environment's target its design's standing height.
+
+    The height is the one the co-optimisation runner writes. While it is unset
+    the result is :func:`base_height_rough_l2`'s exactly. A missed ray takes the
+    environment's own target, so it stays neutral as it does there.
+
+    Defect left standing in :func:`base_height_rough_l2`, which four
+    configurations call, is a penalty that is a deterministic function of the
+    design's geometry, 21.84 reward units per episode at either edge of the
+    quadruped's length box against a return of 89.81 (co_optimisation_audit.md
+    section 4.2).
+    """
+    target = getattr(env, target_height_attr, None)
+    if target is None:
+        return base_height_rough_l2(env, target_height, sensor_cfg, asset_cfg)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    sensor: RayCaster = env.scene.sensors[sensor_cfg.name]
+    height = asset.data.root_pos_w[:, 2].unsqueeze(1) - sensor.data.ray_hits_w[:, :, 2]
+    fill = target.unsqueeze(1).expand_as(height)
+    height = torch.where(torch.isfinite(height), height, fill)
+    return torch.square(height.mean(dim=1) - target)
 
 
 def base_com_height(
@@ -2076,3 +2469,34 @@ def feet_hold_penalty(
     reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
     return reward
 
+def action_clip_excess_l2(
+    env: ManagerBasedRLEnv,
+    action_term_name: str = "joint_pos",
+) -> torch.Tensor:
+    """Penalise the amount by which the commanded target was clipped, in radians squared."""
+    term = env.action_manager.get_term(action_term_name)
+    if term.cfg.clip is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    unclipped = term.raw_actions * term._scale + term._offset
+    excess = unclipped - term.processed_actions
+    return torch.sum(torch.square(excess), dim=1)
+
+def action_clip_excess_l1(
+    env: ManagerBasedRLEnv,
+    action_term_name: str = "joint_pos",
+) -> torch.Tensor:
+    """Penalise the amount by which the commanded target was clipped, in radians.
+
+    The absolute form of :func:`action_clip_excess_l2`, and the two differ only in the
+    kernel. The quadratic form spans the square of the range its argument spans, which
+    section 18.4 of plans/kscale_gait_shaping.md measures at 51000 to one over training,
+    so no fixed quadratic coefficient is a price at both ends of it. The absolute form
+    spans the range itself and its gradient is constant, so the marginal cost of one more
+    radian of excess is the same wherever the policy already stands.
+    """
+    term = env.action_manager.get_term(action_term_name)
+    if term.cfg.clip is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    unclipped = term.raw_actions * term._scale + term._offset
+    excess = unclipped - term.processed_actions
+    return torch.sum(torch.abs(excess), dim=1)

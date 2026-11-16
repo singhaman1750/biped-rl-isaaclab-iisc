@@ -6,9 +6,10 @@ from isaaclab.assets.articulation import ArticulationCfg
 from environments.actuators import IdentifiedActuatorCfg
 
 current_dir = os.path.dirname(__file__)
-urdf_path = os.path.join(current_dir, "../urdf/quadruped/quadruped.urdf")
+mjcf_path = os.path.join(current_dir, "../mjcf/quadruped/quadruped.xml")
 
-# Abduction and adduction, the roll axis. MuJoCo names this joint FR_hip_joint.
+# Abduction and adduction, the roll axis, named .._hip_joint by the design generator
+# that emits the asset.
 # The effort limit is the MJCF forcerange and the velocity limit the Go1 GO-M8010-6
 # rated joint speed, this design's torque ceiling matching that motor to within 0.4
 # percent. Kp is DERIVED, not taken from the MJCF position actuator gain of 100, which
@@ -18,7 +19,7 @@ urdf_path = os.path.join(current_dir, "../urdf/quadruped/quadruped.urdf")
 # Kd gives a damping ratio of 0.62 against an effective inertia of 0.023674 kg m^2 at
 # the nominal crouch. See joint_control_analysis_quadruped.md section 5.3 throughout.
 QUADRUPED_ABAD_ACTUATOR_CFG = IdentifiedActuatorCfg(
-    joint_names_expr=["abad_.._Joint"],
+    joint_names_expr=[".._hip_joint"],
     effort_limit=23.622511,
     velocity_limit=30.0,
     saturation_effort=158.0,
@@ -30,12 +31,12 @@ QUADRUPED_ABAD_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_dynamic=0.02,
 )
 
-# Hip flexion and extension, the pitch axis. MuJoCo names this joint FR_thigh_joint.
+# Hip flexion and extension, the pitch axis, named .._thigh_joint by the emitter.
 # It shares the abduction joint's motor and takes the same Kp, its own stance torque
 # being near zero at the crouch, where the keyframe places each foot directly beneath
 # its pitch axis. Kd is set against an effective inertia of 0.020572 kg m^2.
 QUADRUPED_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
-    joint_names_expr=["hip_.._Joint"],
+    joint_names_expr=[".._thigh_joint"],
     effort_limit=23.622511,
     velocity_limit=30.0,
     saturation_effort=158.0,
@@ -47,13 +48,13 @@ QUADRUPED_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_dynamic=0.02,
 )
 
-# Knee flexion and extension. MuJoCo names this joint FR_calf_joint. Its motor stands
+# Knee flexion and extension, named .._calf_joint by the emitter. Its motor stands
 # in a ratio of 1.4917 to the other two, which would give a Kp of 60, but 60 places the
 # joint at 11.11 Hz, above the observability ceiling. It is trimmed to 50, landing at
 # 10.15 Hz and accepting a stance sag of 0.130 rad against the 0.125 target. Kd is set
 # against an effective inertia of 0.012305 kg m^2, which does not vary with pose.
 QUADRUPED_KNEE_ACTUATOR_CFG = IdentifiedActuatorCfg(
-    joint_names_expr=["knee_.._Joint"],
+    joint_names_expr=[".._calf_joint"],
     effort_limit=35.238000,
     velocity_limit=20.0,
     saturation_effort=236.0,
@@ -82,15 +83,12 @@ articulation_props = sim_utils.ArticulationRootPropertiesCfg(
 )
 activate_contact_sensors = True
 
-# 0.292 m is the height at which the foot sphere rests on the ground in the nominal
-# crouch, being the 0.270 m kinematic drop plus the 0.022 m foot radius. The spawn
-# adds 28 mm of clearance so that a rough terrain tile cannot capture the foot at reset.
 init_state = ArticulationCfg.InitialStateCfg(
-    pos=(0.0, 0.0, 0.32),
+    pos=(0.0, 0.0, 0.38),
     joint_pos={
-        "abad_.._Joint": 0.0,
-        "hip_.._Joint": 0.884337,
-        "knee_.._Joint": -1.768673,
+        ".._hip_joint": 0.0,
+        ".._thigh_joint": 0.0,
+        ".._calf_joint": 0.0,
     },
     joint_vel={".*": 0.0},
 )
@@ -101,19 +99,18 @@ actuators = {
     "knee": QUADRUPED_KNEE_ACTUATOR_CFG,
 }
 
-spawn = sim_utils.UrdfFileCfg(
-    asset_path=urdf_path,
-    fix_base=False,
-    merge_fixed_joints=False,
-    self_collision=True,
-    joint_drive=None,
-    rigid_props=rigid_props,
-    articulation_props=articulation_props,
-    activate_contact_sensors=activate_contact_sensors,
-)
-
 QUADRUPED_IDENTIFIED_CFG = ArticulationCfg(
-    spawn=spawn,
+    spawn=sim_utils.MjcfFileCfg(
+        asset_path=mjcf_path,
+        fix_base=False,
+        self_collision=True,
+        import_inertia_tensor=True,
+        link_density=0.0,
+        rigid_props=rigid_props,
+        articulation_props=articulation_props,
+        activate_contact_sensors=activate_contact_sensors,
+    ),
+    articulation_root_prim_path="/trunk/trunk",
     init_state=init_state,
     soft_joint_pos_limit_factor=soft_joint_pos_limit_factor,
     actuators=actuators,

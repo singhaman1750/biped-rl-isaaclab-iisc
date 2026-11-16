@@ -1,0 +1,16 @@
+# live_brs_him2, excerpt of /tmp/symsandbox_v2_20261020/smoke_live_brs_him2.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.brs_solefoot_env_cfg.SDBRS1HIMBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: SD_BRS1FlatPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=24, max_iterations=30000, empirical_normalization=False, obs_groups=<dataclasses._MISSING_TYPE object at 0x75eec9695
+| Active Observation Terms in Group: 'policy' (shape: (42,)) |
+| Active Observation Terms in Group: 'obsHistory' (shape: (10, 42)) |
+| Active Observation Terms in Group: 'critic' (shape: (4690,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+| Active Observation Terms in Group: 'estimatorGT' (shape: (3,)) |
+| Active Observation Terms in Group: 'targetEnc' (shape: (42,)) |
+Traceback (most recent call last):
+  File "/workspace/isaaclab/biped/scripts/rsl_rl/train.py", line 366, in <module>
+  File "/workspace/isaaclab/biped/scripts/rsl_rl/train.py", line 356, in main
+  File "/workspace/isaaclab/biped/environments/environments/tasks/locomotion/mdp/symmetry/brs.py", line 201, in compute_symmetric_states
+  File "/workspace/isaaclab/biped/environments/environments/tasks/locomotion/mdp/symmetry/brs.py", line 181, in _mirror_group
+  File "/workspace/isaaclab/biped/environments/environments/tasks/locomotion/mdp/symmetry/brs.py", line 154, in _apply
+RuntimeError: shape '[384, 10, 0]' is invalid for input of size 1152

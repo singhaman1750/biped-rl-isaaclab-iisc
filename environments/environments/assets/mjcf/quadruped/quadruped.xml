@@ -1,0 +1,225 @@
+<mujoco model="design_quadruped">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.002" iterations="50" ls_iterations="50" integrator="implicitfast" cone="elliptic">
+    <flag eulerdamp="disable"/>
+  </option>
+
+
+
+  <default>
+    <geom contype="1" conaffinity="0" friction="0.9 0.02 0.001" solimp="0.9 0.95 0.001" solref="0.01 1"/>
+    <default class="visual">
+      <geom contype="0" conaffinity="0" group="2" rgba="0.7 0.7 0.75 1" density="0"/>
+    </default>
+    <default class="collision">
+      <geom contype="1" conaffinity="1" group="3" rgba="0.7 0.5 0.3 0.4"/>
+    </default>
+    <default class="abad">
+      <joint damping="1.000000" armature="0.050000" frictionloss="0.100000"/>
+      <motor ctrlrange="-23.622511 23.622511" forcerange="-23.622511 23.622511"/>
+    </default>
+    <default class="hip">
+      <joint damping="1.000000" armature="0.050000" frictionloss="0.100000"/>
+      <motor ctrlrange="-23.622511 23.622511" forcerange="-23.622511 23.622511"/>
+    </default>
+    <default class="knee">
+      <joint damping="1.000000" armature="0.050000" frictionloss="0.100000"/>
+      <motor ctrlrange="-35.238000 35.238000" forcerange="-35.238000 35.238000"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="trunk" pos="0 0 0">
+      <freejoint name="root"/>
+      <inertial pos="0 0 0" mass="0.674397" diaginertia="0.002633 0.002099 0.003781"/>
+      
+      <geom class="visual" type="box" size="0.085000 0.098000 0.046000" rgba="0.79216 0.81961 0.93333 1"/>
+      <geom class="collision" type="box" size="0.085000 0.098000 0.046000"/>
+
+      <!-- ==================== FR LEG (actuator cluster + thigh + shank) ==================== -->
+      <body name="abad_FR_act" pos="0.105000 -0.052000 0.000000">
+        <!-- welded to base: no <joint> element -->
+        <inertial pos="0 0 0" quat="0.707107 0 0.707107 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+        <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0" rgba="0.85 0.35 0.10 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0"/>
+
+        <body name="hip_FR_act" pos="0.071000 0.000000 0.000000">
+          <joint class="abad" name="FR_hip_joint" axis="1 0 0" range="-0.802851 0.802851"/>
+          <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+          <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.45 0.85 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+          <body name="knee_FR_act" pos="0.000000 -0.050000 0.000000">
+            <joint class="hip" name="FR_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
+            <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
+            <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+            <body name="thigh_FR_Link" pos="0.000000 -0.030000 0.000000" quat="0.940732 0 0.339151 0">
+              <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
+              <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
+              <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
+
+              <body name="shank_FR_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
+                <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
+                <joint class="knee" name="FR_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
+                <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
+                <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
+
+                <body name="foot_FR_Link" pos="0.000000 0.000000 -0.213000">
+                  <inertial pos="0 0 0" mass="0.020000" diaginertia="0.000004 0.000004 0.000004"/>
+                  <geom class="visual" type="sphere" size="0.022000" rgba="0.05 0.05 0.05 1"/>
+                  <geom class="collision" name="foot_FR_collision" type="sphere" size="0.022000" density="448.407991"
+                        friction="0.8 0.02 0.01" priority="1" solimp="0.015 1 0.023" condim="6"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- ==================== FL LEG (actuator cluster + thigh + shank) ==================== -->
+      <body name="abad_FL_act" pos="0.105000 0.052000 0.000000">
+        <!-- welded to base: no <joint> element -->
+        <inertial pos="0 0 0" quat="0.707107 0 0.707107 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+        <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0" rgba="0.85 0.35 0.10 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0"/>
+
+        <body name="hip_FL_act" pos="0.071000 0.000000 0.000000">
+          <joint class="abad" name="FL_hip_joint" axis="1 0 0" range="-0.802851 0.802851"/>
+          <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+          <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.45 0.85 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+          <body name="knee_FL_act" pos="0.000000 0.050000 0.000000">
+            <joint class="hip" name="FL_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
+            <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
+            <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+            <body name="thigh_FL_Link" pos="0.000000 0.030000 0.000000" quat="0.940732 0 0.339151 0">
+              <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
+              <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
+              <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
+
+              <body name="shank_FL_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
+                <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
+                <joint class="knee" name="FL_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
+                <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
+                <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
+
+                <body name="foot_FL_Link" pos="0.000000 0.000000 -0.213000">
+                  <inertial pos="0 0 0" mass="0.020000" diaginertia="0.000004 0.000004 0.000004"/>
+                  <geom class="visual" type="sphere" size="0.022000" rgba="0.05 0.05 0.05 1"/>
+                  <geom class="collision" name="foot_FL_collision" type="sphere" size="0.022000" density="448.407991"
+                        friction="0.8 0.02 0.01" priority="1" solimp="0.015 1 0.023" condim="6"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- ==================== RR LEG (actuator cluster + thigh + shank) ==================== -->
+      <body name="abad_RR_act" pos="-0.105000 -0.052000 0.000000">
+        <!-- welded to base: no <joint> element -->
+        <inertial pos="0 0 0" quat="0.707107 0 0.707107 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+        <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0" rgba="0.85 0.35 0.10 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0"/>
+
+        <body name="hip_RR_act" pos="-0.071000 0.000000 0.000000">
+          <joint class="abad" name="RR_hip_joint" axis="1 0 0" range="-0.802851 0.802851"/>
+          <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+          <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.45 0.85 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+          <body name="knee_RR_act" pos="0.000000 -0.050000 0.000000">
+            <joint class="hip" name="RR_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
+            <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
+            <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+            <body name="thigh_RR_Link" pos="0.000000 -0.030000 0.000000" quat="0.940732 0 0.339151 0">
+              <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
+              <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
+              <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
+
+              <body name="shank_RR_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
+                <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
+                <joint class="knee" name="RR_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
+                <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
+                <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
+
+                <body name="foot_RR_Link" pos="0.000000 0.000000 -0.213000">
+                  <inertial pos="0 0 0" mass="0.020000" diaginertia="0.000004 0.000004 0.000004"/>
+                  <geom class="visual" type="sphere" size="0.022000" rgba="0.05 0.05 0.05 1"/>
+                  <geom class="collision" name="foot_RR_collision" type="sphere" size="0.022000" density="448.407991"
+                        friction="0.8 0.02 0.01" priority="1" solimp="0.015 1 0.023" condim="6"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- ==================== RL LEG (actuator cluster + thigh + shank) ==================== -->
+      <body name="abad_RL_act" pos="-0.105000 0.052000 0.000000">
+        <!-- welded to base: no <joint> element -->
+        <inertial pos="0 0 0" quat="0.707107 0 0.707107 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+        <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0" rgba="0.85 0.35 0.10 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0 0.707107 0"/>
+
+        <body name="hip_RL_act" pos="-0.071000 0.000000 0.000000">
+          <joint class="abad" name="RL_hip_joint" axis="1 0 0" range="-0.802851 0.802851"/>
+          <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.028375" diaginertia="0.000681 0.000681 0.001088"/>
+          <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.45 0.85 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+          <body name="knee_RL_act" pos="0.000000 0.050000 0.000000">
+            <joint class="hip" name="RL_thigh_joint" axis="0 1 0" range="-1.739229 3.496761"/>
+            <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.434746" diaginertia="0.000950 0.000950 0.001518"/>
+            <geom class="visual" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0" rgba="0.15 0.75 0.30 1"/>
+          <geom class="collision" type="cylinder" size="0.046000 0.020000" quat="0.707107 0.707107 0 0"/>
+
+            <body name="thigh_RL_Link" pos="0.000000 0.030000 0.000000" quat="0.940732 0 0.339151 0">
+              <inertial pos="0 0 -0.106500" mass="0.187365" diaginertia="0.000715 0.000733 0.000031"/>
+              <geom class="visual" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" rgba="0.55 0.35 0.85 1"/>
+              <geom class="collision" type="box" pos="0 0 -0.106500" size="0.020000 0.010000 0.106500" density="1099.559859"/>
+
+              <body name="shank_RL_Link" pos="0 0 -0.213000" quat="0.769953 0 -0.638101 0">
+                <inertial pos="0 0 -0.106500" mass="0.091809" diaginertia="0.000353 0.000353 0.000012"/>
+                <joint class="knee" name="RL_calf_joint" axis="0 1 0" range="-1.312472 0.467760"/>
+                <geom class="visual" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" rgba="0.10 0.65 0.65 1"/>
+                <geom class="collision" type="box" pos="0 0 -0.106500" size="0.014000 0.014000 0.106500" density="549.780828"/>
+
+                <body name="foot_RL_Link" pos="0.000000 0.000000 -0.213000">
+                  <inertial pos="0 0 0" mass="0.020000" diaginertia="0.000004 0.000004 0.000004"/>
+                  <geom class="visual" type="sphere" size="0.022000" rgba="0.05 0.05 0.05 1"/>
+                  <geom class="collision" name="foot_RL_collision" type="sphere" size="0.022000" density="448.407991"
+                        friction="0.8 0.02 0.01" priority="1" solimp="0.015 1 0.023" condim="6"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor class="abad" name="FR_hip" joint="FR_hip_joint"/>
+    <motor class="hip" name="FR_thigh" joint="FR_thigh_joint"/>
+    <motor class="knee" name="FR_calf" joint="FR_calf_joint"/>
+    <motor class="abad" name="FL_hip" joint="FL_hip_joint"/>
+    <motor class="hip" name="FL_thigh" joint="FL_thigh_joint"/>
+    <motor class="knee" name="FL_calf" joint="FL_calf_joint"/>
+    <motor class="abad" name="RR_hip" joint="RR_hip_joint"/>
+    <motor class="hip" name="RR_thigh" joint="RR_thigh_joint"/>
+    <motor class="knee" name="RR_calf" joint="RR_calf_joint"/>
+    <motor class="abad" name="RL_hip" joint="RL_hip_joint"/>
+    <motor class="hip" name="RL_thigh" joint="RL_thigh_joint"/>
+    <motor class="knee" name="RL_calf" joint="RL_calf_joint"/>
+  </actuator>
+
+</mujoco>

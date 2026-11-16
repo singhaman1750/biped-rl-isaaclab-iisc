@@ -1,6 +1,13 @@
 from isaaclab.utils import configclass
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg
+from isaaclab_rl.rsl_rl import (
+    RslRlOnPolicyRunnerCfg,
+    RslRlPpoActorCriticCfg,
+    RslRlSymmetryCfg,
+)
 
+from environments.tasks.locomotion.mdp.symmetry.quadruped import (
+    compute_symmetric_states as quadruped_compute_symmetric_states,
+)
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
@@ -38,6 +45,12 @@ class PFQuadrupedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=True,
+            data_augmentation_func=quadruped_compute_symmetric_states,
+            mirror_loss_coeff=0.5,
+        ),
     )
     encoder = EncoderCfg(
         output_detach=True,
@@ -48,18 +61,39 @@ class PFQuadrupedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
 
-# The co-optimisation runner reads obs_groups to decide which observation groups feed
-# the actor, the critic, the estimator input and the estimator regression target, at
-# copt_actor_critic.py.
 @configclass
 class PFQuadrupedCoptPPORunnerCfg(PFQuadrupedPPORunnerCfg):
-    experiment_name: str = "quadruped_copt"
+    """The true morphology read by the actor directly, no estimator, for CoptActorCritic."""
+
+    experiment_name: str = "quadruped_copt_direct"
     max_iterations: int = 45000
     obs_groups: dict[str, list[str]] = {
         "policy": ["policy", "morphologyObs"],
         "critic": ["critic"],
-        "encoderIn": ["morphologyObs", "historyObs"],
-        "gtEncoderOut": ["privilegedDynamicsObs"],
+    }
+    # Unused by CoptActorCritic, read unconditionally by CoptOnPolicyRunner.__init__.
+    encoder = EncoderCfg(
+        output_detach=True,
+        num_output_dim=19,
+        hidden_dims=[1024, 512, 256],
+        activation="elu",
+        orthogonal_init=False,
+    )
+
+
+# The co-optimisation runner reads obs_groups to decide which observation groups feed
+# the actor, the critic, the estimator input and the estimator regression target, at
+# copt_actor_critic.py. Identical to the biped's SFCoptMorALRunnerCfg, the actor
+# reading no true morphology, which hardware does not provide.
+@configclass
+class PFQuadrupedCoptMorALPPORunnerCfg(PFQuadrupedPPORunnerCfg):
+    experiment_name: str = "quadruped_copt"
+    max_iterations: int = 45000
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+        "encoderIn": ["policy"],
+        "gtEncoderOut": ["morphologyObs"],
     }
     encoder = EncoderCfg(
         output_detach=True,

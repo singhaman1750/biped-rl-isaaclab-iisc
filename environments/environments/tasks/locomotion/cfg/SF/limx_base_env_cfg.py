@@ -73,7 +73,7 @@ class SFSceneCfg(InteractiveSceneCfg):
 
     # height sensors (Berkeley Mimic - Actor Visible)
     height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base_Link",
+        prim_path="{ENV_REGEX_NS}/Robot/base_Link/base_Link",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         ray_alignment="yaw",
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
@@ -83,7 +83,7 @@ class SFSceneCfg(InteractiveSceneCfg):
 
     # contact sensors
     contact_forces = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/.*",
+        prim_path="{ENV_REGEX_NS}/Robot/base_Link/.*",
         history_length=4,
         track_air_time=True,
         update_period=0.0,
@@ -150,13 +150,21 @@ def _sf_link_lengths_obs_term() -> ObsTerm:
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "parent_body_names": [
-                "hip_R_thigh_Link", "hip_L_thigh_Link", "knee_R_Link", "knee_L_Link",
+                "thigh_R_Link", "thigh_L_Link", "shank_R_Link", "shank_L_Link",
             ],
             "child_body_names": [
-                "knee_R_Link", "knee_L_Link", "ankle_R_actuator_Link", "ankle_L_actuator_Link",
+                "shank_R_Link", "shank_L_Link", "ankle_R_act", "ankle_L_act",
             ],
         },
         clip=(0.0, 100.0),
+    )
+
+
+def _sf_nominal_pose_obs_term() -> ObsTerm:
+    """The fold of the thigh, the shank and the ankle housing against their parents, read from the joint frames."""
+    return ObsTerm(
+        func=mdp.robot_nominal_pose,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["thigh_.*_Link", "shank_.*_Link", "ankle_.*_act"])},
     )
 
 
@@ -284,7 +292,7 @@ class ObservationsCfg:
         robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
         feet_lin_vel = ObsTerm(
             func=mdp.feet_lin_vel,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*")},
+            params={"asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link")},
         )
         robot_mass = ObsTerm(func=mdp.robot_mass)
         robot_inertia = ObsTerm(func=mdp.robot_inertia)
@@ -297,7 +305,7 @@ class ObservationsCfg:
         feet_contact_force = ObsTerm(
             func=mdp.robot_contact_force,
             params={
-                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link")
             },
         )
         heights = ObsTerm(
@@ -306,6 +314,7 @@ class ObservationsCfg:
             clip=(-5.0, 5.0),
         )
         link_lengths: ObsTerm | None = None
+        nominal_pose: ObsTerm | None = None
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -327,6 +336,7 @@ class ObservationsCfg:
         link_lengths = _sf_link_lengths_obs_term()
         robot_mass = ObsTerm(func=mdp.robot_mass, clip=(0.0, 100.0))
         robot_inertia = ObsTerm(func=mdp.robot_inertia)
+        nominal_pose = _sf_nominal_pose_obs_term()
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -341,12 +351,12 @@ class ObservationsCfg:
         feet_contact_force = ObsTerm(
             func=mdp.robot_contact_force,
             params={
-                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link")
             },
         )
         feet_lin_vel = ObsTerm(
             func=mdp.feet_lin_vel,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*")},
+            params={"asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link")},
         )
 
         def __post_init__(self):
@@ -395,11 +405,6 @@ class ObservationsCfg:
         )
         velocity_commands = ObsTerm(
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
-        )
-        heights = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            clip=(-5.0, 5.0),
         )
 
         def __post_init__(self):
@@ -650,7 +655,7 @@ class HIMObservationsCfg:
         robot_joint_acc = ObsTerm(func=mdp.robot_joint_acc)
         feet_lin_vel = ObsTerm(
             func=mdp.feet_lin_vel,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*")},
+            params={"asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link")},
         )
         robot_mass = ObsTerm(func=mdp.robot_mass)
         robot_inertia = ObsTerm(func=mdp.robot_inertia)
@@ -663,7 +668,7 @@ class HIMObservationsCfg:
         feet_contact_force = ObsTerm(
             func=mdp.robot_contact_force,
             params={
-                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*")
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link")
             },
         )
 
@@ -917,7 +922,7 @@ class RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["ankle_L_Joint", "ankle_R_Joint"]),
             "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=["ankle_[RL]_Link"]
+                "contact_forces", body_names=["foot_[RL]_Link"]
             ),
         },
     )
@@ -926,7 +931,7 @@ class RewardsCfg:
         weight=1.5,
         params={
             "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names="ankle_[RL]_Link"
+                "contact_forces", body_names="foot_[RL]_Link"
             ),
             "threshold": 1.0,
         },
@@ -939,7 +944,7 @@ class RewardsCfg:
             "target_height": 0.75,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
-        weight=-5.0,
+        weight=-10.0,
     )
     pen_lin_vel_z = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)  # -0.5
     pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
@@ -954,7 +959,9 @@ class RewardsCfg:
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
-                body_names=["abad_.*", "hip_.*", "knee_.*", "base_Link"],
+                body_names=[
+                    "abad_.*", "hip_.*", "knee_.*", "thigh_.*", "shank_.*", "base_Link",
+                ],
             ),
             "threshold": 10.0,
         },
@@ -966,13 +973,13 @@ class RewardsCfg:
     pen_feet_distance = RewTerm(
         func=mdp.feet_distance,
         weight=-100,
-        params={"min_feet_distance": 0.115, "feet_links_name": ["ankle_[RL]_Link"]},
+        params={"min_feet_distance": 0.115, "feet_links_name": ["foot_[RL]_Link"]},
     )
     pen_feet_regulation = RewTerm(
         func=mdp.feet_regulation,
         weight=-0.2,  # -0.05,
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=["ankle_[RL]_Link"]),
+            "asset_cfg": SceneEntityCfg("robot", body_names=["foot_[RL]_Link"]),
             "base_height_target": 0.75,
             "foot_radius": 0.03,
         },
@@ -980,8 +987,8 @@ class RewardsCfg:
     # pen_foot_landing_vel = RewTerm(
     #     func=mdp.foot_landing_vel,
     #     weight=-0.15,
-    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=["ankle_[RL]_Link"]),
-    #             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["ankle_[RL]_Link"]),
+    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=["foot_[RL]_Link"]),
+    #             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["foot_[RL]_Link"]),
     #              "foot_radius": 0.03, "about_landing_threshold": 0.08},
     # )
     # pen_joint_power_l1 = RewTerm(func=mdp.joint_powers_l1, weight=-2e-5)
@@ -998,8 +1005,8 @@ class RewardsCfg:
     #         "gait_vel_sigma": 0.25,
     #         "kappa_gait_probs": 0.05,
     #         "command_name": "gait_command",
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*"),
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*"),
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link"),
     #     },
     # )
 
@@ -1007,7 +1014,7 @@ class RewardsCfg:
         func=mdp.feet_air_time,
         weight=2.0,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "command_name": "base_velocity",
             "threshold_min": 0.2,
             "threshold_max": 0.5,
@@ -1018,8 +1025,56 @@ class RewardsCfg:
         func=mdp.feet_slide,
         weight=-0.25,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="ankle_.*"),
-            "asset_cfg": SceneEntityCfg("robot", body_names="ankle_.*"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names="foot_.*_Link"),
+        },
+    )
+
+
+@configclass
+class CoptRewardsCfg(RewardsCfg):
+    """RewardsCfg with every term that depends on the nominal pose read per design.
+
+    Each v2 reads the standing height the runner publishes after every swap, and
+    reproduces its original while none is published (plan section 7). 0.804 m is
+    the donor's standing height, which RewardsCfg's 0.75 misses by 54 mm, and
+    0.050 m the sole's depth below the foot body (biped/builder.py
+    z_bottom_ankleAct2foot).
+    """
+
+    # The biped's yaw error exceeds RewardsCfg's starting width of 0.4, copt_improvement.md section 6.3.
+    rew_ang_vel_z = RewTerm(
+        func=mdp.track_ang_vel_z_exp,
+        weight=7.5,
+        params={"command_name": "base_velocity", "std": 0.5},
+    )
+
+    pen_base_height = RewTerm(
+        func=mdp.base_height_rough_l2_v2,
+        params={
+            "target_height": 0.804,
+            "sensor_cfg": SceneEntityCfg("height_scanner"),
+        },
+        weight=-5.0,
+    )
+    pen_feet_regulation = RewTerm(
+        func=mdp.feet_regulation_v2,
+        weight=-0.2,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=["foot_[RL]_Link"]),
+            "base_height_target": 0.804,
+            "foot_radius": 0.050,
+        },
+    )
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_nominal,
+        weight=2.0,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
+            "command_name": "base_velocity",
+            "threshold_min": 0.2,
+            "threshold_max": 0.5,
+            "reference_height": 0.804,
         },
     )
 
@@ -1032,7 +1087,20 @@ class TerminationsCfg:
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="base_Link"),
+            "sensor_cfg": SceneEntityCfg("contact_forces",
+            body_names=[
+                "base_Link",
+            ]),
+            "threshold": 1.0,
+        },
+    )
+    leg_contact = DoneTerm(
+        func=mdp.illegal_contact,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces",
+            body_names=[
+                "thigh_.*", "shank_.*", ".*_act"
+            ]),
             "threshold": 1.0,
         },
     )
@@ -1046,7 +1114,8 @@ class CurriculumCfg:
         func=mdp.terrain_levels_vel_delayed,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "starting_step": 2000*24
+            "starting_step": 400*24,
+            "update_threshold": 0.7
         }
     )
 
@@ -1055,9 +1124,9 @@ class CurriculumCfg:
         params={
             "term_name": "push_robot",
             "max_velocity": (3.0, 3.0),
-            "interval": 400 * 24,
-            "starting_step": 6000 * 24,
-            "increment_rate": 1.1,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "increment_rate": 1.25,
             "decrement_rate" : 0.8,
             "minimum_velocity": 0.2
         },
@@ -1068,9 +1137,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 300 * 24,
-            "starting_step": 6000 * 24,
-            "update_rate": 0.015,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.6,
         }
     )
@@ -1080,9 +1149,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1, 1),
-            "interval": 300 * 24,
-            "starting_step": 6000 * 24,
-            "update_rate": 0.015,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.4,
         }
     )
@@ -1092,9 +1161,9 @@ class CurriculumCfg:
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
-            "interval": 250 * 24,
-            "starting_step": 6000 * 24,
-            "update_rate": 0.05,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
             "update_threshold": 0.4,
         }
     )
@@ -1103,8 +1172,8 @@ class CurriculumCfg:
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_lin_vel_xy",
-            "interval": 2000 * 24,
-            "starting_step": 900 * 24,
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
             "update_rate": 0.95,
             "update_threshold": 0.67,
             "minimum_std": 0.09
@@ -1114,9 +1183,9 @@ class CurriculumCfg:
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_ang_vel_z",
-            "interval": 2000 * 24,
+            "interval": 200 * 25,
             "starting_step": 0,
-            "update_rate": 0.975,
+            "update_rate": 0.95,
             "update_threshold": 0.5,
             "minimum_std": 0.09
         }
@@ -1158,6 +1227,103 @@ class CurriculumCfg:
     #             "max_lin_vel_y": (-0.75, 0.75),
     #         },
     # )
+
+
+@configclass
+class CoptCurriculumCfg(CurriculumCfg):
+    """CurriculumCfg in iterations of the co-optimisation runner's 25 steps (limx_rsl_rl_ppo_cfg.py:98).
+
+    CurriculumCfg counts 24, which the plain SF tasks keep although their runner
+    takes the same 25.
+    """
+
+    terrain_levels = CurrTerm(
+        func=mdp.terrain_levels_vel_delayed,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "starting_step": 400*24,
+            "update_threshold": 0.7
+        }
+    )
+
+    modify_push_force = CurrTerm(
+        func=mdp.modify_push_force,
+        params={
+            "term_name": "push_robot",
+            "max_velocity": (3.0, 3.0),
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "increment_rate": 1.25,
+            "decrement_rate" : 0.8,
+            "minimum_velocity": 0.2
+        },
+    )
+
+    modify_command_velocity_lin_x = CurrTerm(
+        func=mdp.modify_command_velocity_x,
+        params={
+            "term_name": "rew_lin_vel_xy",
+            "max_velocity": (-1.5, 1.5),
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
+            "update_threshold": 0.6,
+        }
+    )
+
+    modify_command_velocity_lin_y = CurrTerm(
+        func=mdp.modify_command_velocity_y,
+        params={
+            "term_name": "rew_lin_vel_xy",
+            "max_velocity": (-1, 1),
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
+            "update_threshold": 0.4,
+        }
+    )
+
+    modify_command_velocity_ang_z = CurrTerm(
+        func=mdp.modify_command_velocity_angular,
+        params={
+            "term_name": "rew_ang_vel_z",
+            "max_velocity": (-1.35, 1.35),
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.075,
+            "update_threshold": 0.4,
+        }
+    )
+
+    modify_linear_tracking_reward_std = CurrTerm(
+        func=mdp.reduce_tracking_rewards_std,
+        params={
+            "term_name": "rew_lin_vel_xy",
+            "interval": 200 * 25,
+            "starting_step": 400 * 25,
+            "update_rate": 0.95,
+            "update_threshold": 0.67,
+            "minimum_std": 0.12,
+            "smoothing_episodes": 6400,
+            "widen_threshold": 0.55,
+            "maximum_std": 0.4,
+        }
+    )
+    modify_angular_tracking_reward_std = CurrTerm(
+        func=mdp.reduce_tracking_rewards_std,
+        params={
+            "term_name": "rew_ang_vel_z",
+            "interval": 200 * 25,
+            "starting_step": 0,
+            "update_rate": 0.95,
+            "update_threshold": 0.60,
+            "minimum_std": 0.30,
+            "smoothing_episodes": 6400,
+            "widen_threshold": 0.45,
+            "maximum_std": 0.5,
+        }
+    )
+
 
 
 ########################
@@ -1232,16 +1398,16 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the test environment"""
 
     # Scene settings
-    scene: SFSceneCfg = SFSceneCfg(num_envs=4096, env_spacing=env_spacing)
+    scene: SFSceneCfg = SFSceneCfg(num_envs=5120, env_spacing=env_spacing)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
-    rewards: RewardsCfg = RewardsCfg()
+    rewards: CoptRewardsCfg = CoptRewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventsCfg = EventsCfg()
-    curriculum: CurriculumCfg = CurriculumCfg()
+    curriculum: CoptCurriculumCfg = CoptCurriculumCfg()
 
     def __post_init__(self):
         """Post initialization"""
@@ -1272,9 +1438,7 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
         self.observations.historyObs = ObservationsCfg.HistoryObsCfg()
         self.observations.estimatorGT = ObservationsCfg.EstimatorGTCfg()
         self.observations.critic.link_lengths = _sf_link_lengths_obs_term()
-        # The co-optimisation actor state is a single step, not the ten step
-        # history the plain task uses, reproducing the former CoptObservationsCfg.PolicyCfg.
-        self.observations.policy.history_length = 0
+        self.observations.critic.nominal_pose = _sf_nominal_pose_obs_term()
 
 
 

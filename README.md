@@ -49,6 +49,14 @@ Running `train.py` script requires `environments`, `co_optimisation` and `himloc
 pip install -e environments co_optimisation himloco
 ```
 
+### design_generator
+The co-optimisation design generator is a git submodule at `design_generator`, and its own modules import it as the top-level package `design_generator`, so it must be installed in its own right. It ships a `pyproject.toml` for exactly that. Install it and `co_optimisation` editable, since a copy in site-packages silently keeps the old code after every edit, and `co_optimisation` declares `cma`, `cmaes` and `pandas`, so the same line installs those.
+```zsh
+git submodule update --init --recursive
+pip install -e design_generator co_optimisation
+python -c "import cma, cmaes, pandas, design_generator"
+```
+
 ### Proprietary asset submodules
 The SD_BRS1 and KScale URDF and mesh assets under `environments/environments/assets/urdf/solefoot/` are proprietary and live in two private repositories, `BRS_Assets` and `RBot_Assets`, checked in here as git submodules at their existing paths. A fresh clone of this repository leaves those two directories empty until the submodules are populated.
 ```zsh

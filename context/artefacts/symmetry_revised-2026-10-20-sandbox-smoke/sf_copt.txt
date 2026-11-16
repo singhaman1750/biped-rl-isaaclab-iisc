@@ -1,0 +1,15 @@
+# sf_copt, excerpt of /tmp/symsandbox_v2_20261020/smoke_sf_copt.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: SFCoptMorphologyRunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=45000, empirical_normalization=False, obs_groups={'policy': ['policy'], 'critic': ['critic'], '
+| Active Observation Terms in Group: 'policy' (shape: (360,)) |
+| Active Observation Terms in Group: 'critic' (shape: (4890,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+| Active Observation Terms in Group: 'morphologyObs' (shape: (160,)) |
+| Active Observation Terms in Group: 'privilegedDynamicsObs' (shape: (28,)) |
+| Active Observation Terms in Group: 'historyObs' (shape: (5575,)) |
+| Active Observation Terms in Group: 'estimatorGT' (shape: (3,)) |
+Traceback (most recent call last):
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 366, in <module>
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 353, in main
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 158, in dump_yaml
+RuntimeError: Pickling of "pxr.Usd.Stage" instances is not enabled (http://www.boost.org/libs/python/doc/v2/pickle.html)

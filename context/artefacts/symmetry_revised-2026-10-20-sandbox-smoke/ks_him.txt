@@ -1,0 +1,13 @@
+# ks_him, excerpt of /tmp/symsandbox_v2_20261020/smoke_ks_him.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.kscale_solefoot_env_cfg.KscaleHIMBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: KscaleFlatPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=24, max_iterations=10000, empirical_normalization=False, obs_groups=<dataclasses._MISSING_TYPE object at 0x75aa707508
+Traceback (most recent call last):
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 369, in <module>
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 199, in main
+  File "/tmp/symsandbox_v2_20261020/environments/environments/tasks/locomotion/envs/him_env.py", line 10, in __init__
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/envs/manager_based_rl_env.py", line 80, in __init__
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/envs/manager_based_env.py", line 104, in __init__
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/sim/simulation_context.py", line 300, in __init__
+  File "/workspace/isaaclab/source/isaaclab/isaaclab/sim/simulation_context.py", line 649, in _init_stage
+pxr.Tf.ErrorException: 
+	Error in 'pxrInternal_v0_24__pxrReserved__::UsdStage::_SetValueImpl' at line 6722 in file /builds/omniverse/usd-ci/USD/pxr/usd/usd/stage.cpp : 'Type mismatch for </physicsScene.physxScene:gpuMaxRigidContactCount>: expected 'unsigned int', got 'TfPyObjWrapper''

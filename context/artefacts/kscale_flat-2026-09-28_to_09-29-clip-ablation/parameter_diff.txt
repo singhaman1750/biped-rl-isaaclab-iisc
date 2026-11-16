@@ -1,0 +1,54 @@
+### The exhaustive parameter comparison of the five dumped configurations
+
+term                                          A             B             C             D             E
+pen_joint_torque                        -0.0005        -0.001       -0.0005       -0.0005       -0.0005
+pen_joint_accel                          -5e-06        -1e-05        -5e-06        -5e-06        -5e-06
+pen_joint_vel_l2                        -0.0005        -0.001       -0.0005       -0.0005       -0.0005
+pen_joint_torque_rate                   -0.0005        -0.001       -0.0005       -0.0005       -0.0005
+pen_joint_power                               -             -         -0.02         -0.02         -0.02
+pen_ankle_roll_deviation                      -            -1            -1             -             -
+rew_keep_ankle_roll_zero_in_air            0.25             1             1             1             1
+rew_keep_hip_yaw_zero_in_air                  1             1             1             1             1
+rew_keep_ankle_pitch_zero_in_air              1             1             1             1             1
+pen_feet_heading                             -8            -8            -8            -8            -8
+pen_hip_yaw_deviation                        -1            -1            -1            -1            -1
+pen_hip_roll_deviation                     -0.1          -0.1          -0.1          -0.1          -0.1
+pen_joint_pos_limits                         -2            -2            -2            -2            -2
+pen_base_height                             -30           -30           -30           -30           -30
+pen_action_rate                           -0.01         -0.01         -0.01         -0.01         -0.01
+pen_action_smoothness                    -0.075        -0.075        -0.075        -0.075        -0.075
+rew_hip_lateral_sway                          5             5             5             5             5
+pen_feet_distance                          -100          -100          -100          -100          -100
+
+A 2026-09-24_05-18-33  envs=9000
+    scale={'(left|right)_hip_pitch_04': 0.4, '(left|right)_hip_yaw_03': 0.4, '(left|right)_knee_04': 0.2667, '(left|right)_hip_roll_03': 0.16, '(left|right)_foot_pitch_02': 0.08, '(left|right)_foot_roll_02': 0.08}
+    clip =None
+B 2026-09-25_08-00-34  envs=9000
+    scale={'(left|right)_hip_pitch_04': 0.4, '(left|right)_hip_yaw_03': 0.4, '(left|right)_knee_04': 0.2667, '(left|right)_hip_roll_03': 0.16, '(left|right)_foot_pitch_02': 0.08, '(left|right)_foot_roll_02': 0.08}
+    clip =None
+C 2026-09-25_11-29-39  envs=6000
+    scale={'(left|right)_hip_pitch_04': 0.4, '(left|right)_hip_yaw_03': 0.4, '(left|right)_knee_04': 0.2667, '(left|right)_hip_roll_03': 0.16, '(left|right)_foot_pitch_02': 0.08, '(left|right)_foot_roll_02': 0.08}
+    clip =None
+D 2026-09-28_10-25-57  envs=9000
+    scale={'(left|right)_hip_pitch_04': 0.4, '(left|right)_hip_yaw_03': 0.4, '(left|right)_knee_04': 0.2667, '(left|right)_hip_roll_03': 0.16, '(left|right)_foot_pitch_02': 0.08, '(left|right)_foot_roll_02': 0.08}
+    clip =None
+E 2026-09-29_06-15-58  envs=5000
+    scale={'(left|right)_hip_pitch_04': 0.4, '(left|right)_hip_yaw_03': 0.4, '(left|right)_knee_04': 0.2667, '(left|right)_hip_roll_03': 0.16, '(left|right)_foot_pitch_02': 0.08, '(left|right)_foot_roll_02': 0.08}
+    clip ={'(left|right)_foot_roll_02': (-0.241799, 0.241799), '(left|right)_foot_pitch_02': (-0.852665, 0.503599), '(left|right)_knee_04': (0.02, 2.68526), '(left|right)_hip_yaw_03': (-1.5508, 1.5508), 'right_hip_roll_03': (-2.24893, 0.18944), 'left_hip_roll_03': (-0.18944, 2.24893), 'right_hip_pitch_04': (-2.19657, 1.0272), 'left_hip_pitch_04': (-1.0272, 2.19657)}
+
+### The two runs in flight against run E
+
+rewards.pen_action_excess.__class__
+    E='<absent>'
+    F='isaaclab.managers.manager_term_cfg.RewardTermCfg'
+    G='isaaclab.managers.manager_term_cfg.RewardTermCfg'
+rewards.pen_action_excess.func.__ref__
+    E='<absent>'
+    F='environments.tasks.locomotion.mdp.rewards.action_clip_excess_l2'
+    G='environments.tasks.locomotion.mdp.rewards.action_clip_excess_l2'
+rewards.pen_action_excess.weight
+    E='<absent>'
+    F=-2
+    G=-500
+
+3 differing leaf paths of 2575

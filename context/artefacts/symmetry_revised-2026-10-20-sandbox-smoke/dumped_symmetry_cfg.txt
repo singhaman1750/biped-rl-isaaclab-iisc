@@ -1,0 +1,72 @@
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/copt_moral/2026-10-20_08-50-10/
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/copt_moral/2026-10-20_08-57-41/
+  symmetry_cfg:
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: environments.tasks.locomotion.mdp.symmetry.tron1:compute_symmetric_states
+    mirror_loss_coeff: 0.5
+  estimator_loss_coef: 1.0
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/kscale_flat/2026-10-20_08-55-53/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: false
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.kscale.compute_symmetric_states ''
+    mirror_loss_coeff: 0.0
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/kscale_flat/2026-10-20_08-56-51/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: false
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.kscale.compute_symmetric_states ''
+    mirror_loss_coeff: 0.0
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/quadruped_copt/2026-10-20_08-51-21/
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/quadruped_copt/2026-10-20_08-59-17/
+  symmetry_cfg:
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: environments.tasks.locomotion.mdp.symmetry.quadruped:compute_symmetric_states
+    mirror_loss_coeff: 0.5
+  estimator_loss_coef: 1.0
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/quadruped_flat/2026-10-20_08-45-55/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.quadruped.compute_symmetric_states ''
+    mirror_loss_coeff: 0.5
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/quadruped_flat/2026-10-20_08-48-45/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.quadruped.compute_symmetric_states ''
+    mirror_loss_coeff: 0.5
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/sd_brs1_flat/2026-10-20_08-53-39/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.brs.compute_symmetric_states ''
+    mirror_loss_coeff: 0.0
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/sd_brs1_flat/2026-10-20_08-54-51/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.brs.compute_symmetric_states ''
+    mirror_loss_coeff: 0.0
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_08-44-32/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.tron1.compute_symmetric_states ''
+    mirror_loss_coeff: 0.5
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg
+# /tmp/symsandbox_v2_20261020/logs/rsl_rl/sf_tron_1a_flat/2026-10-20_08-47-17/
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.tron1.compute_symmetric_states ''
+    mirror_loss_coeff: 0.5
+encoder: !!python/object:environments.utils.wrappers.rsl_rl.rl_mlp_cfg.EncoderCfg

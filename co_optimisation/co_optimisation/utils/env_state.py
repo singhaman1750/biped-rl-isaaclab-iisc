@@ -137,11 +137,13 @@ def capture_env_state(env) -> dict:
     cmd = u.command_manager.get_term("base_velocity")
     push = u.event_manager.get_term_cfg("push_robot")
     terrain = u.scene.terrain
+    # A plane has no terrain_levels (terrain_importer.py:312).
+    levels = getattr(terrain, "terrain_levels", None)
     return {
         "common_step_counter": int(u.common_step_counter),
         "sim_step_counter": int(u._sim_step_counter),
         "episode_length_buf": u.episode_length_buf.detach().cpu().clone(),
-        "terrain_levels": terrain.terrain_levels.detach().cpu().clone(),
+        "terrain_levels": None if levels is None else levels.detach().cpu().clone(),
         "env_origins": terrain.env_origins.detach().cpu().clone(),
         "command_ranges": _ranges_to_dict(cmd.cfg.ranges),
         "push_velocity_range": {
@@ -193,13 +195,15 @@ def restore_env_state(env, state: dict) -> None:
 
     # 2. Terrain progress, set before reset_to so the relative robot placement uses
     #    the saved origins (terrain_importer.py:347,353).
-    terrain.terrain_levels.copy_(state["terrain_levels"].to(device))
+    if state["terrain_levels"] is not None and hasattr(terrain, "terrain_levels"):
+        terrain.terrain_levels.copy_(state["terrain_levels"].to(device))
     terrain.env_origins.copy_(state["env_origins"].to(device))
 
     # 3. Physical articulation state. Suppress the terrain curriculum so the internal
     #    _reset_idx (manager_based_rl_env.py:356) does not promote / demote levels or
     #    move env_origins during placement.
     u._suppress_terrain_curriculum = True
+    u._suppress_curriculum = True
     try:
         u.reset_to(
             _scene_state_to(state["scene_state"], device),
@@ -208,6 +212,7 @@ def restore_env_state(env, state: dict) -> None:
         )
     finally:
         u._suppress_terrain_curriculum = False
+        u._suppress_curriculum = False
 
     # 4. Overwrite everything _reset_idx perturbed with the saved values.
     _restore_ranges(cmd.cfg.ranges, state["command_ranges"])

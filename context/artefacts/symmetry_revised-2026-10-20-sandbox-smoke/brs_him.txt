@@ -1,0 +1,32 @@
+# brs_him, excerpt of /tmp/symsandbox_v2_20261020/smoke_brs_him.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.brs_solefoot_env_cfg.SDBRS1HIMBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: SD_BRS1FlatPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=24, max_iterations=30000, empirical_normalization=False, obs_groups=<dataclasses._MISSING_TYPE object at 0x7d12df401
+| Active Observation Terms in Group: 'policy' (shape: (42,)) |
+| Active Observation Terms in Group: 'obsHistory' (shape: (10, 42)) |
+| Active Observation Terms in Group: 'critic' (shape: (4690,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+| Active Observation Terms in Group: 'estimatorGT' (shape: (3,)) |
+| Active Observation Terms in Group: 'targetEnc' (shape: (42,)) |
+[symmetry-probe] joint_names ['HipRollL', 'HipRollR', 'HipPitchL', 'HipPitchR', 'KneePitchL', 'KneePitchR', 'AnkleRollL', 'AnkleRollR', 'AnklePitchL', 'AnklePitchR']
+[symmetry-probe] jperm [1, 0, 3, 2, 5, 4, 7, 6, 9, 8] jsign [-1.0, -1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0]
+[symmetry-probe] body_names ['Part_Torso', 'Link1L', 'Link1R', 'Link2L', 'Link2R', 'Link3L', 'Link3R', 'Link4L', 'Link4R', 'Link5L', 'Link5R', 'Link6L', 'Link6R']
+[symmetry-probe] body_perm [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11]
+[symmetry-probe] shapes [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] max_shapes 13
+[symmetry-probe] limits [[-0.349, 0.349], [-0.349, 0.349], [-1.25, 0.75], [-0.75, 1.25], [0.0, 1.483], [0.0, 1.483], [-0.359, 0.359], [-0.349, 0.349], [-0.454, 0.454], [-0.454, 0.454]]
+[symmetry-probe] default {'HipRollR': 0.0, 'HipRollL': 0.0, 'HipPitchR': 0.2379, 'HipPitchL': -0.2379, 'KneePitchR': 0.4814, 'KneePitchL': 0.4814, 'AnkleRollR': 0.0, 'AnkleRollL': 0.0, 'AnklePitchR': 0.2435, 'AnklePitchL': 0.2435}
+[symmetry-probe] group policy [('base_lin_vel', (3,), 0), ('base_ang_vel', (3,), 0), ('proj_gravity', (3,), 0), ('joint_pos', (10,), 0), ('joint_vel', (10,), 0), ('last_action', (10,), 0), ('velocity_commands', (3,), 0)]
+[symmetry-probe] group obsHistory [('base_lin_vel', (10, 3), 10), ('base_ang_vel', (10, 3), 10), ('proj_gravity', (10, 3), 10), ('joint_pos', (10, 10), 10), ('joint_vel', (10, 10), 10), ('last_action', (10, 10), 10), ('velocity_commands', (10, 3), 10)]
+[symmetry-probe] group critic [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (100,), 10), ('joint_vel', (100,), 10), ('last_action', (100,), 10), ('velocity_commands', (30,), 10), ('heights', (1870,), 10), ('robot_joint_torque', (100,), 10), ('robot_joint_acc', (100,), 10), ('feet_lin_vel', (60,), 10), ('robot_mass', (130,), 10), ('robot_inertia', (1170,), 10), ('robot_joint_pos', (100,), 10), ('robot_joint_stiffness', (100,), 10), ('robot_joint_damping', (100,), 10), ('robot_pos', (30,), 10), ('robot_vel', (60,), 10), ('robot_material_properties', (390,), 10), ('feet_contact_force', (60,), 10)]
+[symmetry-probe] group commands [('velocity_commands', (3,), 0)]
+[symmetry-probe] group estimatorGT [('base_lin_vel', (3,), 0)]
+[symmetry-probe] group targetEnc [('base_lin_vel', (3,), 0), ('base_ang_vel', (3,), 0), ('proj_gravity', (3,), 0), ('joint_pos', (10,), 0), ('joint_vel', (10,), 0), ('last_action', (10,), 0), ('velocity_commands', (3,), 0)]
+[symmetry-probe] rays height_scanner 187 yaw xy
+[symmetry-probe] sensor contact_forces ['Part_Torso', 'Link1L', 'Link2L', 'Link3L', 'Link4L', 'Link5L', 'Link6L', 'Link1R', 'Link2R', 'Link3R', 'Link4R', 'Link5R', 'Link6R']
+[symmetry] mirrored groups ['policy', 'obsHistory', 'critic', 'commands', 'estimatorGT', 'targetEnc']
+    estimation_loss, swap_loss = self.policy.estimator.update(
+Traceback (most recent call last):
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 369, in <module>
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 359, in main
+  File "/tmp/symsandbox_v2_20261020/himloco/himloco/algorithms/him_ppo.py", line 364, in update
+  File "/tmp/symsandbox_v2_20261020/himloco/himloco/modules/him_estimator.py", line 99, in update
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (768x42 and 45x128)

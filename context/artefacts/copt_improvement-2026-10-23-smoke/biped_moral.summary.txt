@@ -1,0 +1,72 @@
+Actor MLP: MLP(
+  (0): Linear(in_features=520, out_features=512, bias=True)
+                         Learning iteration 0/8                         
+   Mean model_estimation_loss loss: 0.1300
+                         Learning iteration 1/8                         
+   Mean model_estimation_loss loss: 0.0519
+                         Learning iteration 2/8                         
+   Mean model_estimation_loss loss: 0.0210
+                         Learning iteration 3/8                         
+   Mean model_estimation_loss loss: 0.0113
+                         Learning iteration 4/8                         
+   Mean model_estimation_loss loss: 0.0075
+              CMA-ES generation 2 at learning iteration 5               
+                      fitness_mean: 8.8927
+                       fitness_std: 3.0143
+                       fitness_max: 15.1207
+                       fitness_min: 5.6511
+                    fitness_median: 7.6952
+       split_half_rank_correlation: 0.9971
+                     eval/survival: 0.0000
+                eval/lin_vel_error: 0.9715
+               eval/yaw_rate_error: 0.3903
+                 eval/return_row_0: 9.4397
+                 eval/return_row_1: 8.9975
+                 eval/return_row_2: 8.7058
+                 eval/return_row_3: 8.3415
+                 eval/return_row_4: 8.9788
+               eval/survival_row_0: 0.0000
+               eval/survival_row_1: 0.0000
+               eval/survival_row_2: 0.0000
+               eval/survival_row_3: 0.0000
+               eval/survival_row_4: 0.0000
+                         eval_time: 169.3490
+                         Learning iteration 5/8                         
+   Mean model_estimation_loss loss: 0.0040
+                         Learning iteration 6/8                         
+   Mean model_estimation_loss loss: 0.0041
+              CMA-ES generation 3 at learning iteration 7               
+                      fitness_mean: 9.7908
+                       fitness_std: 1.9681
+                       fitness_max: 13.2507
+                       fitness_min: 7.1296
+                    fitness_median: 9.2131
+       split_half_rank_correlation: 1.0000
+                     eval/survival: 0.0000
+                eval/lin_vel_error: 0.9812
+               eval/yaw_rate_error: 0.4095
+                 eval/return_row_0: 10.0999
+                 eval/return_row_1: 10.1128
+                 eval/return_row_2: 9.5922
+                 eval/return_row_3: 9.3520
+                 eval/return_row_4: 9.7970
+               eval/survival_row_0: 0.0000
+               eval/survival_row_1: 0.0000
+               eval/survival_row_2: 0.0000
+               eval/survival_row_3: 0.0000
+               eval/survival_row_4: 0.0000
+                         eval_time: 164.5650
+                         Learning iteration 7/8                         
+   Mean model_estimation_loss loss: 0.0066
+                      fitness_mean: 9.7955
+                       fitness_std: 1.9708
+       split_half_rank_correlation: 0.9971
+                     eval/survival: 0.0000
+                eval/lin_vel_error: 0.9812
+               eval/yaw_rate_error: 0.4091
+                 eval/return_row_0: 10.1082
+                 eval/return_row_1: 10.1144
+                 eval/return_row_2: 9.5978
+                 eval/return_row_3: 9.3630
+                 eval/return_row_4: 9.7942
+EXIT 0

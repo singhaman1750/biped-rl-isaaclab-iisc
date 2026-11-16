@@ -27,7 +27,7 @@ The configuration follows a hierarchical structure using Isaac Lab's `@configcla
 
 ### Environment Configuration Chain (Quadruped)
 
-The quadruped mirrors the chain above at two levels beneath each base class rather than four, having no USD variant and therefore needing no layer to switch between URDF and USD. Every class carries a `Quadruped` prefix, because the names the chain would otherwise take are already held by the LimX TRON1 pointfoot biped and `cfg/__init__.py` flattens every family's public names into one namespace.
+The quadruped mirrors the chain above at two levels beneath each base class rather than four, having only ever had one asset and therefore needing no layer to switch between two. Corrected 2026-09-25, that asset now being the emitted MuJoCo document of the parametric design generator rather than a URDF. Every class carries a `Quadruped` prefix, because the names the chain would otherwise take are already held by the LimX TRON1 pointfoot biped and `cfg/__init__.py` flattens every family's public names into one namespace.
 
 1.  `ManagerBasedRLEnvCfg` (external, `isaaclab.envs`), the foundation class.
 2.  `QuadrupedPFEnvCfg`, `QuadrupedPFHIMEnvCfg` and `QuadrupedPFCoptEnvCfg` ([`base_env_cfg.py`](environments/environments/tasks/locomotion/cfg/quadruped/base_env_cfg.py)), one MDP template per runner, differing only in their observation class.
@@ -96,6 +96,10 @@ gym.register(
 )
 ```
 
+### Sagittal Symmetry in the Runners
+
+Since 2026-10-20 the runner configurations `SF_TRON1AFlatPPORunnerCfg` and `PFQuadrupedPPORunnerCfg` carry `symmetry_cfg` with augmentation and the mirror loss (`environments/environments/tasks/locomotion/agents/limx_rsl_rl_ppo_cfg.py:129-134`, `environments/environments/tasks/locomotion/agents/quadruped_rsl_rl_ppo_cfg.py:46-51`), so every SF and quadruped task below, plain, HIM and co-optimisation, trains with the sagittal mirror without a task of its own. The mirror modules live in `environments/environments/tasks/locomotion/mdp/symmetry/`, and [plans/symmetry_tron1_quadruped.md](plans/symmetry_tron1_quadruped.md) records their design and validation.
+
 ### The Quadruped Task Registry
 
 Twelve identifiers, written as explicit `gym.register` blocks in the same style as the biped tasks.
@@ -110,7 +114,9 @@ Twelve identifiers, written as explicit `gym.register` blocks in the same style 
 | `Isaac-Quadruped-Copt-Rough-v0`, `-Play-v0` | `QuadrupedPFCoptBlindRoughEnvCfg` | `CoptOnPolicyRunner` |
 | `Isaac-Quadruped-Copt-Learned-Rough-v0` | `QuadrupedPFCoptBlindRoughEnvCfg` | `CoptOnPolicyRunner`, learned model |
 
-The four co-optimisation identifiers are registered but must not yet be launched, the design generator not yet accepting this robot and `scripts/rsl_rl/train.py` hardcoding the biped URDF at lines 198 to 210. The vanilla and hybrid internal model identifiers need no change to `train.py` whatever.
+Updated 2026-10-23 by `plans/copt_improvement.md` section 4. The quadruped registers `Isaac-Quadruped-Copt-MoRAL-{Flat,Rough,Rough-Play}-v0` for the estimator architecture, `CoptMorALActorCritic` under `--policy-type COPT-MORAL`, and the identifiers `Isaac-Quadruped-Copt-{Flat,Rough,Rough-Play}-v0`, which named that architecture before the date, now launch the direct architecture, `CoptActorCritic` under `--policy-type COPT`, whose actor reads `morphologyObs`. The biped gains `Isaac-Limx-SF-Copt-{Flat,Rough,Rough-Play}-v0` for the direct architecture beside its unchanged `Copt-MoRAL` tasks. The table above records the identifiers of its date, and the `Learned` row was removed on 2026-09-10 (`/ws/ARCHITECTURE.md` section 3).
+
+The four co-optimisation identifiers were registered but not launchable, the design generator not accepting this robot. Corrected 2026-09-25, when the generator moved onto the vendored parametric submodule and took a `family` argument, so it accepts the quadruped on the same footing as the biped. Launching one requires setting `_family` to `"quadruped"` in `scripts/rsl_rl/train.py`, and the six gates of `../plans/design_generator_integration.md` section 15 that need Isaac Sim are still open. The vanilla and hybrid internal model identifiers need no change to `train.py` whatever.
 
 ## 6. Steps to Create a New Task
 

@@ -1,0 +1,14 @@
+# quad_copt, excerpt of /tmp/symsandbox_v2_20261020/smoke_quad_copt.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg'>
+[INFO]: Parsing configuration from: PFQuadrupedCoptPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=25, max_iterations=45000, empirical_normalization=False, obs_groups={'policy': ['policy'], 'critic': ['critic'],
+| Active Observation Terms in Group: 'policy' (shape: (480,)) |
+| Active Observation Terms in Group: 'critic' (shape: (6690,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+| Active Observation Terms in Group: 'morphologyObs' (shape: (216,)) |
+| Active Observation Terms in Group: 'privilegedDynamicsObs' (shape: (48,)) |
+| Active Observation Terms in Group: 'historyObs' (shape: (5875,)) |
+Traceback (most recent call last):
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 366, in <module>
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 353, in main
+  File "/tmp/symsandbox_v2_20261020/scripts/rsl_rl/train.py", line 158, in dump_yaml
+RuntimeError: Pickling of "pxr.Usd.Stage" instances is not enabled (http://www.boost.org/libs/python/doc/v2/pickle.html)

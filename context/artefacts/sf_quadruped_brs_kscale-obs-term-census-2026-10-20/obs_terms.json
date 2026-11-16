@@ -1,0 +1,6017 @@
+{
+ "Isaac-Limx-Kscale-Blind-Flat-v0": {
+  "agent": "KscaleFlatPPORunnerCfg",
+  "env_cfg": "KscaleBlindFlatEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/kscale/kscale.urdf",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_6061.*"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_6061.*"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-Kscale-Blind-Rough-v0": {
+  "agent": "KscaleFlatPPORunnerCfg",
+  "env_cfg": "KscaleBlindRoughEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/kscale/kscale.urdf",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_6061.*"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_6061.*"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-Kscale-HIM-Blind-Flat-v0": {
+  "agent": "KscaleFlatPPORunnerCfg",
+  "env_cfg": "KscaleHIMBlindFlatEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/kscale/kscale.urdf",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_6061.*"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_6061.*"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-Kscale-HIM-Blind-Rough-v0": {
+  "agent": "KscaleFlatPPORunnerCfg",
+  "env_cfg": "KscaleHIMBlindRoughEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/kscale/kscale.urdf",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_6061.*"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_6061.*"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-Kscale-HipYawFixed-Blind-Flat-v0": {
+  "agent": "KscaleFlatPPORunnerCfg",
+  "env_cfg": "KscaleHipYawFixedBlindFlatEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/kscale/kscale_hip_yaw_fixed.urdf",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_6061.*"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_6061.*"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SDBRS1-Blind-Flat-v0": {
+  "agent": "SD_BRS1FlatPPORunnerCfg",
+  "env_cfg": "SDBRS1BlindFlatEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/SD_BRS1/SD_BRS1_Assembly2.urdf",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "gait_phase": {
+      "func": "get_gait_phase",
+      "params": {}
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:Link6[LR]"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:Link6[LR]"
+      }
+     },
+     "gait_phase": {
+      "func": "get_gait_phase",
+      "params": {}
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SDBRS1-Blind-Flat2-v0": {
+  "agent": "SD_BRS1FlatPPORunnerCfg",
+  "env_cfg": "SDBRS1BlindFlatEnv2Cfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/SD_BRS1/SD_BRS.urdf",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "gait_phase": {
+      "func": "get_gait_phase",
+      "params": {}
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:Link6[LR]"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:Link6[LR]"
+      }
+     },
+     "gait_phase": {
+      "func": "get_gait_phase",
+      "params": {}
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SDBRS1-Blind-Rough-v0": {
+  "agent": "SD_BRS1FlatPPORunnerCfg",
+  "env_cfg": "SDBRS1BlindRoughEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/SD_BRS1/SD_BRS1_Assembly2.urdf",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "gait_phase": {
+      "func": "get_gait_phase",
+      "params": {}
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:Link6[LR]"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:Link6[LR]"
+      }
+     },
+     "gait_phase": {
+      "func": "get_gait_phase",
+      "params": {}
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SDBRS1-HIM-Blind-Flat-v0": {
+  "agent": "SD_BRS1FlatPPORunnerCfg",
+  "env_cfg": "SDBRS1HIMBlindFlatEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/SD_BRS1/SD_BRS1_Assembly2.urdf",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:Link6[LR]"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:Link6[LR]"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0": {
+  "agent": "SD_BRS1FlatPPORunnerCfg",
+  "env_cfg": "SDBRS1HIMBlindRoughEnvCfg",
+  "spawn": "UrdfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../urdf/solefoot/SD_BRS1/SD_BRS1_Assembly2.urdf",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:Link6[LR]"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:Link6[LR]"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Berkeley-v0": {
+  "agent": "SF_Berkeley_PPORunnerCfg",
+  "env_cfg": "SFBerkeleyRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 1,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "actions": {
+      "func": "last_action",
+      "params": {}
+     }
+    }
+   },
+   "critic": {
+    "history": 1,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "actions": {
+      "func": "last_action",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Blind-Flat-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Blind-Rough-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Copt-MoRAL-Flat-v0": {
+  "agent": "SFCoptMorphologyRunnerCfg",
+  "env_cfg": "SFCoptBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_R_Link', 'thigh_L_Link', 'shank_R_Link', 'shank_L_Link']",
+       "child_body_names": "['shank_R_Link', 'shank_L_Link', 'ankle_R_act', 'ankle_L_act']"
+      }
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link', 'ankle_.*_act']"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "morphologyObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_R_Link', 'thigh_L_Link', 'shank_R_Link', 'shank_L_Link']",
+       "child_body_names": "['shank_R_Link', 'shank_L_Link', 'ankle_R_act', 'ankle_L_act']"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link', 'ankle_.*_act']"
+      }
+     }
+    }
+   },
+   "privilegedDynamicsObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "historyObs": {
+    "history": 25,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Copt-MoRAL-Rough-v0": {
+  "agent": "SFCoptMorphologyRunnerCfg",
+  "env_cfg": "SFCoptBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_R_Link', 'thigh_L_Link', 'shank_R_Link', 'shank_L_Link']",
+       "child_body_names": "['shank_R_Link', 'shank_L_Link', 'ankle_R_act', 'ankle_L_act']"
+      }
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link', 'ankle_.*_act']"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "morphologyObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_R_Link', 'thigh_L_Link', 'shank_R_Link', 'shank_L_Link']",
+       "child_body_names": "['shank_R_Link', 'shank_L_Link', 'ankle_R_act', 'ankle_L_act']"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link', 'ankle_.*_act']"
+      }
+     }
+    }
+   },
+   "privilegedDynamicsObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "historyObs": {
+    "history": 25,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-HIM-Blind-Flat-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFHIMBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-HIM-Blind-Rough-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFHIMBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-HIM-Identified-Blind-Flat-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFHIMIdentifiedBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-HIM-Identified-Blind-Rough-Urdf-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFHIMIdentifiedBlindRoughEnvUrdfCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-HIM-Identified-Blind-Rough-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFHIMIdentifiedBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Identified-Berkeley-v0": {
+  "agent": "SF_Berkeley_PPORunnerCfg",
+  "env_cfg": "SFIdentifiedBerkeleyRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 1,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "actions": {
+      "func": "last_action",
+      "params": {}
+     }
+    }
+   },
+   "critic": {
+    "history": 1,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "actions": {
+      "func": "last_action",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Identified-Blind-Flat-Urdf-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFIdentifiedBlindFlatEnvUrdfCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Identified-Blind-Flat-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFIdentifiedBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Identified-Blind-Rough-Urdf-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFIdentifiedBlindRoughEnvUrdfCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Limx-SF-Identified-Blind-Rough-v0": {
+  "agent": "SF_TRON1AFlatPPORunnerCfg",
+  "env_cfg": "SFIdentifiedBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-Blind-Flat-v0": {
+  "agent": "PFQuadrupedPPORunnerCfg",
+  "env_cfg": "QuadrupedPFBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/quadruped/quadruped.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-Blind-Rough-v0": {
+  "agent": "PFQuadrupedPPORunnerCfg",
+  "env_cfg": "QuadrupedPFBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/quadruped/quadruped.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-Copt-Flat-v0": {
+  "agent": "PFQuadrupedCoptPPORunnerCfg",
+  "env_cfg": "QuadrupedPFCoptBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/quadruped/quadruped.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_FR_Link', 'thigh_FL_Link', 'thigh_RR_Link', 'thigh_RL_Link', 'shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link']",
+       "child_body_names": "['shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link', 'foot_FR_Link', 'foot_FL_Link', 'foot_RR_Link', 'foot_RL_Link']"
+      }
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link']"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "morphologyObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_FR_Link', 'thigh_FL_Link', 'thigh_RR_Link', 'thigh_RL_Link', 'shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link']",
+       "child_body_names": "['shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link', 'foot_FR_Link', 'foot_FL_Link', 'foot_RR_Link', 'foot_RL_Link']"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {
+       "asset_cfg": "robot:['abad_.*_act', 'hip_.*_act', 'knee_.*_act', 'thigh_.*_Link', 'shank_.*_Link']"
+      }
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {
+       "asset_cfg": "robot:['abad_.*_act', 'hip_.*_act', 'knee_.*_act', 'thigh_.*_Link', 'shank_.*_Link']"
+      }
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link']"
+      }
+     }
+    }
+   },
+   "privilegedDynamicsObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "historyObs": {
+    "history": 25,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-Copt-Rough-v0": {
+  "agent": "PFQuadrupedCoptPPORunnerCfg",
+  "env_cfg": "QuadrupedPFCoptBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/quadruped/quadruped.xml",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_FR_Link', 'thigh_FL_Link', 'thigh_RR_Link', 'thigh_RL_Link', 'shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link']",
+       "child_body_names": "['shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link', 'foot_FR_Link', 'foot_FL_Link', 'foot_RR_Link', 'foot_RL_Link']"
+      }
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link']"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "morphologyObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "link_lengths": {
+      "func": "robot_link_lengths",
+      "params": {
+       "asset_cfg": "robot:None",
+       "parent_body_names": "['thigh_FR_Link', 'thigh_FL_Link', 'thigh_RR_Link', 'thigh_RL_Link', 'shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link']",
+       "child_body_names": "['shank_FR_Link', 'shank_FL_Link', 'shank_RR_Link', 'shank_RL_Link', 'foot_FR_Link', 'foot_FL_Link', 'foot_RR_Link', 'foot_RL_Link']"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {
+       "asset_cfg": "robot:['abad_.*_act', 'hip_.*_act', 'knee_.*_act', 'thigh_.*_Link', 'shank_.*_Link']"
+      }
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {
+       "asset_cfg": "robot:['abad_.*_act', 'hip_.*_act', 'knee_.*_act', 'thigh_.*_Link', 'shank_.*_Link']"
+      }
+     },
+     "nominal_pose": {
+      "func": "robot_nominal_pose",
+      "params": {
+       "asset_cfg": "robot:['thigh_.*_Link', 'shank_.*_Link']"
+      }
+     }
+    }
+   },
+   "privilegedDynamicsObs": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "historyObs": {
+    "history": 25,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-Go1Asset-Blind-Rough-v0": {
+  "agent": "PFQuadrupedPPORunnerCfg",
+  "env_cfg": "QuadrupedPFGo1AssetBlindRoughEnvCfg",
+  "spawn": "UsdFileCfg:https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/IsaacLab/Robots/Unitree/Go1/go1.usd",
+  "groups": {
+   "policy": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:.*_foot"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:.*_foot"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-Go1Native-Matched-Rough-v0": {
+  "agent": "UnitreeGo1RoughPPORunnerCfg",
+  "env_cfg": "Go1NativeMatchedEnvCfg",
+  "spawn": "UsdFileCfg:https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/IsaacLab/Robots/Unitree/Go1/go1.usd",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "projected_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "actions": {
+      "func": "last_action",
+      "params": {}
+     },
+     "height_scan": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-HIM-Blind-Flat-v0": {
+  "agent": "PFQuadrupedPPORunnerCfg",
+  "env_cfg": "QuadrupedPFHIMBlindFlatEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/quadruped/quadruped.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ },
+ "Isaac-Quadruped-HIM-Blind-Rough-v0": {
+  "agent": "PFQuadrupedPPORunnerCfg",
+  "env_cfg": "QuadrupedPFHIMBlindRoughEnvCfg",
+  "spawn": "MjcfFileCfg:/workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/quadruped/quadruped.xml",
+  "groups": {
+   "policy": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "obsHistory": {
+    "history": 10,
+    "flatten": false,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "critic": {
+    "history": 10,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     },
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "heights": {
+      "func": "height_scan",
+      "params": {
+       "sensor_cfg": "height_scanner:None"
+      }
+     },
+     "robot_joint_torque": {
+      "func": "robot_joint_torque",
+      "params": {}
+     },
+     "robot_joint_acc": {
+      "func": "robot_joint_acc",
+      "params": {}
+     },
+     "feet_lin_vel": {
+      "func": "feet_lin_vel",
+      "params": {
+       "asset_cfg": "robot:foot_.*_Link"
+      }
+     },
+     "robot_mass": {
+      "func": "robot_mass",
+      "params": {}
+     },
+     "robot_inertia": {
+      "func": "robot_inertia",
+      "params": {}
+     },
+     "robot_joint_pos": {
+      "func": "robot_joint_pos",
+      "params": {}
+     },
+     "robot_joint_stiffness": {
+      "func": "robot_joint_stiffness",
+      "params": {}
+     },
+     "robot_joint_damping": {
+      "func": "robot_joint_damping",
+      "params": {}
+     },
+     "robot_pos": {
+      "func": "robot_pos",
+      "params": {}
+     },
+     "robot_vel": {
+      "func": "robot_vel",
+      "params": {}
+     },
+     "robot_material_properties": {
+      "func": "robot_material_properties",
+      "params": {}
+     },
+     "feet_contact_force": {
+      "func": "robot_contact_force",
+      "params": {
+       "sensor_cfg": "contact_forces:foot_.*_Link"
+      }
+     }
+    }
+   },
+   "commands": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     }
+    }
+   },
+   "estimatorGT": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   },
+   "targetEnc": {
+    "history": null,
+    "flatten": true,
+    "terms": {
+     "base_ang_vel": {
+      "func": "base_ang_vel",
+      "params": {}
+     },
+     "proj_gravity": {
+      "func": "projected_gravity",
+      "params": {}
+     },
+     "joint_pos": {
+      "func": "joint_pos_rel",
+      "params": {}
+     },
+     "joint_vel": {
+      "func": "joint_vel_rel",
+      "params": {}
+     },
+     "last_action": {
+      "func": "last_action",
+      "params": {}
+     },
+     "velocity_commands": {
+      "func": "generated_commands",
+      "params": {
+       "command_name": "'base_velocity'"
+      }
+     },
+     "base_lin_vel": {
+      "func": "base_lin_vel",
+      "params": {}
+     }
+    }
+   }
+  }
+ }
+}

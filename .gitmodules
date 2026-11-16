@@ -4,3 +4,7 @@
 [submodule "environments/environments/assets/urdf/solefoot/kscale"]
 	path = environments/environments/assets/urdf/solefoot/kscale
 	url = git@github.com:shandilya1998/RBot_Assets.git
+[submodule "co_optimisation/co_optimisation/runners/design_generator"]
+	path = design_generator
+	url = git@github.com:shandilya1998/design_generator.git
+	branch = main

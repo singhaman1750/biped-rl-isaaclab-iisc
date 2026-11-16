@@ -1,0 +1,45 @@
+[symmetry-probe] joint_names ['abad_R_Joint', 'abad_L_Joint', 'hip_R_Joint', 'hip_L_Joint', 'knee_R_Joint', 'knee_L_Joint', 'ankle_R_Joint', 'ankle_L_Joint']
+[symmetry-probe] jperm [1, 0, 3, 2, 5, 4, 7, 6] jsign [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+[symmetry-probe] body_names ['base_Link', 'abad_R_act', 'abad_L_act', 'hip_R_act', 'hip_L_act', 'knee_R_act', 'knee_L_act', 'thigh_R_Link', 'thigh_L_Link', 'shank_R_Link', 'shank_L_Link', 'ankle_R_act', 'ankle_L_act', 'foot_R_Link', 'foot_L_Link']
+[symmetry-probe] body_perm [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13]
+[symmetry-probe] shapes [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] max_shapes 15
+[symmetry-probe] limits [[-0.38397, 1.39626], [-0.38397, 1.39626], [-1.39626, 1.01229], [-1.39626, 1.01229], [-1.21357, 1.17267], [-1.21357, 1.17267], [-0.791917, 1.30899], [-0.791917, 1.30899]]
+[symmetry-probe] group policy [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (80,), 10), ('joint_vel', (80,), 10), ('last_action', (80,), 10), ('velocity_commands', (30,), 10)]
+[symmetry-probe] group critic [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (80,), 10), ('joint_vel', (80,), 10), ('last_action', (80,), 10), ('velocity_commands', (30,), 10), ('robot_joint_torque', (80,), 10), ('robot_joint_acc', (80,), 10), ('feet_lin_vel', (60,), 10), ('robot_mass', (150,), 10), ('robot_inertia', (1350,), 10), ('robot_joint_pos', (80,), 10), ('robot_joint_stiffness', (80,), 10), ('robot_joint_damping', (80,), 10), ('robot_pos', (30,), 10), ('robot_vel', (60,), 10), ('robot_material_properties', (450,), 10), ('feet_contact_force', (60,), 10), ('heights', (1870,), 10)]
+[symmetry-probe] group commands [('velocity_commands', (3,), 0)]
+[symmetry-probe] rays height_scanner 187 yaw xy
+[symmetry-probe] contact body_names ['base_Link', 'abad_R_act', 'hip_R_act', 'knee_R_act', 'thigh_R_Link', 'shank_R_Link', 'ankle_R_act', 'foot_R_Link', 'abad_L_act', 'hip_L_act', 'knee_L_act', 'thigh_L_Link', 'shank_L_Link', 'ankle_L_act', 'foot_L_Link']
+[symmetry] mirrored groups ['policy', 'critic'], tiled unmirrored ['commands']
+                         Learning iteration 0/3                         
+                Mean symmetry loss: 0.0063
+                       Mean reward: 0.76
+                    Iteration time: 6.07s
+                         Learning iteration 1/3                         
+                Mean symmetry loss: 0.0045
+                       Mean reward: -0.41
+                    Iteration time: 5.75s
+                         Learning iteration 2/3                         
+                Mean symmetry loss: 0.0036
+                       Mean reward: -0.49
+                    Iteration time: 4.35s
+--- params/agent.yaml symmetry_cfg
+  symmetry_cfg: !!python/object:isaaclab_rl.rsl_rl.symmetry_cfg.RslRlSymmetryCfg
+    use_data_augmentation: true
+    use_mirror_loss: true
+    data_augmentation_func: !!python/name:environments.tasks.locomotion.mdp.symmetry.tron1.compute_symmetric_states ''
+    mirror_loss_coeff: 0.5
+--- params/env.yaml first line
+!!python/object:environments.tasks.locomotion.robots.limx_solefoot_env_cfg.SFIdentifiedBlindRoughEnvUrdfCfg
+--- diff of params/env.yaml, baseline sf_tron_1a_flat/2026-10-20_05-24-20 against this run
+87c87
+<   num_envs: 4096
+---
+>   num_envs: 64
+97c97
+<       asset_path: /workspace/isaaclab/biped/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml
+---
+>       asset_path: /tmp/symsandbox_20261020/environments/environments/assets/config/../mjcf/solefoot/tron1/base_robot.xml
+267c267
+<     num_envs: 4096
+---
+>     num_envs: 64

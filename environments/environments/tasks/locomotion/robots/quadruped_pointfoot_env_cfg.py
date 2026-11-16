@@ -15,15 +15,6 @@ from environments.tasks.locomotion.cfg.quadruped.terrains_cfg import (
     QUADRUPED_ROUGH_TERRAINS_PLAY_CFG,
 )
 
-# The nominal crouch of the MuJoCo keyframe. The knee is the negation of twice the hip,
-# which places each foot exactly beneath its hip pitch axis at a drop of 0.270 m.
-QUADRUPED_INIT_JOINT_POS = {
-    "abad_.._Joint": 0.0,
-    "hip_.._Joint": 0.884337,
-    "knee_.._Joint": -1.768673,
-}
-
-
 ######################
 # Quadruped Base Environments
 ######################
@@ -37,17 +28,16 @@ class QuadrupedPFBaseEnvCfg(QuadrupedPFEnvCfg):
         self.scene.robot = QUADRUPED_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
-        self.scene.robot.init_state.joint_pos = dict(QUADRUPED_INIT_JOINT_POS)
 
-        self.events.add_base_mass.params["asset_cfg"].body_names = "base_Link"
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "base_Link"
+        self.events.add_base_mass.params["asset_cfg"].body_names = "trunk"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk"
 
         # The viewer offsets are scaled to a 0.292 m robot, the biped's (-2.5, 0, 2.5)
         # framing a body three times this one's standing height.
         self.viewer.origin_type = "asset_root"
         self.viewer.asset_name = "robot"
         self.viewer.env_index = 0
-        self.viewer.eye = (-1.2, 0.0, 0.8)
+        self.viewer.eye = (-2.4, 0.0, 1.6)
         self.viewer.lookat = (0.0, 0.0, 0.25)
 
 
@@ -91,17 +81,16 @@ class QuadrupedPFHIMBaseEnvCfg(QuadrupedPFHIMEnvCfg):
         self.scene.robot = QUADRUPED_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
-        self.scene.robot.init_state.joint_pos = dict(QUADRUPED_INIT_JOINT_POS)
 
-        self.events.add_base_mass.params["asset_cfg"].body_names = "base_Link"
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "base_Link"
+        self.events.add_base_mass.params["asset_cfg"].body_names = "trunk"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk"
 
         # The viewer offsets are scaled to a 0.292 m robot, the biped's (-2.5, 0, 2.5)
         # framing a body three times this one's standing height.
         self.viewer.origin_type = "asset_root"
         self.viewer.asset_name = "robot"
         self.viewer.env_index = 0
-        self.viewer.eye = (-1.2, 0.0, 0.8)
+        self.viewer.eye = (-2.4, 0.0, 1.6)
         self.viewer.lookat = (0.0, 0.0, 0.25)
 
 
@@ -146,17 +135,16 @@ class QuadrupedPFCoptBaseEnvCfg(QuadrupedPFCoptEnvCfg):
         self.scene.robot = QUADRUPED_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
-        self.scene.robot.init_state.joint_pos = dict(QUADRUPED_INIT_JOINT_POS)
 
-        self.events.add_base_mass.params["asset_cfg"].body_names = "base_Link"
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "base_Link"
+        self.events.add_base_mass.params["asset_cfg"].body_names = "trunk"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk"
 
         # The viewer offsets are scaled to a 0.292 m robot, the biped's (-2.5, 0, 2.5)
         # framing a body three times this one's standing height.
         self.viewer.origin_type = "asset_root"
         self.viewer.asset_name = "robot"
         self.viewer.env_index = 0
-        self.viewer.eye = (-1.2, 0.0, 0.8)
+        self.viewer.eye = (-2.4, 0.0, 1.6)
         self.viewer.lookat = (0.0, 0.0, 0.25)
 
 

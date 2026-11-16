@@ -3,6 +3,9 @@ with the lowest current terrain difficulty level.
 
 Place this wrapper between the base env and RecordVideo so the camera
 is updated before RecordVideo captures the rendered frame.
+
+PausableRecordVideo, the recorder train.py places around it, can be suspended
+so that the steps a runner takes for its own purposes are neither filmed nor counted.
 """
 
 import gymnasium as gym
@@ -53,3 +56,21 @@ class HighestTerrainCameraWrapper(gym.Wrapper):
         if self.prev_index != highest_idx:
             self.prev_index = highest_idx
             print(f"tracking index {self.prev_index}")
+
+
+class PausableRecordVideo(gym.wrappers.RecordVideo):
+    """gym.wrappers.RecordVideo with a paused flag, and RecordVideo exactly while unpaused, the default.
+
+    Paused, a step passes straight to the wrapped environment, rendering no frame and leaving
+    step_id where it was, so that the step trigger stays aligned with the steps of training alone
+    and a clip in progress resumes at the next unpaused step. CoptOnPolicyRunner pauses it through
+    every controlled evaluation. Written against gymnasium 1.2.1, whose RecordVideo.step advances
+    step_id and captures a frame after stepping (rendering.py:359-374).
+    """
+
+    paused: bool = False
+
+    def step(self, action):
+        if self.paused:
+            return self.env.step(action)
+        return super().step(action)

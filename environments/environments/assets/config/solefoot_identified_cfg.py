@@ -2,14 +2,11 @@ import os
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets.articulation import ArticulationCfg
-from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg
 
 from environments.actuators import IdentifiedActuatorCfg
 
 current_dir = os.path.dirname(__file__)
-usd_path = os.path.join(current_dir, "../usd/SF_TRON1A/SF_TRON1A.usd")
-urdf_path = os.path.join(current_dir, "../urdf/solefoot/tron1/base_robot.urdf")
-usd_path_sf = os.path.join(current_dir, "../usd/SF_TRON1A/SF_TRON1A.usd")
+mjcf_path = os.path.join(current_dir, "../mjcf/solefoot/tron1/base_robot.xml")
 usd_path_pf = os.path.join(current_dir, "../usd/PF_TRON1A/PF_TRON1A.usd")
 usd_path_wf = os.path.join(current_dir, "../usd/WF_TRON1A/WF_TRON1A.usd")
 
@@ -101,65 +98,23 @@ actuators = {
 }
 
 SOLEFOOT_IDENTIFIED_CFG = ArticulationCfg(
-    spawn=sim_utils.UsdFileCfg(
-        usd_path=usd_path,
+    spawn=sim_utils.MjcfFileCfg(
+        asset_path=mjcf_path,
+        fix_base=False,
+        self_collision=True,
+        import_inertia_tensor=True,
+        link_density=0.0,
         rigid_props=rigid_props,
         articulation_props=articulation_props,
         activate_contact_sensors=activate_contact_sensors,
     ),
+    # The Isaac Sim MuJoCo importer interposes the root body's own Xform between the
+    # referenced asset prim and every link, and unconditionally applies a second
+    # ArticulationRootAPI to a /worldBody prim it always creates
+    # (MjcfImporter.cpp:580-597). Isaac Lab raises on the resulting ambiguity unless
+    # the root is named outright (articulation.py:1533-1538).
+    articulation_root_prim_path="/base_Link/base_Link",
     init_state=init_state,
     soft_joint_pos_limit_factor=soft_joint_pos_limit_factor,
     actuators=actuators,
 )
-
-spawn = sim_utils.UrdfFileCfg(
-    asset_path=urdf_path,
-    fix_base=False,
-    merge_fixed_joints=False,
-    self_collision=True,
-    joint_drive=None,
-    rigid_props=rigid_props,
-    articulation_props=articulation_props,
-    activate_contact_sensors=activate_contact_sensors,
-)
-SOLEFOOT_IDENTIFIED_CFG_URDF = ArticulationCfg(
-    spawn=spawn,
-    init_state=init_state,
-    soft_joint_pos_limit_factor=soft_joint_pos_limit_factor,
-    actuators=actuators,
-)
-
-# usd_path_all = []
-# usd_out_dir = "/tmp/usd"
-# if not os.path.exists(usd_out_dir):
-#     os.mkdir(usd_out_dir)
-#
-# for idx in range(256):
-#     usd_file_name = f"biped_{idx}.usd"
-#     cfg = UrdfConverterCfg(
-#         asset_path=urdf_path,
-#         usd_dir=usd_out_dir,
-#         usd_file_name=usd_file_name,
-#         link_density=0.0,
-#         merge_fixed_joints=False,
-#         fix_base=False,
-#         self_collision=False,
-#         collider_type="convex_hull",
-#         joint_drive=None,
-#         force_usd_conversion=True,
-#     )
-#     converter = UrdfConverter(cfg)
-#     usd_path_all.append(converter.usd_path)
-#
-# SOLEFOOT_IDENTIFIED_MULTIUSD_CFG = ArticulationCfg(
-#     spawn=sim_utils.MultiUsdFileCfg(
-#         usd_path=usd_path_all,
-#         random_choice=False,
-#         rigid_props=rigid_props,
-#         articulation_props=articulation_props,
-#         activate_contact_sensors=activate_contact_sensors,
-#     ),
-#     init_state=init_state,
-#     soft_joint_pos_limit_factor=soft_joint_pos_limit_factor,
-#     actuators=actuators,
-# )

@@ -227,33 +227,97 @@ class respawn_robots:
         env.reset()
 
 
+# Attributes of the DC-motor envelope that IdentifiedActuator keeps as Python
+# scalars rather than per-environment tensors, so a plain tensor write skips
+# them. DCMotor.__init__ reads cfg.saturation_effort into a float
+# (actuator_pd.py:268) and derives the corner velocity from it once
+# (actuator_pd.py:270), after which _clip_effort uses both every step
+# (actuator_pd.py:297-303).
+_ENVELOPE_SCALARS = ("saturation_effort",)
+
+# Attributes the actuator model never reads, which reach the simulation only
+# through an explicit write. compute() uses stiffness, damping, effort_limit,
+# velocity_limit, saturation_effort and the friction triple, but armature is a
+# PhysX joint property that Articulation._process_actuators_cfg pushes once at
+# construction (articulation.py:1774) and nothing pushes again.
+_SIM_WRITE_THROUGH = {"armature": "write_joint_armature_to_sim"}
+
+
 def apply_actuator_params(
     env: ManagerBasedRLEnv,
     actuator_params_list: list[dict[str, dict]],
 ) -> None:
-    """Patch ``IdentifiedActuator`` tensor attributes per environment.
+    """Patch ``IdentifiedActuator`` attributes per environment.
 
     Each environment is assigned an individual round-robin; its actuator
     tensor rows are overwritten with the corresponding design's parameter
     values.
 
+    Three kinds of parameter are handled, because three reach the simulation by
+    different routes.  A per-environment tensor attribute is written row by
+    row, as before.  A scalar of the DC-motor envelope is first promoted to a
+    tensor of the same shape, so that it can carry one value per environment at
+    all, and the corner velocity that ``DCMotor.__init__`` derived from it once
+    is then recomputed, without which the envelope would clip at the previous
+    generation's numbers.  An attribute the actuator model never reads is
+    pushed into the simulation explicitly.
+
     Args:
         env: The unwrapped ``ManagerBasedRLEnv``.
         actuator_params_list: List of actuator-param dicts, one per individual.
-            Each dict maps actuator group name → scalar overrides.
+            Each dict maps actuator group name to scalar overrides, keyed as
+            ``design_generator.common.actuator_catalog.SIM_PARAM_KEYS`` names
+            them.
     """
     num_envs: int = env.num_envs
     num_individuals = len(actuator_params_list)
     articulation = env.scene.articulations["robot"]
 
     for group_name, actuator in articulation.actuators.items():
+        touched: set[str] = set()
         for env_idx in range(num_envs):
             individual_idx = env_idx % num_individuals
             overrides = actuator_params_list[individual_idx].get(group_name, {})
 
             for attr_name, value in overrides.items():
                 tensor_attr = getattr(actuator, attr_name, None)
-                if tensor_attr is None or not isinstance(tensor_attr, torch.Tensor):
-                    continue
-                # tensor_attr shape: (num_envs, num_joints_in_group)
-                tensor_attr[env_idx, :] = value
+                if isinstance(tensor_attr, torch.Tensor):
+                    # tensor_attr shape: (num_envs, num_joints_in_group)
+                    tensor_attr[env_idx, :] = value
+                    touched.add(attr_name)
+                elif attr_name in _ENVELOPE_SCALARS:
+                    _promote_envelope_scalar(actuator, attr_name)[env_idx, :] = value
+                    touched.add(attr_name)
+
+        if not touched:
+            continue
+        # The corner velocity is a cached product of three quantities any of
+        # which may have just moved, so it is recomputed whenever the group was
+        # touched at all rather than only when saturation_effort was.
+        if hasattr(actuator, "_vel_at_effort_lim") and hasattr(actuator, "_saturation_effort"):
+            actuator._vel_at_effort_lim = actuator.velocity_limit * (
+                1.0 + actuator.effort_limit / actuator._saturation_effort
+            )
+        for attr_name, writer in _SIM_WRITE_THROUGH.items():
+            if attr_name in touched:
+                getattr(articulation, writer)(
+                    getattr(actuator, attr_name), joint_ids=actuator.joint_indices
+                )
+
+
+def _promote_envelope_scalar(actuator, attr_name: str) -> torch.Tensor:
+    """Return the envelope attribute as a per-environment tensor, promoting once.
+
+    ``DCMotor`` stores the stall torque under a leading underscore and as a
+    Python float, which makes it both invisible to a ``getattr`` on the public
+    name and incapable of holding one value per design.  Promoting it to a
+    tensor shaped like ``effort_limit`` leaves ``_clip_effort`` correct, its
+    arithmetic being elementwise either way, and lets each environment carry
+    its own individual's stall torque.
+    """
+    private = f"_{attr_name}"
+    value = getattr(actuator, private)
+    if not isinstance(value, torch.Tensor):
+        value = torch.full_like(actuator.effort_limit, float(value))
+        setattr(actuator, private, value)
+    return value

@@ -1,0 +1,55 @@
+
+==== copt_moral/2026-10-23_08-31-17
+ckpt   7000 cma_it   2 sigma 0.279 max sigma*sqrt(C_ii) 0.2820 max |sigma*pc| 0.6384 cur_range 12.800 hist(2) range 1.150 terminated False stop {}
+ckpt   8000 cma_it   5 sigma 0.244 max sigma*sqrt(C_ii) 0.1684 max |sigma*pc| 0.1962 cur_range 2.047 hist(5) range 2.657 terminated False stop {}
+ckpt   9000 cma_it   7 sigma 0.309 max sigma*sqrt(C_ii) 0.1549 max |sigma*pc| 0.0907 cur_range 1.756 hist(7) range 3.079 terminated False stop {}
+ckpt  10000 cma_it  10 sigma 0.513 max sigma*sqrt(C_ii) 0.1477 max |sigma*pc| 0.1830 cur_range 3.063 hist(10) range 3.639 terminated False stop {}
+ckpt  11000 cma_it  12 sigma 0.627 max sigma*sqrt(C_ii) 0.1249 max |sigma*pc| 0.1376 cur_range 1.477 hist(11) range 2.846 terminated False stop {}
+ckpt  12000 cma_it  15 sigma 0.581 max sigma*sqrt(C_ii) 0.0736 max |sigma*pc| 0.0867 cur_range 1.188 hist(11) range 2.180 terminated False stop {}
+ckpt  13000 cma_it  17 sigma 0.537 max sigma*sqrt(C_ii) 0.0578 max |sigma*pc| 0.0435 cur_range 1.467 hist(11) range 2.012 terminated False stop {}
+ckpt  14000 cma_it  20 sigma 0.620 max sigma*sqrt(C_ii) 0.0813 max |sigma*pc| 0.1664 cur_range 2.058 hist(11) range 1.551 terminated False stop {}
+ckpt  15000 cma_it  22 sigma 0.682 max sigma*sqrt(C_ii) 0.0787 max |sigma*pc| 0.0715 cur_range 1.859 hist(11) range 1.215 terminated False stop {}
+ckpt  16000 cma_it  25 sigma 0.689 max sigma*sqrt(C_ii) 0.0731 max |sigma*pc| 0.1222 cur_range 1.704 hist(11) range 0.899 terminated False stop {}
+ckpt  17000 cma_it  27 sigma 1.000 max sigma*sqrt(C_ii) 0.0952 max |sigma*pc| 0.1553 cur_range 1.855 hist(11) range 0.899 terminated False stop {}
+ckpt  18000 cma_it  30 sigma 1.031 max sigma*sqrt(C_ii) 0.0605 max |sigma*pc| 0.0613 cur_range 1.728 hist(11) range 0.831 terminated False stop {}
+ckpt  19000 cma_it  32 sigma 1.265 max sigma*sqrt(C_ii) 0.0672 max |sigma*pc| 0.0669 cur_range 1.491 hist(11) range 0.615 terminated False stop {}
+
+==== copt_moral/2026-10-26_04-55-55
+ckpt   7000 cma_it   2 sigma 0.323 max sigma*sqrt(C_ii) 0.2691 max |sigma*pc| 0.2781 cur_range 4.503 hist(2) range 0.721 terminated False stop {}
+ckpt   8000 cma_it   5 sigma 0.402 max sigma*sqrt(C_ii) 0.2735 max |sigma*pc| 0.5044 cur_range 3.752 hist(5) range 2.409 terminated False stop {}
+ckpt   9000 cma_it   7 sigma 0.472 max sigma*sqrt(C_ii) 0.3227 max |sigma*pc| 0.7415 cur_range 4.209 hist(7) range 2.409 terminated False stop {}
+ckpt  10000 cma_it  10 sigma 0.421 max sigma*sqrt(C_ii) 0.1210 max |sigma*pc| 0.1754 cur_range 1.990 hist(10) range 3.080 terminated False stop {}
+ckpt  11000 cma_it  12 sigma 0.431 max sigma*sqrt(C_ii) 0.1038 max |sigma*pc| 0.0312 cur_range 1.766 hist(11) range 2.563 terminated False stop {}
+ckpt  12000 cma_it  15 sigma 0.430 max sigma*sqrt(C_ii) 0.0904 max |sigma*pc| 0.1580 cur_range 1.362 hist(11) range 1.839 terminated False stop {}
+ckpt  13000 cma_it  17 sigma 0.395 max sigma*sqrt(C_ii) 0.0634 max |sigma*pc| 0.0445 cur_range 1.771 hist(11) range 2.067 terminated False stop {}
+ckpt  14000 cma_it  20 sigma 0.299 max sigma*sqrt(C_ii) 0.0346 max |sigma*pc| 0.0224 cur_range 1.394 hist(11) range 1.451 terminated False stop {}
+ckpt  15000 cma_it  22 sigma 0.323 max sigma*sqrt(C_ii) 0.0318 max |sigma*pc| 0.0459 cur_range 1.398 hist(11) range 1.390 terminated False stop {}
+ckpt  16000 cma_it  25 sigma 0.357 max sigma*sqrt(C_ii) 0.0368 max |sigma*pc| 0.0598 cur_range 1.356 hist(11) range 1.085 terminated False stop {}
+ckpt  17000 cma_it  27 sigma 0.408 max sigma*sqrt(C_ii) 0.0466 max |sigma*pc| 0.0263 cur_range 1.726 hist(11) range 1.173 terminated False stop {}
+ckpt  18000 cma_it  30 sigma 0.358 max sigma*sqrt(C_ii) 0.0318 max |sigma*pc| 0.0369 cur_range 1.473 hist(11) range 1.052 terminated False stop {}
+ckpt  19000 cma_it  32 sigma 0.327 max sigma*sqrt(C_ii) 0.0234 max |sigma*pc| 0.0272 cur_range 1.592 hist(11) range 0.831 terminated False stop {}
+
+==== quadruped_copt/2026-10-23_10-36-49
+ckpt   7000 cma_it   2 sigma 0.522 max sigma*sqrt(C_ii) 0.3333 max |sigma*pc| 0.0000 cur_range 6.730 hist(2) range 4.305 terminated False stop {}
+ckpt   8000 cma_it   5 sigma 0.629 max sigma*sqrt(C_ii) 0.3212 max |sigma*pc| 0.4972 cur_range 3.248 hist(5) range 6.629 terminated False stop {}
+ckpt   9000 cma_it   7 sigma 0.664 max sigma*sqrt(C_ii) 0.2453 max |sigma*pc| 0.4357 cur_range 1582.996 hist(7) range 7.188 terminated False stop {}
+ckpt  10000 cma_it  10 sigma 1.051 max sigma*sqrt(C_ii) 0.2522 max |sigma*pc| 0.5422 cur_range 1.299 hist(10) range 7.407 terminated False stop {}
+ckpt  11000 cma_it  12 sigma 1.235 max sigma*sqrt(C_ii) 0.2441 max |sigma*pc| 0.3355 cur_range 1.081 hist(11) range 3.178 terminated False stop {}
+ckpt  12000 cma_it  15 sigma 1.167 max sigma*sqrt(C_ii) 0.1216 max |sigma*pc| 0.1029 cur_range 0.940 hist(11) range 1.074 terminated False stop {}
+ckpt  13000 cma_it  17 sigma 1.003 max sigma*sqrt(C_ii) 0.0637 max |sigma*pc| 0.0327 cur_range 0.455 hist(11) range 0.763 terminated False stop {}
+ckpt  14000 cma_it  20 sigma 1.194 max sigma*sqrt(C_ii) 0.0647 max |sigma*pc| 0.1874 cur_range 0.440 hist(11) range 0.603 terminated False stop {}
+ckpt  15000 cma_it  22 sigma 1.479 max sigma*sqrt(C_ii) 0.0699 max |sigma*pc| 0.1242 cur_range 0.635 hist(11) range 0.469 terminated False stop {}
+ckpt  16000 cma_it  25 sigma 1.094 max sigma*sqrt(C_ii) 0.0406 max |sigma*pc| 0.0164 cur_range 0.520 hist(11) range 0.486 terminated False stop {}
+
+==== quadruped_copt/2026-10-26_04-55-55
+ckpt   7000 cma_it   2 sigma 0.370 max sigma*sqrt(C_ii) 0.2678 max |sigma*pc| 0.0000 cur_range 2.500 hist(2) range 0.577 terminated False stop {}
+ckpt   8000 cma_it   5 sigma 0.656 max sigma*sqrt(C_ii) 0.3333 max |sigma*pc| 0.5534 cur_range 2.341 hist(5) range 1.083 terminated False stop {}
+ckpt   9000 cma_it   7 sigma 0.639 max sigma*sqrt(C_ii) 0.1756 max |sigma*pc| 0.2802 cur_range 2.233 hist(7) range 1.307 terminated False stop {}
+ckpt  10000 cma_it  10 sigma 0.586 max sigma*sqrt(C_ii) 0.0819 max |sigma*pc| 0.1230 cur_range 0.449 hist(10) range 1.585 terminated False stop {}
+ckpt  11000 cma_it  12 sigma 0.608 max sigma*sqrt(C_ii) 0.0612 max |sigma*pc| 0.1165 cur_range 0.350 hist(11) range 1.067 terminated False stop {}
+ckpt  12000 cma_it  15 sigma 0.631 max sigma*sqrt(C_ii) 0.0374 max |sigma*pc| 0.0725 cur_range 0.339 hist(11) range 0.732 terminated False stop {}
+ckpt  13000 cma_it  17 sigma 0.607 max sigma*sqrt(C_ii) 0.0398 max |sigma*pc| 0.0804 cur_range 0.292 hist(11) range 0.561 terminated False stop {}
+ckpt  14000 cma_it  20 sigma 0.483 max sigma*sqrt(C_ii) 0.0256 max |sigma*pc| 0.0117 cur_range 0.495 hist(11) range 0.450 terminated False stop {}
+ckpt  15000 cma_it  22 sigma 0.441 max sigma*sqrt(C_ii) 0.0166 max |sigma*pc| 0.0123 cur_range 0.418 hist(11) range 0.464 terminated False stop {}
+ckpt  16000 cma_it  25 sigma 0.439 max sigma*sqrt(C_ii) 0.0184 max |sigma*pc| 0.0163 cur_range 0.353 hist(11) range 0.294 terminated False stop {}
+ckpt  17000 cma_it  27 sigma 0.389 max sigma*sqrt(C_ii) 0.0174 max |sigma*pc| 0.0065 cur_range 0.432 hist(11) range 0.284 terminated False stop {}

@@ -1,0 +1,25 @@
+# ks_yaw, excerpt of /tmp/symsandbox_v2_20261020/smoke_ks_yaw.log
+[INFO]: Parsing configuration from: <class 'environments.tasks.locomotion.robots.kscale_hip_yaw_fixed_env_cfg.KscaleHipYawFixedBlindFlatEnvCfg'>
+[INFO]: Parsing configuration from: KscaleFlatPPORunnerCfg(seed=42, device='cuda:0', num_steps_per_env=24, max_iterations=10000, empirical_normalization=False, obs_groups=<dataclasses._MISSING_TYPE object at 0x711ac3d886
+| Active Observation Terms in Group: 'policy' (shape: (420,)) |
+| Active Observation Terms in Group: 'critic' (shape: (6010,)) |
+| Active Observation Terms in Group: 'commands' (shape: (3,)) |
+[symmetry-probe] joint_names ['left_hip_pitch_04', 'right_hip_pitch_04', 'left_hip_roll_03', 'right_hip_roll_03', 'left_knee_04', 'right_knee_04', 'left_foot_pitch_02', 'right_foot_pitch_02', 'left_foot_roll_02', 'right_foot_roll_02']
+[symmetry-probe] jperm [1, 0, 3, 2, 5, 4, 7, 6, 9, 8] jsign [-1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0]
+[symmetry-probe] body_names ['assy_formfg___kd_b_102b_torso_btm', 'kd_d_102l_6061', 'kd_d_102r_6061', 'rs03', 'kd_d_201r_6061', 'kd_d_301l_6061', 'kd_d_301r_6061', 'kd_d_401l_6061', 'kd_d_401r_6061', 'arb_uj111_cross_bearing_2', 'arb_uj111_cross_bearing', 'foot_6061_2', 'foot_6061']
+[symmetry-probe] body_perm [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11]
+[symmetry-probe] shapes [9, 3, 3, 6, 6, 5, 5, 8, 8, 1, 1, 1, 1] max_shapes 57
+[symmetry-probe] limits [[-1.0472, 2.21657], [-2.21657, 1.0472], [-0.20944, 2.26893], [-2.26893, 0.20944], [0.0, 2.70526], [0.0, 2.70526], [-0.872665, 0.523599], [-0.872665, 0.523599], [-0.261799, 0.261799], [-0.261799, 0.261799]]
+[symmetry-probe] default {'right_hip_pitch_04': -0.34907, 'left_hip_pitch_04': 0.34907, 'right_hip_roll_03': 0.042951, 'left_hip_roll_03': -0.042951, 'right_knee_04': 0.87266, 'left_knee_04': 0.87266, 'right_foot_pitch_02': -0.5236, 'left_foot_pitch_02': -0.5236, 'right_foot_roll_02': 0.041254, 'left_foot_roll_02': -0.041254}
+[symmetry-probe] group policy [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (100,), 10), ('joint_vel', (100,), 10), ('last_action', (100,), 10), ('velocity_commands', (30,), 10)]
+[symmetry-probe] group critic [('base_lin_vel', (30,), 10), ('base_ang_vel', (30,), 10), ('proj_gravity', (30,), 10), ('joint_pos', (100,), 10), ('joint_vel', (100,), 10), ('last_action', (100,), 10), ('velocity_commands', (30,), 10), ('heights', (1870,), 10), ('robot_joint_torque', (100,), 10), ('robot_joint_acc', (100,), 10), ('feet_lin_vel', (60,), 10), ('robot_mass', (130,), 10), ('robot_inertia', (1170,), 10), ('robot_joint_pos', (100,), 10), ('robot_joint_stiffness', (100,), 10), ('robot_joint_damping', (100,), 10), ('robot_pos', (30,), 10), ('robot_vel', (60,), 10), ('robot_material_properties', (1710,), 10), ('feet_contact_force', (60,), 10)]
+[symmetry-probe] group commands [('velocity_commands', (3,), 0)]
+[symmetry-probe] rays height_scanner 187 yaw xy
+[symmetry-probe] sensor contact_forces ['assy_formfg___kd_b_102b_torso_btm', 'kd_d_102l_6061', 'rs03', 'kd_d_301l_6061', 'kd_d_401l_6061', 'arb_uj111_cross_bearing_2', 'foot_6061_2', 'kd_d_102r_6061', 'kd_d_201r_6061', 'kd_d_301r_6061', 'kd_d_401r_6061', 'arb_uj111_cross_bearing', 'foot_6061']
+[symmetry-probe] sensor foot_pair_contact_right ['foot_6061']
+[symmetry-probe] sensor foot_pair_contact_left ['foot_6061_2']
+[symmetry] mirrored groups ['policy', 'critic', 'commands']
+                        [1m Learning iteration 0/3 [0m                        
+                Mean symmetry loss: 0.0182
+                        [1m Learning iteration 1/3 [0m                        
+                Mean symmetry loss: 0.0136

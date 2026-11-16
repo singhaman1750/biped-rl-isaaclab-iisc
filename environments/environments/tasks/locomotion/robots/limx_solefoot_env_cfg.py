@@ -6,10 +6,9 @@ from isaaclab.sensors import RayCasterCfg, patterns
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as GaussianNoise
 
-from environments.assets.config.solefoot_cfg import SOLEFOOT_CFG, SOLEFOOT_CFG_URDF
-from environments.assets.config.solefoot_identified_cfg import (  # SOLEFOOT_IDENTIFIED_MULTIUSD_CFG,
+from environments.assets.config.solefoot_cfg import SOLEFOOT_CFG
+from environments.assets.config.solefoot_identified_cfg import (
     SOLEFOOT_IDENTIFIED_CFG,
-    SOLEFOOT_IDENTIFIED_CFG_URDF,
 )
 from environments.tasks.locomotion import mdp
 from environments.tasks.locomotion.cfg.SF.limx_base_env_cfg import (
@@ -142,7 +141,7 @@ class SFCoptBaseEnvCfg(SFCoptEnvCfg):
         super().__post_init__()
         self.scene.replicate_physics = False
 
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.robot.init_state.joint_pos = {
             "abad_L_Joint": 0.0,
             "abad_R_Joint": 0.0,
@@ -194,7 +193,7 @@ class SFBaseEnvUrdfCfg(SFBaseEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.scene.robot = SOLEFOOT_CFG_URDF.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = SOLEFOOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.robot.init_state.joint_pos = {
             "abad_L_Joint": 0.0,
             "abad_R_Joint": 0.0,
@@ -234,7 +233,7 @@ class SFHIMBaseEnvUrdfCfg(SFHIMBaseEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.scene.robot = SOLEFOOT_CFG_URDF.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = SOLEFOOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.robot.init_state.joint_pos = {
             "abad_L_Joint": 0.0,
             "abad_R_Joint": 0.0,
@@ -890,7 +889,7 @@ class SFHIMIdentifiedBlindFlatEnvCfg_PLAY(SFHIMBlindFlatEnvCfg_PLAY):
 class SFIdentifiedBlindFlatEnvUrdfCfg(SFBlindFlatEnvUrdfCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -907,7 +906,7 @@ class SFIdentifiedBlindFlatEnvUrdfCfg(SFBlindFlatEnvUrdfCfg):
 class SFIdentifiedBlindFlatEnvUrdfCfg_PLAY(SFBlindFlatEnvUrdfCfg_PLAY):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -924,7 +923,7 @@ class SFIdentifiedBlindFlatEnvUrdfCfg_PLAY(SFBlindFlatEnvUrdfCfg_PLAY):
 class SFHIMIdentifiedBlindFlatEnvUrdfCfg(SFHIMBlindFlatEnvUrdfCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -941,7 +940,7 @@ class SFHIMIdentifiedBlindFlatEnvUrdfCfg(SFHIMBlindFlatEnvUrdfCfg):
 class SFHIMIdentifiedBlindFlatEnvUrdfCfg_PLAY(SFHIMBlindFlatEnvUrdfCfg_PLAY):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -958,7 +957,7 @@ class SFHIMIdentifiedBlindFlatEnvUrdfCfg_PLAY(SFHIMBlindFlatEnvUrdfCfg_PLAY):
 class SFIdentifiedBlindRoughEnvCfg(SFBlindRoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -1026,7 +1025,7 @@ class SFHIMIdentifiedBlindRoughEnvCfg_PLAY(SFHIMBlindRoughEnvCfg_PLAY):
 class SFIdentifiedBlindRoughEnvUrdfCfg(SFBlindRoughEnvUrdfCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -1044,7 +1043,7 @@ class SFIdentifiedBlindRoughCoptEnvUrdfCfg(SFIdentifiedBlindRoughEnvUrdfCfg):
         # This one is without privileged observations
         super().__post_init__()
         self.scene.replicate_physics = False
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -1061,7 +1060,7 @@ class SFIdentifiedBlindRoughCoptEnvUrdfCfg(SFIdentifiedBlindRoughEnvUrdfCfg):
 class SFIdentifiedBlindRoughEnvUrdfCfg_PLAY(SFBlindRoughEnvUrdfCfg_PLAY):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -1078,7 +1077,7 @@ class SFIdentifiedBlindRoughEnvUrdfCfg_PLAY(SFBlindRoughEnvUrdfCfg_PLAY):
 class SFHIMIdentifiedBlindRoughEnvUrdfCfg(SFHIMBlindRoughEnvUrdfCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {
@@ -1095,7 +1094,7 @@ class SFHIMIdentifiedBlindRoughEnvUrdfCfg(SFHIMBlindRoughEnvUrdfCfg):
 class SFHIMIdentifiedBlindRoughEnvUrdfCfg_PLAY(SFHIMBlindRoughEnvUrdfCfg_PLAY):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG_URDF.replace(
+        self.scene.robot = SOLEFOOT_IDENTIFIED_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot"
         )
         self.scene.robot.init_state.joint_pos = {

@@ -1,0 +1,40 @@
+
+==== copt_moral/2026-10-23_08-31-17: stop at cma_it 25 gen 39 it 15999, last logged gen 46 it 18799
+  thigh_length_scale   mean at stop +0.9286  last +0.9206  shift 0.0160 of range
+  shank_length_scale   mean at stop +0.9036  last +0.8749  shift 0.0576 of range
+  thigh_bend_offset    mean at stop +0.0245  last +0.0299  shift 0.0268 of range
+  knee_bend_offset     mean at stop -0.2480  last -0.2161  shift 0.0638 of range
+  thigh_length_scale   emitted length at stop 0.28 m, last 0.28 m
+  shank_length_scale   emitted length at stop 0.32 m, last 0.31 m
+  best fitness of gen at stop 115.99, at last 116.48, mean 115.22 -> 115.88
+  distinct (thigh, shank) length pairs in the stopping generation: 10
+
+==== copt_moral/2026-10-26_04-55-55: stop at cma_it 32 gen 46 it 18799, last logged gen 48 it 19599
+  thigh_length_scale   mean at stop +0.9318  last +0.9348  shift 0.0059 of range
+  shank_length_scale   mean at stop +0.8949  last +0.8914  shift 0.0071 of range
+  thigh_bend_offset    mean at stop +0.0319  last +0.0356  shift 0.0184 of range
+  knee_bend_offset     mean at stop -0.2478  last -0.2438  shift 0.0081 of range
+  thigh_length_scale   emitted length at stop 0.28 m, last 0.28 m
+  shank_length_scale   emitted length at stop 0.31 m, last 0.31 m
+  best fitness of gen at stop 116.58, at last 116.44, mean 116.06 -> 115.94
+  distinct (thigh, shank) length pairs in the stopping generation: 3
+
+==== quadruped_copt/2026-10-23_10-36-49: stop at cma_it 25 gen 39 it 15999, last logged gen 40 it 16399
+  thigh_length_scale   mean at stop +0.7507  last +0.7502  shift 0.0010 of range
+  shank_length_scale   mean at stop +0.7500  last +0.7500  shift 0.0000 of range
+  thigh_bend_offset    mean at stop -0.0835  last -0.0838  shift 0.0017 of range
+  knee_bend_offset     mean at stop -0.2480  last -0.2484  shift 0.0007 of range
+  thigh_length_scale   emitted length at stop 0.16 m, last 0.16 m
+  shank_length_scale   emitted length at stop 0.16 m, last 0.16 m
+  best fitness of gen at stop 57.45, at last 57.44, mean 57.28 -> 57.26
+  distinct (thigh, shank) length pairs in the stopping generation: 1
+
+==== quadruped_copt/2026-10-26_04-55-55: stop at cma_it 15 gen 29 it 11999, last logged gen 43 it 17599
+  thigh_length_scale   mean at stop +0.8448  last +0.8451  shift 0.0005 of range
+  shank_length_scale   mean at stop +0.7502  last +0.7508  shift 0.0011 of range
+  thigh_bend_offset    mean at stop -0.1000  last -0.1000  shift 0.0000 of range
+  knee_bend_offset     mean at stop -0.2500  last -0.2500  shift 0.0000 of range
+  thigh_length_scale   emitted length at stop 0.18 m, last 0.18 m
+  shank_length_scale   emitted length at stop 0.16 m, last 0.16 m
+  best fitness of gen at stop 59.01, at last 59.45, mean 58.90 -> 59.34
+  distinct (thigh, shank) length pairs in the stopping generation: 4
