@@ -533,6 +533,12 @@ class DesignGeneratorBase(ABC):
         self.num_individuals = num_individuals
         self.output_dir = output_dir
         self.param_ranges: dict[str, ParamRange] = _typed_ranges(param_ranges)
+        # The search is centred on the initial design, so every range must contain it.
+        for key, (_, (lo, hi)) in self.param_ranges.items():
+            if not lo <= self._initial_value(key) <= hi:
+                raise ValueError(
+                    f"{key} range ({lo}, {hi}) excludes the initial design's {self._initial_value(key)}."
+                )
         self.baseline = self.family.baseline(variable_params_path)
         self._dx_target = self.family.chain(self.baseline, 0.0, 0.0, 0.0)[0]
         # The last specification that emitted without raising, substituted for
@@ -625,12 +631,23 @@ class DesignGeneratorBase(ABC):
     def _sample_parameter(self, rng: np.random.Generator) -> dict[str, float]:
         return {k: float(rng.uniform(lo, hi)) for k, (_, (lo, hi)) in self.param_ranges.items()}
 
+    def _initial_value(self, key: str) -> float:
+        """The value of *key* that reproduces the initial design of the baseline MJCF."""
+        return 1.0 if self.param_ranges[key][0] == "scale" else 0.0
+
     def _sample_parameter_v2(self, rng: np.random.Generator, scale: float) -> dict[str, float]:
+        """Uniform draws from the box shrunk by *scale* towards the initial design.
+
+        Each side covers *scale* of its own distance from the initial design, so an asymmetric
+        box widens at an uneven pace and both sides reach their bounds together at scale 1.
+        Before 2026-10-30 the box shrank towards its midpoint, which moved every early design
+        off the initial one whenever the box was asymmetric.
+        """
         parameters = {}
         for k, (_, (lo, hi)) in self.param_ranges.items():
-            mean = (lo + hi) / 2
-            lo_n = (lo - mean) * scale + mean
-            hi_n = (hi - mean) * scale + mean
+            c = self._initial_value(k)
+            lo_n = (lo - c) * scale + c
+            hi_n = (hi - c) * scale + c
             parameters[k] = float(rng.uniform(lo_n, hi_n))
         return parameters
 
@@ -875,9 +892,15 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             "BoundaryHandler": "BoundTransform",
             **self._tolerances,
         })
-        return cma.CMAEvolutionStrategy(
-            np.full(self.num_params, 0.5), self._sigma0, opts
-        )
+        return cma.CMAEvolutionStrategy(self._initial_mean(), self._sigma0, opts)
+
+    def _initial_mean(self) -> np.ndarray:
+        """The initial design in the unit box, where the search starts. The box midpoint before 2026-10-30."""
+        lo = np.array([self.param_ranges[k][1][0] for k in self.param_keys])
+        span = np.array([self.param_ranges[k][1][1] for k in self.param_keys]) - lo
+        x0 = np.array([self._initial_value(k) for k in self.param_keys]) - lo
+        # A zero-width range pins its parameter wherever the mean sits, so it keeps the former 0.5.
+        return np.divide(x0, span, out=np.full(self.num_params, 0.5), where=span > 0)
 
     def _check_dimension(self) -> None:
         assert self._es.N == self.num_params, (
@@ -1031,7 +1054,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
 
 class GrowingDesignDistCMAESDesignGenerator(CMAESDesignGenerator):
-    """CMA-ES whose late-start prior widens from a point to the full box."""
+    """CMA-ES whose late-start prior widens from the initial design to the full box."""
 
     def _generate_individual(self, generation: int, idx: int):
         if self.late_start:
@@ -1115,7 +1138,7 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
             c_space=c_space,
             cat_param=cat_param,
             population_size=int(self.num_individuals),
-            mean=np.full(self.num_params, 0.5),
+            mean=self._initial_mean(),
             sigma=self._sigma0,
             seed=self._seed,
         )
