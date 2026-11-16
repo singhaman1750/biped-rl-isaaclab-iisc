@@ -1,0 +1,75 @@
+################################################################################
+                              Optimised population                              
+
+                        generation: 7
+                learning iteration: 13
+                   best individual: 1
+                      best fitness: 11.3166
+           best/thigh_length_scale: 0.9954
+           best/shank_length_scale: 1.0045
+            best/thigh_bend_offset: 0.0115
+             best/knee_bend_offset: -0.0117
+                         best/abad: TRON1-HIP
+                          best/hip: TRON1-HIP
+                         best/knee: TRON1-KNEE
+                        best/ankle: TRON1-ANKLE
+                     best/feasible: True
+                      fitness_mean: 7.5322
+                       fitness_std: 8.8531
+       split_half_rank_correlation: 0.8941
+                     eval/survival: 0.0000
+                eval/lin_vel_error: 0.8934
+               eval/yaw_rate_error: 0.4099
+                 eval/return_row_0: 7.4916
+                 eval/return_row_1: 10.0049
+                 eval/return_row_2: 8.8024
+                 eval/return_row_3: 3.6710
+                 eval/return_row_4: 7.5472
+                 eval/return_row_5: 7.6757
+                     cma_iteration: 5
+                       evaluations: 80
+                             sigma: 0.2200
+                        axis_ratio: 1.6493
+                        terminated: 0.0000
+                              stop: 
+           mean/thigh_length_scale: 1.0005
+           mean/shank_length_scale: 0.9992
+            mean/thigh_bend_offset: 0.0054
+             mean/knee_bend_offset: -0.0041
+            std/thigh_length_scale: 0.0060
+            std/shank_length_scale: 0.0080
+             std/thigh_bend_offset: 0.0035
+              std/knee_bend_offset: 0.0080
+             pick_probability/abad: 0.8025
+              pick_probability/hip: 0.9243
+             pick_probability/knee: 0.9101
+            pick_probability/ankle: 0.9243
+distribution_mean/thigh_length_scale: 1.0005
+distribution_mean/shank_length_scale: 0.9992
+distribution_mean/thigh_bend_offset: 0.0054
+distribution_mean/knee_bend_offset: -0.0041
+            distribution_mean/abad: TRON1-HIP
+             distribution_mean/hip: TRON1-HIP
+            distribution_mean/knee: TRON1-KNEE
+           distribution_mean/ankle: TRON1-ANKLE
+        distribution_mean/feasible: True
+                   evaluation time: 43.5553
+
+    Ranking, individual and fitness
+                                 1: 11.3166
+                                10: 10.4284
+                                 6: 10.3735
+                                14: 10.3042
+                                 7: 10.1125
+                                 2: 10.0258
+                                 4: 9.9567
+                                11: 9.8866
+                                 0: 9.8135
+                                 8: 9.7207
+                                 5: 9.6967
+                                13: 9.1236
+                                 3: 8.8033
+                                15: 8.7127
+                                12: 7.7625
+                                 9: -25.5229
+--------------------------------------------------------------------------------

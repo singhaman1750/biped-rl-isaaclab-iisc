@@ -1,0 +1,63 @@
+################################################################################
+                              Optimised population                              
+
+                        generation: 7
+                learning iteration: 13
+                   best individual: 13
+                      best fitness: 16.6352
+           best/thigh_length_scale: 0.9106
+           best/shank_length_scale: 0.7972
+            best/thigh_bend_offset: 0.0307
+             best/knee_bend_offset: 0.2364
+                     best/feasible: True
+                      fitness_mean: 11.3453
+                       fitness_std: 1.8647
+       split_half_rank_correlation: 0.8971
+                     eval/survival: 0.0000
+                eval/lin_vel_error: 0.9236
+               eval/yaw_rate_error: 0.4234
+                 eval/return_row_0: 10.9420
+                 eval/return_row_1: 14.5278
+                 eval/return_row_2: 13.2943
+                 eval/return_row_3: 6.9949
+                 eval/return_row_4: 10.5854
+                 eval/return_row_5: 11.7273
+                     cma_iteration: 5
+                       evaluations: 80
+                             sigma: 0.1851
+                        axis_ratio: 2.2742
+                        terminated: 1.0000
+                              stop: maxiter
+           mean/thigh_length_scale: 0.9445
+           mean/shank_length_scale: 0.8686
+            mean/thigh_bend_offset: 0.0297
+             mean/knee_bend_offset: 0.1600
+            std/thigh_length_scale: 0.0778
+            std/shank_length_scale: 0.0844
+             std/thigh_bend_offset: 0.0189
+              std/knee_bend_offset: 0.0910
+distribution_mean/thigh_length_scale: 0.9445
+distribution_mean/shank_length_scale: 0.8686
+distribution_mean/thigh_bend_offset: 0.0297
+distribution_mean/knee_bend_offset: 0.1600
+        distribution_mean/feasible: True
+                   evaluation time: 30.8539
+
+    Ranking, individual and fitness
+                                13: 16.6352
+                                 5: 12.9134
+                                 8: 12.5562
+                                 4: 12.1660
+                                12: 11.9649
+                                 3: 11.7504
+                                10: 11.5940
+                                 9: 11.4092
+                                15: 11.1280
+                                14: 10.6189
+                                11: 10.5974
+                                 6: 10.3380
+                                 2: 10.3077
+                                 0: 10.1555
+                                 1: 9.0616
+                                 7: 8.3280
+--------------------------------------------------------------------------------

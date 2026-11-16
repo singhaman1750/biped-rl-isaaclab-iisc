@@ -1,0 +1,55 @@
+
+==== copt_moral/2026-10-23_08-31-17 {'tolx': 0.03, 'tolfunhist': 1.0, 'tolfun': 1.0}
+  ckpt   7000 cma_it   2 stop {}
+  ckpt   8000 cma_it   5 stop {}
+  ckpt   9000 cma_it   7 stop {}
+  ckpt  10000 cma_it  10 stop {}
+  ckpt  11000 cma_it  12 stop {}
+  ckpt  12000 cma_it  15 stop {}
+  ckpt  13000 cma_it  17 stop {}
+  ckpt  14000 cma_it  20 stop {}
+  ckpt  15000 cma_it  22 stop {}
+  ckpt  16000 cma_it  25 stop {'tolfunhist': 1.0}
+  ckpt  17000 cma_it  27 stop {'tolfunhist': 1.0}
+  ckpt  18000 cma_it  30 stop {'tolfunhist': 1.0}
+  ckpt  19000 cma_it  32 stop {'tolfunhist': 1.0}
+
+==== copt_moral/2026-10-26_04-55-55 {'tolx': 0.03, 'tolfunhist': 1.0, 'tolfun': 1.0}
+  ckpt   7000 cma_it   2 stop {}
+  ckpt   8000 cma_it   5 stop {}
+  ckpt   9000 cma_it   7 stop {}
+  ckpt  10000 cma_it  10 stop {}
+  ckpt  11000 cma_it  12 stop {}
+  ckpt  12000 cma_it  15 stop {}
+  ckpt  13000 cma_it  17 stop {}
+  ckpt  14000 cma_it  20 stop {}
+  ckpt  15000 cma_it  22 stop {}
+  ckpt  16000 cma_it  25 stop {}
+  ckpt  17000 cma_it  27 stop {}
+  ckpt  18000 cma_it  30 stop {}
+  ckpt  19000 cma_it  32 stop {'tolx': 0.03, 'tolfunhist': 1.0}
+
+==== quadruped_copt/2026-10-23_10-36-49 {'tolx': 0.05, 'tolfunhist': 0.3, 'tolfun': 0.3}
+  ckpt   7000 cma_it   2 stop {}
+  ckpt   8000 cma_it   5 stop {}
+  ckpt   9000 cma_it   7 stop {}
+  ckpt  10000 cma_it  10 stop {}
+  ckpt  11000 cma_it  12 stop {}
+  ckpt  12000 cma_it  15 stop {}
+  ckpt  13000 cma_it  17 stop {}
+  ckpt  14000 cma_it  20 stop {}
+  ckpt  15000 cma_it  22 stop {}
+  ckpt  16000 cma_it  25 stop {'tolx': 0.05}
+
+==== quadruped_copt/2026-10-26_04-55-55 {'tolx': 0.05, 'tolfunhist': 0.3, 'tolfun': 0.3}
+  ckpt   7000 cma_it   2 stop {}
+  ckpt   8000 cma_it   5 stop {}
+  ckpt   9000 cma_it   7 stop {}
+  ckpt  10000 cma_it  10 stop {}
+  ckpt  11000 cma_it  12 stop {}
+  ckpt  12000 cma_it  15 stop {'tolx': 0.05}
+  ckpt  13000 cma_it  17 stop {'tolx': 0.05}
+  ckpt  14000 cma_it  20 stop {'tolx': 0.05}
+  ckpt  15000 cma_it  22 stop {'tolx': 0.05}
+  ckpt  16000 cma_it  25 stop {'tolx': 0.05, 'tolfunhist': 0.3}
+  ckpt  17000 cma_it  27 stop {'tolx': 0.05, 'tolfunhist': 0.3}

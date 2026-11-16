@@ -114,6 +114,8 @@ Twelve identifiers, written as explicit `gym.register` blocks in the same style 
 | `Isaac-Quadruped-Copt-Rough-v0`, `-Play-v0` | `QuadrupedPFCoptBlindRoughEnvCfg` | `CoptOnPolicyRunner` |
 | `Isaac-Quadruped-Copt-Learned-Rough-v0` | `QuadrupedPFCoptBlindRoughEnvCfg` | `CoptOnPolicyRunner`, learned model |
 
+Updated 2026-10-23 by `plans/copt_improvement.md` section 4. The quadruped registers `Isaac-Quadruped-Copt-MoRAL-{Flat,Rough,Rough-Play}-v0` for the estimator architecture, `CoptMorALActorCritic` under `--policy-type COPT-MORAL`, and the identifiers `Isaac-Quadruped-Copt-{Flat,Rough,Rough-Play}-v0`, which named that architecture before the date, now launch the direct architecture, `CoptActorCritic` under `--policy-type COPT`, whose actor reads `morphologyObs`. The biped gains `Isaac-Limx-SF-Copt-{Flat,Rough,Rough-Play}-v0` for the direct architecture beside its unchanged `Copt-MoRAL` tasks. The table above records the identifiers of its date, and the `Learned` row was removed on 2026-09-10 (`/ws/ARCHITECTURE.md` section 3).
+
 The four co-optimisation identifiers were registered but not launchable, the design generator not accepting this robot. Corrected 2026-09-25, when the generator moved onto the vendored parametric submodule and took a `family` argument, so it accepts the quadruped on the same footing as the biped. Launching one requires setting `_family` to `"quadruped"` in `scripts/rsl_rl/train.py`, and the six gates of `../plans/design_generator_integration.md` section 15 that need Isaac Sim are still open. The vanilla and hybrid internal model identifiers need no change to `train.py` whatever.
 
 ## 6. Steps to Create a New Task
