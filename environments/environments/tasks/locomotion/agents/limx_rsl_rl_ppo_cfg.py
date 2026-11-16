@@ -12,9 +12,7 @@ from environments.tasks.locomotion.mdp.symmetry.brs import compute_symmetric_sta
 from environments.tasks.locomotion.mdp.symmetry.kscale import (
     compute_symmetric_states as kscale_compute_symmetric_states,
 )
-from environments.tasks.locomotion.mdp.symmetry.tron1 import (
-    compute_symmetric_states as tron1_compute_symmetric_states,
-)
+from environments.tasks.locomotion.mdp.symmetry.tron1 import compute_symmetric_states as tron1_compute_symmetric_states
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
@@ -162,19 +160,28 @@ class SFCoptBaseRunnerCfg(SF_TRON1AFlatPPORunnerCfg):
     )
 
 
+@configclass
+class SFCoptRunnerCfg(SFCoptBaseRunnerCfg):
+    """The true morphology read by the actor directly, no estimator, for CoptActorCritic."""
+
+    experiment_name: str = "copt_direct"
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "morphologyObs"],
+        "critic": ["critic"],
+    }
+
 
 @configclass
-class SFCoptMorphologyRunnerCfg(SFCoptBaseRunnerCfg):
-    """Experiment 1, morphology inferred from proprioceptive history alone."""
+class SFCoptMorALRunnerCfg(SFCoptBaseRunnerCfg):
+    """Experiment 1, morphology inferred from proprioceptive history alone, for CoptMorALActorCritic."""
 
     experiment_name: str = "copt_moral"
     obs_groups: dict[str, list[str]] = {
         "policy": ["policy"],
         "critic": ["critic"],
-        "encoderIn": ["historyObs"],
+        "encoderIn": ["policy"],
         "gtEncoderOut": ["morphologyObs"],
     }
-
 
 
 @configclass
@@ -188,7 +195,6 @@ class SFCoptMorphologyFromDynamicsRunnerCfg(SFCoptBaseRunnerCfg):
         "encoderIn": ["historyObs", "privilegedDynamicsObs"],
         "gtEncoderOut": ["morphologyObs"],
     }
-
 
 
 @configclass

@@ -44,6 +44,7 @@ def report_nan(tensors: TensorDict | dict[str, torch.Tensor]) -> None:
             print(f"NaN in {key} at indices:\n{nan_indices}")
 
 
+class CoptMorALActorCritic(ActorCritic):
     """Actor-critic whose estimator is configured entirely by observation sets.
 
     The estimator input is the concatenation of the groups named by
@@ -78,7 +79,7 @@ def report_nan(tensors: TensorDict | dict[str, torch.Tensor]) -> None:
     ):
         for required in ("encoderIn", "gtEncoderOut"):
             assert required in obs_groups, (
-                f"CoptActorCritic requires the '{required}' observation set. "
+                f"CoptMorALActorCritic requires the '{required}' observation set. "
                 f"Found sets: {sorted(obs_groups)}"
             )
 
@@ -198,3 +199,44 @@ def report_nan(tensors: TensorDict | dict[str, torch.Tensor]) -> None:
                     obs, self.estimator(self._get_estimator_input(obs))
                 )
         super().update_normalization(obs)
+
+
+class CoptActorCritic(ActorCritic):
+    """Actor-critic whose actor reads the true morphology directly, with no estimator.
+
+    The morphology enters as one more group of the policy set, obs_groups["policy"]
+    naming morphologyObs, so the inherited ActorCritic sizes, normalises and
+    concatenates it. act returns (actions, None) because CoptPPO unpacks an
+    estimator output, and adds no estimator loss for None.
+    """
+
+    is_recurrent = False
+
+    def __init__(
+        self,
+        obs: TensorDict,
+        obs_groups: dict[str, list[str]],
+        num_actions: int,
+        encoder_cfg: dict | None = None,
+        **kwargs: dict[str, Any],
+    ):
+        assert "morphologyObs" in obs_groups["policy"], (
+            "CoptActorCritic reads the morphology in its actor, so obs_groups['policy'] "
+            f"must name 'morphologyObs'. Found {obs_groups['policy']}"
+        )
+        super().__init__(obs, obs_groups, num_actions, **kwargs)
+
+    def _update_distribution(self, obs: torch.Tensor) -> None:
+        super()._update_distribution(obs)
+        report_nan({"normalised actor input": obs, "mean": self.distribution.mean,
+                    "std": self.distribution.stddev})
+
+    def act(self, obs: TensorDict, **kwargs: dict[str, Any]) -> tuple[torch.Tensor, None]:
+        report_nan({group: obs[group] for group in self.obs_groups["policy"]})
+        return super().act(obs, **kwargs), None
+
+    def evaluate(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
+        critic_obs = self.critic_obs_normalizer(self.get_critic_obs(obs))
+        value = self.critic(critic_obs)
+        report_nan({"normalised critic input": critic_obs, "value": value})
+        return value

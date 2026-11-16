@@ -235,7 +235,8 @@ def main():
         runner_cls = DebugOnPolicyRunner
         agent_cfg.policy.class_name = "DebugActorCritic"
     runner = None
-    if args_cli.policy_type == "COPT":
+    _COPT_ACTOR_CRITIC = {"COPT": "CoptActorCritic", "COPT-MORAL": "CoptMorALActorCritic"}
+    if args_cli.policy_type in _COPT_ACTOR_CRITIC:
 
         # The family selects which of the vendored generator's two packages supplies
         # the geometry, the mass model and the actuator catalogue. Its own
@@ -301,7 +302,7 @@ def main():
                     f"--num_envs {env.num_envs} is not a multiple of the {n} designs a "
                     f"generation of --design_search {args_cli.design_search} carries."
                 )
-        agent_cfg.policy.class_name = "CoptActorCritic"
+        agent_cfg.policy.class_name = _COPT_ACTOR_CRITIC[args_cli.policy_type]
         agent_cfg.algorithm.class_name = "CoptPPO"
         agent_cfg_dict = agent_cfg.to_dict()
         # 1.0 is the unweighted sum every run to date trained with.
@@ -349,7 +350,7 @@ def main():
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
-    if args_cli.policy_type == "COPT":
+    if args_cli.policy_type in _COPT_ACTOR_CRITIC:
         # agent.yaml serialises the configclass, without the copt block the runner receives.
         dump_yaml(os.path.join(log_dir, "params", "copt_agent.yaml"), agent_cfg_dict)
 

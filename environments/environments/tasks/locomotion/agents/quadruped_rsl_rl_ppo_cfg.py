@@ -61,18 +61,38 @@ class PFQuadrupedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
 
-# The co-optimisation runner reads obs_groups to decide which observation groups feed
-# the actor, the critic, the estimator input and the estimator regression target, at
-# copt_actor_critic.py. Identical to the biped's SFCoptMorphologyRunnerCfg, the actor
-# reading no true morphology, which hardware does not provide.
 @configclass
 class PFQuadrupedCoptPPORunnerCfg(PFQuadrupedPPORunnerCfg):
+    """The true morphology read by the actor directly, no estimator, for CoptActorCritic."""
+
+    experiment_name: str = "quadruped_copt_direct"
+    max_iterations: int = 45000
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "morphologyObs"],
+        "critic": ["critic"],
+    }
+    # Unused by CoptActorCritic, read unconditionally by CoptOnPolicyRunner.__init__.
+    encoder = EncoderCfg(
+        output_detach=True,
+        num_output_dim=19,
+        hidden_dims=[1024, 512, 256],
+        activation="elu",
+        orthogonal_init=False,
+    )
+
+
+# The co-optimisation runner reads obs_groups to decide which observation groups feed
+# the actor, the critic, the estimator input and the estimator regression target, at
+# copt_actor_critic.py. Identical to the biped's SFCoptMorALRunnerCfg, the actor
+# reading no true morphology, which hardware does not provide.
+@configclass
+class PFQuadrupedCoptMorALPPORunnerCfg(PFQuadrupedPPORunnerCfg):
     experiment_name: str = "quadruped_copt"
     max_iterations: int = 45000
     obs_groups: dict[str, list[str]] = {
         "policy": ["policy"],
         "critic": ["critic"],
-        "encoderIn": ["historyObs"],
+        "encoderIn": ["policy"],
         "gtEncoderOut": ["morphologyObs"],
     }
     encoder = EncoderCfg(

@@ -23,13 +23,9 @@ from tensordict import TensorDict
 import pandas as pd
 import isaaclab.sim as sim_utils
 from isaaclab.sim.utils.stage import get_current_stage
-from rsl_rl.algorithms import PPO
-from rsl_rl.env import VecEnv
-from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
-from rsl_rl.runners import OnPolicyRunner
 
 from co_optimisation.algorithms import CoptPPO
-from co_optimisation.modules import CoptActorCritic
+from co_optimisation.modules import CoptActorCritic, CoptMorALActorCritic  # noqa: F401, eval below
 from co_optimisation.runners.usd_generator import DesignGeneratorBase, Population
 from co_optimisation.utils.analysis import log_prototype_and_instance_info
 from co_optimisation.utils.env_state import capture_env_state, restore_env_state
@@ -40,6 +36,10 @@ from co_optimisation.utils.update import (
     assert_link_lengths_applied,
     refresh_rendered_geometry,
 )
+from rsl_rl.algorithms import PPO
+from rsl_rl.env import VecEnv
+from rsl_rl.modules import resolve_rnd_config, resolve_symmetry_config
+from rsl_rl.runners import OnPolicyRunner
 
 
 def _population_to_dict(pop: Population) -> dict:
@@ -519,7 +519,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
         # Initialize the policy
         actor_critic_class = eval(self.policy_cfg.pop("class_name"))
-        actor_critic: CoptActorCritic = actor_critic_class(
+        actor_critic: CoptActorCritic | CoptMorALActorCritic = actor_critic_class(
             obs,
             self.cfg["obs_groups"],
             self.env.num_actions,

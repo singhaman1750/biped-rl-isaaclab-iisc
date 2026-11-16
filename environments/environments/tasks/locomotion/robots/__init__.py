@@ -10,10 +10,12 @@ from environments.tasks.locomotion.agents.limx_rsl_rl_ppo_cfg import (
     SD_BRS1FlatPPORunnerCfg,
     SF_Berkeley_PPORunnerCfg,
     SF_TRON1AFlatPPORunnerCfg,
-    SFCoptMorphologyRunnerCfg,
+    SFCoptMorALRunnerCfg,
+    SFCoptRunnerCfg,
     WF_TRON1AFlatPPORunnerCfg,
 )
 from environments.tasks.locomotion.agents.quadruped_rsl_rl_ppo_cfg import (
+    PFQuadrupedCoptMorALPPORunnerCfg,
     PFQuadrupedCoptPPORunnerCfg,
     PFQuadrupedPPORunnerCfg,
 )
@@ -43,11 +45,15 @@ limx_sf_him_blind_flat_runner_cfg = SF_TRON1AFlatPPORunnerCfg()
 
 limx_sf_berkeley_mimic_runner_cfg = SF_Berkeley_PPORunnerCfg()
 
-limx_sf_copt_moral_runner_cfg = SFCoptMorphologyRunnerCfg()
+limx_sf_copt_moral_runner_cfg = SFCoptMorALRunnerCfg()
+
+limx_sf_copt_runner_cfg = SFCoptRunnerCfg()
 
 quadruped_runner_cfg = PFQuadrupedPPORunnerCfg()
 
 quadruped_him_runner_cfg = PFQuadrupedPPORunnerCfg()
+
+quadruped_copt_moral_runner_cfg = PFQuadrupedCoptMorALPPORunnerCfg()
 
 quadruped_copt_runner_cfg = PFQuadrupedCoptPPORunnerCfg()
 
@@ -414,6 +420,36 @@ gym.register(
     },
 )
 
+gym.register(
+    id="Isaac-Limx-SF-Copt-Flat-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Copt-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-SF-Copt-Rough-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": limx_solefoot_env_cfg.SFCoptBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_sf_copt_runner_cfg,
+    },
+)
+
 #############################
 # SD_BRS1 Environments
 #############################
@@ -642,9 +678,42 @@ gym.register(
     },
 )
 
-#################################
-# Quadruped Copt Flat Environment
-#################################
+######################################
+# Quadruped Copt Environments, MoRAL
+######################################
+gym.register(
+    id="Isaac-Quadruped-Copt-MoRAL-Flat-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": quadruped_copt_moral_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Quadruped-Copt-MoRAL-Rough-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg,
+        "rsl_rl_cfg_entry_point": quadruped_copt_moral_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Quadruped-Copt-MoRAL-Rough-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": quadruped_pointfoot_env_cfg.QuadrupedPFCoptBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": quadruped_copt_moral_runner_cfg,
+    },
+)
+
+######################################
+# Quadruped Copt Environments, direct
+######################################
 gym.register(
     id="Isaac-Quadruped-Copt-Flat-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
@@ -655,9 +724,6 @@ gym.register(
     },
 )
 
-##################################
-# Quadruped Copt Rough Environment
-##################################
 gym.register(
     id="Isaac-Quadruped-Copt-Rough-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

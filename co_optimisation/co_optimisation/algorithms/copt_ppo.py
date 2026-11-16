@@ -253,10 +253,14 @@ class CoptPPO(PPO):
 
             # Estimator loss against the configured ground truth set, so that a
             # change of target is a change of obs_groups["gtEncoderOut"] alone.
-            model_estimation_loss = torch.nn.functional.mse_loss(
-                predicted_model_info,
-                self.policy.get_estimator_target(obs_batch).detach(),
-            )
+            if predicted_model_info is None:
+                # An actor critic without an estimator, CoptActorCritic, adds no loss.
+                model_estimation_loss = torch.zeros((), device=self.device)
+            else:
+                model_estimation_loss = torch.nn.functional.mse_loss(
+                    predicted_model_info,
+                    self.policy.get_estimator_target(obs_batch).detach(),
+                )
 
             loss = (
                 surrogate_loss
