@@ -61,6 +61,7 @@ def _population_to_dict(pop: Population) -> dict:
         "link_length_params": pop.get_link_length_params(),
         "root_body": pop.get_root_body(),
         "nominal": pop.get_nominal(),
+        "xml_files": pop.get_xml_files(),
     }
 
 
@@ -76,6 +77,7 @@ def _population_from_dict(state: dict) -> Population:
         state["link_length_params"],
         state.get("root_body", "base_Link"),
         nominal=state.get("nominal"),
+        xml_files=state.get("xml_files"),
     )
 
 

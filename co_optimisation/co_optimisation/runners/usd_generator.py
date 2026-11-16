@@ -59,11 +59,11 @@ from pathlib import Path
 
 import cma
 
-from design_generator import biped, quadruped
-
-
 # try:
 from co_optimisation.utils.common import Population  # noqa: F401, re-exported for every importer of this module
+from co_optimisation.utils.filters import make_filters
+from design_generator import biped, quadruped
+
 # except ImportError:
 #     # Loaded by its path without the simulator, as co_optimisation/tests does, where the package
 #     # __init__ would import the runner, so the sibling file is loaded by its path as well.
@@ -456,6 +456,14 @@ DEFAULT_PARAM_RANGES: dict[str, ParamRange] = {
     "ankle_damping_scale": ("scale", (0.800, 1.200)),
 }
 
+def actuator_distance(a, b) -> float:
+    """The distance of two catalogue actuators in log peak torque, log peak speed and log mass.
+
+    The metric scripts/tools/fill_actuator_sim_params.py fills the catalogues by, see
+    plans/design_filtering.md section 7.1.
+    """
+    return math.sqrt(sum(math.log(getattr(a, k) / getattr(b, k)) ** 2 for k in ("peak_torque", "peak_speed", "mass")))
+
 # Names rather than a second range structure, so a caller's override of a range reaches CMA-ES.
 CMAES_PARAM_KEYS: tuple[str, ...] = (
     "thigh_length_scale", "shank_length_scale", "thigh_bend_offset", "knee_bend_offset",
@@ -515,6 +523,12 @@ class DesignGeneratorBase(ABC):
         variable_params_path: Optional path to a ``variable_params.json`` that
             supplies the baseline specification.  Defaults to the one the
             family's own package ships, which reproduces the donor robot.
+        filters: Optional names of the filters every population must pass, as
+            ``co_optimisation.utils.filters.make_filters`` takes them.  None or
+            empty, the default, leaves the class attribute ``filters`` empty and
+            filters nothing.
+        filter_params: Optional keyword arguments of each filter, keyed as
+            *filters* names it.
     """
 
     def __init__(
@@ -524,6 +538,8 @@ class DesignGeneratorBase(ABC):
         param_ranges: dict[str, ParamRange] | None = None,
         output_dir: str = "/tmp/copt_usds",
         variable_params_path: str | None = None,
+        filters: list[str] | None = None,
+        filter_params: dict | None = None,
     ) -> None:
         if family not in FAMILIES:
             raise ValueError(
@@ -546,12 +562,22 @@ class DesignGeneratorBase(ABC):
         self._last_feasible = self.baseline
         self._last_emitted = self.baseline
         self._current_parameters: dict[str, float] | None = None
+        # The positions of the population being filtered that some filter still refuses, and the redraw
+        # in progress, 0 outside filter_population so that every draw keeps its former seed.
+        self._designs_not_compliant: list[int] = []
+        self._filter_attempt = 0
+        self.filter_history: list[dict] = []
+        if filters:
+            self.filters = make_filters(list(filters), family, filter_params)
+
     # Extra keyword arguments of the family's build_xml, set by the caller after
     # construction, for example {"shank_foot_gap": 0.001} for the quadruped. Empty,
     # the default, emits every document as before.
     builder_kwargs: dict = {}
 
     filters: list = []
+    filter_max_rounds: int = 100
+
     # ---- abstract design hooks ----------------------------------------------
 
     @abstractmethod
@@ -621,10 +647,78 @@ class DesignGeneratorBase(ABC):
         return population
 
     def _individual(self, generation: int, idx: int, generate) -> dict:
+        """Draw and emit one individual, every record of it but its conversion."""
+        spec, act = generate(generation, idx)
+        xml_path = self._generate_individual_mjcf(generation, idx, spec)
+        # The drawn design, whose genotype CMA-ES is told the fitness of even when refused.
+        parameters = {**self._design_record(spec), "feasible": self._last_emitted is spec}
+        if self._last_emitted is not spec:
+            # _build_xml refused the design and wrote the last feasible one.
+            spec = self._last_emitted
+            act = self._actuator_params(spec, self._current_parameters)
+        # The design actually emitted and trained, its geometry, pose, mass and actuators.
+        with open(xml_path) as fh:
+            parameters.update(self.design_record(spec, act, fh.read()))
+        return {
+            "usd_file": None, "actuator_params": act, "link_length_params": self.family.links(spec),
+            "spec": spec, "nominal": self.family.nominal(spec), "parameters": parameters, "xml_file": xml_path,
+        }
+
     # ---- filtering -------------------------------------------------------------
 
     def filter_population(self, generation: int, population: Population, indices: list[int], generate) -> None:
-        return None
+        """Redraw every design of *population* some filter refuses, until every filter passes all of them.
+
+        _designs_not_compliant begins as every position of *population*, each round leaving the positions
+        some filter refused, which are redrawn under a fresh seed or a fresh sample of the search
+        distribution, _redraw, and filtered again. *indices* are the individual indices of the positions.
+        """
+        self._designs_not_compliant = list(range(len(indices)))
+        record = {"generation": generation, "designs": len(indices), "rounds": 0, "redrawn": 0, "refused": {}}
+        try:
+            while self._designs_not_compliant:
+                pending = self._designs_not_compliant
+                xml_files = [population.get_xml_files()[k] for k in pending]
+                refused: set[int] = set()
+                for f in self.filters:
+                    hits = f.filter(xml_files)
+                    record["refused"][f.name] = record["refused"].get(f.name, 0) + len(hits)
+                    refused.update(hits)
+                self._designs_not_compliant = [pending[i] for i in sorted(refused)]
+                if not self._designs_not_compliant:
+                    break
+                if record["rounds"] == self.filter_max_rounds:
+                    print(f"[filter] generation {generation}: {len(self._designs_not_compliant)} designs still "
+                          f"refused after {self.filter_max_rounds} rounds, kept as drawn")
+                    break
+                record["rounds"] += 1
+                record["redrawn"] += len(self._designs_not_compliant)
+                self._filter_attempt = record["rounds"]
+                for k in self._designs_not_compliant:
+                    self._redraw(indices[k])
+                    population.set_individual(k, self._individual(generation, indices[k], generate))
+        finally:
+            self._filter_attempt = 0
+        record["kept_refused"] = len(self._designs_not_compliant)
+        self.filter_history.append(record)
+        # Every filter's per design scores, for the design logs, on the population as it now stands.
+        rows = population.get_parameters()
+        for f in self.filters:
+            for name, values in f.scores(population.get_xml_files()).items():
+                for k, value in enumerate(values):
+                    rows[k][name] = float(value)
+        print(f"[filter] generation {generation}: {record['redrawn']} redraws over {record['rounds']} rounds, "
+              f"refusals {record['refused']}")
+
+    def _redraw(self, idx: int) -> None:
+        """Replace the draw behind individual *idx* before it is generated again. The seeded draws need
+        nothing, _rng_seed folding in the round, so only a search distribution's sample is replaced."""
+        pass
+
+    def _rng_seed(self, generation: int, idx: int):
+        """The seed of individual *idx*'s draw, unchanged outside a redraw, the round folded in during one."""
+        seed = generation * 10000 + idx
+        return seed if self._filter_attempt == 0 else [seed, self._filter_attempt]
 
     # ---- parameter sampling --------------------------------------------------
 
@@ -760,7 +854,7 @@ class RandomDesignGenerator(DesignGeneratorBase):
         return self._build_population(generation, range(self.num_individuals))
 
     def _generate_individual(self, generation: int, idx: int):
-        rng = np.random.default_rng(seed=generation * 10000 + idx)
+        rng = np.random.default_rng(seed=self._rng_seed(generation, idx))
         parameters = self._sample_parameter(rng)
         self._current_parameters = parameters
         spec = self._spec_from_parameters(parameters)
@@ -808,6 +902,10 @@ class CMAESDesignGenerator(DesignGeneratorBase):
     per-individual mean episode return reported by :class:`CoptOnPolicyRunner`.
     """
 
+    # The keys of param_ranges the search distribution carries, CMAES_PARAM_KEYS but for a
+    # search over the actuator picks alone.
+    searched_keys: tuple[str, ...] = CMAES_PARAM_KEYS
+
     def __init__(
         self,
         family: str,
@@ -827,6 +925,8 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         tolfunhist: float | None = None,
         final_population: str = "last",
         tolcat: float | None = None,
+        filters: list[str] | None = None,
+        filter_params: dict | None = None,
     ) -> None:
         super().__init__(
             family=family,
@@ -834,6 +934,8 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             param_ranges=param_ranges,
             output_dir=output_dir,
             variable_params_path=variable_params_path,
+            filters=filters,
+            filter_params=filter_params,
         )
         # pycma's tolerances, see plans/copt_training_refinement.md section 3. None, the default,
         # leaves pycma's 1e-11, 1e-11 and 1e-12, as every run before 2026-10-28.
@@ -859,7 +961,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         # but cannot add new dimensions (any extras would be inert).
         self.param_ranges = {k: self.param_ranges[k] for k in CMAES_PARAM_KEYS}
 
-        self.param_keys: list[str] = list(self.param_ranges.keys())
+        self.param_keys: list[str] = [k for k in self.param_ranges if k in self.searched_keys]
         self.num_params: int = len(self.param_keys)
         self._sigma0: float = float(sigma0)
         self._seed: int = int(seed)
@@ -912,6 +1014,12 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         return self._es.pickle_dumps()
 
     # --- Public API ---------------------------------------------------
+
+    def _redraw(self, idx: int) -> None:
+        # The random phase draws from a seed, a search generation from the distribution, whose
+        # replacement sample is the genotype tell then pairs with the fitness.
+        if not self.late_start:
+            self._pending_solutions[idx] = self._es.ask(1)[0]
 
     def toggle_late_start(self) -> None:
         self.late_start = not self.late_start
@@ -996,7 +1104,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
     def _generate_individual(self, generation: int, idx: int):
         if self.late_start:
-            rng = np.random.default_rng(seed=generation * 10000 + idx)
+            rng = np.random.default_rng(seed=self._rng_seed(generation, idx))
             parameters = self._sample_parameter(rng)
         else:
             assert self._pending_solutions is not None, (
@@ -1058,7 +1166,7 @@ class GrowingDesignDistCMAESDesignGenerator(CMAESDesignGenerator):
 
     def _generate_individual(self, generation: int, idx: int):
         if self.late_start:
-            rng = np.random.default_rng(seed=generation * 10000 + idx)
+            rng = np.random.default_rng(seed=self._rng_seed(generation, idx))
             # Saturation point of the design distribution's growth
             s = 0.1
             # Total number of generations of random population sampling
@@ -1115,6 +1223,49 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
         self.cat_groups: tuple[str, ...] = tuple(self.family.groups)
         self.cat_names: list[str] = names
 
+    def _growth_scale(self, generation: int) -> float:
+        """The random phase's widening, 0.05 at generation 0 and about 1 at its last, the geometry's own schedule."""
+        return 0.95 * (generation / (self.late_start_it - 0.1)) + 0.05
+
+    def _neighbours(self, group: str) -> list[str]:
+        """The shelf ordered by actuator_distance from the base robot's pick for *group*, nearest first.
+
+        The base robot's own pick leads, even against an entry at distance zero such as the quadruped's
+        A1-ABAD beside its A1-HIP, and a tie among the rest keeps the shelf's order. A base pick missing
+        from the shelf leaves the shelf's order.
+        """
+        catalog = {a.name: a for a in self.family.full_catalog()}
+        base = catalog.get(getattr(self.baseline, self.family.spec_fields[group]))
+        if base is None or base.name not in self.cat_names:
+            return list(self.cat_names)
+        return sorted(self.cat_names, key=lambda name: (name != base.name, actuator_distance(catalog[name], base),
+                                                        self.cat_names.index(name)))
+
+    def _pick_scale(self, generation: int) -> float:
+        """The share of each group's shelf the random phase draws from, 0.05 at generation 0 and 1 at its last.
+
+        The geometry's schedule, _growth_scale, with its end pinned to the random phase's last generation,
+        late_start_it - 1, which _growth_scale reaches only at about 0.94 for 15 generations, so that every
+        actuator is met before CMA-ES begins.
+        """
+        last = self.late_start_it - 1
+        return 1.0 if last <= 0 else min(1.0, 0.05 + 0.95 * generation / last)
+
+    def _random_phase_picks(self, rng: np.random.Generator, generation: int) -> dict[str, str]:
+        """Each group's pick, uniform over the nearest ceil(scale K) of its K shelf entries to the base robot's.
+
+        Generation 0 gives every design the base robot's actuators, at most 20 entries to a shelf, and the
+        last generation of the random phase the whole shelf, so the actuator choice widens with the
+        geometry box. Before 2026-11-12 every group drew uniformly from the whole shelf from generation 0.
+        """
+        scale = self._pick_scale(generation)
+        picks = {}
+        for group in self.cat_groups:
+            order = self._neighbours(group)
+            support = max(1, math.ceil(scale * len(order) - 1e-9))
+            picks[group] = order[int(rng.integers(support))]
+        return picks
+
     def _make_strategy(self):
         from cmaes import CatCMAwM
 
@@ -1155,11 +1306,112 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
         # CatCMAwM carries no pickle_dumps of its own, unlike cma's strategy.
         return pickle.dumps(self._es)
 
+    def get_state(self) -> dict:
+        # The shelf the strategy's category indices refer to, which the catalogue may since have widened,
+        # and the fitness history the termination criteria read.
+        return {**super().get_state(), "cat_names": list(self.cat_names),
+                "best_history": list(self._best_history), "last_range": self._last_range, "stop": list(self._stop)}
+
+    def load_state(self, state: dict) -> None:
+        """Restore the state, the shelf its category indices refer to and the termination history."""
+        super().load_state(state)
+        self.cat_names = list(state["cat_names"])
+        self._best_history = list(state["best_history"])
+        self._last_range = float(state["last_range"])
+        self._stop = list(state["stop"])
+
+    # --- termination ----------------------------------------------------
+
+    def _history_length(self) -> int:
+        """pycma's 10 + 30 N / popsize, N counting the continuous variables and the actuator groups."""
+        return 10 + math.ceil(30 * (self.num_params + len(self.cat_groups)) / int(self._es.population_size))
+
+    def _categorical_converged(self) -> bool:
+        """Every group's likeliest pick within tolcat of the probability the margin lets it reach.
+
+        CatCMAwM keeps every category at or above q_min (cmaes/_catcmawm.py, _init_categorical), so a
+        group's likeliest pick can reach at most 1 - (K - 1) q_min, about 0.924 for 15 entries over four
+        groups. None, the default, never counts the categorical block converged.
+        """
+        if self._tolcat is None:
+            return False
+        q, qmin, k = np.asarray(self._es._q), np.asarray(self._es._qmin), np.asarray(self._es._K)
+        ceiling = 1.0 - (k - 1) * qmin
+        return bool(np.all(q.max(axis=1) >= ceiling - self._tolcat))
+
+    def _continuous_converged(self, tolx: float) -> bool:
+        """pycma's tolx, every sampling standard deviation and evolution path entry in the unit box below tolx."""
+        if self.num_params == 0:
+            return True
+        es = self._es
+        a = np.asarray(es._A)
+        std = es._sigma * a * np.sqrt(np.diag(np.asarray(es._C)))
+        return bool(np.all(std < tolx) and np.all(np.abs(es._sigma * a * np.asarray(es._pc)) < tolx))
+
+    def _stop_reasons(self) -> list[str]:
+        """The criteria the search now meets, the CatCMAwM counterparts of pycma's that a leg_geometry run stops on.
+
+        maxiter, the generation cap max_cma_iter. tolfunhist, the range of the best fitness over the last
+        _history_length generations below tolfunhist. tolfun, that range and the range of the last
+        generation's fitness both below tolfun. tolx, the continuous block converged by tolx and the
+        categorical block by tolcat, both being required since either alone leaves the design unsettled.
+        CatCMAwM's own should_stop checks its Gaussian against fixed tolerances of 1e-12 and returns
+        False without one, so it is not consulted. Before 2026-11-12 a categorical search never stopped.
+        """
+        reasons = []
+        if self._max_cma_iter is not None and int(self._es.generation) >= self._max_cma_iter:
+            reasons.append("maxiter")
+        n = self._history_length()
+        if len(self._best_history) >= n:
+            spread = max(self._best_history[-n:]) - min(self._best_history[-n:])
+            if "tolfunhist" in self._tolerances and spread < self._tolerances["tolfunhist"]:
+                reasons.append("tolfunhist")
+            if "tolfun" in self._tolerances and max(spread, self._last_range) < self._tolerances["tolfun"]:
+                reasons.append("tolfun")
+        if ("tolx" in self._tolerances and self._categorical_converged()
+                and self._continuous_converged(self._tolerances["tolx"])):
+            reasons.append("tolx")
+        return reasons
+
+
+    def search_statistics(self) -> dict | None:
+        # Private state of cmaes 0.13.1, whose CatCMAwM exposes no accessor for it.
+        es = self._es
+        lo = np.array([self.param_ranges[k][1][0] for k in self.param_keys])
+        span = np.array([self.param_ranges[k][1][1] for k in self.param_keys]) - lo
+        # Sampled as N(m, sigma^2 A C A), cmaes/_catcmawm.py _sample_from_gaussian.
+        a = np.asarray(es._A)
+        cov = es._sigma ** 2 * a[:, None] * np.asarray(es._C) * a[None, :]
+        eig = np.linalg.eigvalsh(cov)
+        mean = np.clip(np.asarray(es._mean), 0.0, 1.0)
+        q = np.asarray(es._q)
+        return {
+            "cma_iteration": int(es.generation),
+            "evaluations": int(es.generation * es.population_size),
+            "sigma": float(es._sigma),
+            "axis_ratio": float(np.sqrt(eig.max() / eig.min())),
+            "terminated": float(self._terminated),
+            "stop": ", ".join(self._stop or self._stop_reasons()),
+            "mean": dict(zip(self.param_keys, (lo + span * mean).tolist())),
+            "std": dict(zip(self.param_keys, (span * np.sqrt(np.diag(cov))).tolist())),
+            **self._pick_statistics(q),
+        }
+
+
+    def optimised_design(self) -> tuple[dict[str, float], dict[str, str] | None] | None:
+        q = np.asarray(self._es._q)
+        picks = {group: self.cat_names[int(q[row].argmax())] for row, group in enumerate(self.cat_groups)}
+        return self._denormalise(np.clip(np.asarray(self._es._mean), 0.0, 1.0)), picks
+
     # --- ask and tell ---------------------------------------------------
 
     def sample_batch(self) -> None:
         assert self._pending_solutions is None, "sample_batch called twice consecutively"
         self._pending_solutions = [self._es.ask() for _ in range(self._es.population_size)]
+
+    def _redraw(self, idx: int) -> None:
+        if not self.late_start:
+            self._pending_solutions[idx] = self._es.ask()
 
     def update_with_fitness(self, fitness: list[float]) -> None:
         assert self._last_solutions is not None, (
@@ -1170,6 +1422,12 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
         print("Updating Designs with PPO Training Roll")
         costs = [self._sanitise_cost(-float(f)) for f in fitness]
         self._es.tell(list(zip(self._last_solutions, costs)))
+        self._best_history.append(min(costs))
+        self._last_range = max(costs) - min(costs)
+        self._stop = self._stop_reasons()
+        if self._stop:
+            print(f"[CatCMAwM] terminated: {self._stop}")
+            self._terminated = True
         self.sample_batch()
 
     # --- decoding -------------------------------------------------------
@@ -1198,11 +1456,9 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
 
     def _generate_individual(self, generation: int, idx: int):
         if self.late_start:
-            rng = np.random.default_rng(seed=generation * 10000 + idx)
-            parameters = self._sample_parameter_v2(
-                rng, 0.95 * (generation / (self.late_start_it - 0.1)) + 0.05)
-            picks = {group: self.cat_names[int(rng.integers(len(self.cat_names)))]
-                     for group in self.cat_groups}
+            rng = np.random.default_rng(seed=self._rng_seed(generation, idx))
+            parameters = self._sample_parameter_v2(rng, self._growth_scale(generation))
+            picks = self._random_phase_picks(rng, generation)
         else:
             assert self._pending_solutions is not None, (
                 "_generate_individual called before sample_batch"
@@ -1212,4 +1468,47 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
             picks = self._picks_from_solution(solution)
         self._current_parameters = parameters
         spec = self._spec_from_parameters(parameters, picks)
+        return spec, self._actuator_params(spec)
+
+
+# ---------------------------------------------------------------------------
+# Categorical only CMA-ES design generator
+# ---------------------------------------------------------------------------
+
+
+class CatOnlyCMAESDesignGenerator(CatCMAESDesignGenerator):
+    """The actuator picks alone on the baseline's link lengths and nominal pose.
+
+    ``cmaes.CatCMAwM`` with a categorical block and no continuous one, its x_space being empty,
+    which the library supports by skipping its Gaussian, so that only a categorical distribution
+    per actuator group is sampled and updated. pycma, the ``cma`` package, offers no categorical
+    search, and ``cmaes.CatCMA`` requires a continuous mean. Before the late start every group
+    draws its entry uniformly from the shelf, as in :class:`CatCMAESDesignGenerator`.
+    """
+
+    searched_keys: tuple[str, ...] = ()
+
+    def search_statistics(self) -> dict | None:
+        q = np.asarray(self._es._q)
+        return {
+            "cma_iteration": int(self._es.generation),
+            "evaluations": int(self._es.generation * self._es.population_size),
+            "terminated": float(self._terminated),
+            "stop": ", ".join(self._stop or self._stop_reasons()),
+            **self._pick_statistics(q),
+        }
+
+    def optimised_design(self) -> tuple[dict[str, float], dict[str, str] | None] | None:
+        q = np.asarray(self._es._q)
+        return {}, {group: self.cat_names[int(q[row].argmax())] for row, group in enumerate(self.cat_groups)}
+
+    def _generate_individual(self, generation: int, idx: int):
+        if self.late_start:
+            rng = np.random.default_rng(seed=self._rng_seed(generation, idx))
+            picks = self._random_phase_picks(rng, generation)
+        else:
+            assert self._pending_solutions is not None, "_generate_individual called before sample_batch"
+            picks = self._picks_from_solution(self._pending_solutions[idx])
+        self._current_parameters = {}
+        spec = self._spec_from_parameters({}, picks)
         return spec, self._actuator_params(spec)

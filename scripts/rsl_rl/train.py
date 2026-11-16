@@ -101,9 +101,8 @@ from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
     CatCMAESDesignGenerator,
-    CMAESDesignGenerator,
+    CatOnlyCMAESDesignGenerator,
     GrowingDesignDistCMAESDesignGenerator,
-    RandomDesignGenerator,
 )
 
 # Import extensions to set up environment tasks
@@ -256,6 +255,8 @@ def main():
             num_individuals=_num_individuals,
             param_ranges=dict(cmaes_cfg.param_ranges),
             output_dir=os.path.join(log_dir, "copt_usds"),
+            filters=list(cmaes_cfg.filters),
+            filter_params=dict(cmaes_cfg.filter_params),
         )
         late_start_pop_size = env.num_envs // cmaes_cfg.late_start_prior_divisor
         tolerances = dict(tolx=cmaes_cfg.tolx, tolfun=cmaes_cfg.tolfun, tolfunhist=cmaes_cfg.tolfunhist)
@@ -288,8 +289,6 @@ def main():
         population_sizes = (late_start_pop_size, _num_individuals)
         if cmaes_cfg.shank_foot_gap is not None:
             design_generator.builder_kwargs = {"shank_foot_gap": cmaes_cfg.shank_foot_gap}
-        if cmaes_cfg.filters:
-            design_generator.filters = make_filters(list(cmaes_cfg.filters), _family, dict(cmaes_cfg.filter_params))
         # Environment i runs design i % population size and fitness is averaged per
         # design, so a population that does not divide the scene is ranked on
         # unequal evidence.
