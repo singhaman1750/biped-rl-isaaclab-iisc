@@ -464,7 +464,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             # ---- end COPT injection -----------------------------------------
 
             if self.log_dir is not None and not self.disable_logs:
-                # Log information
+                # Log information, the model being saved before the design swap above
                 self.log(locals())
 
             # Clear episode infos
@@ -622,12 +622,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
 
     def _reload_morphology(self) -> None:
         """Run one EA cycle: evaluate fitness, generate new population, respawn."""
-        if self.current_population is not None :
-            fitness = self._compute_individual_fitness()
-            print("Updating Design Population")
-            self._design_generator.update_with_fitness(fitness)
-
-        elif self.current_population is None and self._ea_late_start < 0:
+        if self.current_population is None and self._ea_late_start < 0:
             self._design_generator.sample_batch()
 
         # Generate new population
@@ -812,6 +807,26 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             population_time = time.time() - population_start
             self.log_design_update(locals())
         self._eval_result = None
+
+    def _configured_tracking_widths(self) -> dict[str, float]:
+        """The width of every kernel reduce_tracking_rewards_std narrows, as configured before any narrowing."""
+        env = self.env.unwrapped
+        widths = {}
+        for cfg in env.curriculum_manager._term_cfgs:
+            if getattr(cfg.func, "__name__", "") == "reduce_tracking_rewards_std":
+                name = cfg.params["term_name"]
+                widths[name] = env.reward_manager.get_term_cfg(name).params["std"]
+        return widths
+
+    def _fix_tracking_widths(self, env) -> list[tuple[object, float]]:
+        """Set each narrowed kernel to its configured width, returning the training widths to restore."""
+        saved = []
+        for name, width in self._eval_tracking_widths.items():
+            term = env.reward_manager.get_term_cfg(name)
+            saved.append((term, term.params["std"]))
+            term.params["std"] = width
+        return saved
+
     def _build_evaluation_design(self) -> torch.Tensor:
         """A Latin hypercube on the unit cube of (vx, vy, wz, yaw), one point per cell an evaluation visits.
 

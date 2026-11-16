@@ -61,6 +61,19 @@ import cma
 
 from design_generator import biped, quadruped
 
+
+# try:
+from co_optimisation.utils.common import Population  # noqa: F401, re-exported for every importer of this module
+# except ImportError:
+#     # Loaded by its path without the simulator, as co_optimisation/tests does, where the package
+#     # __init__ would import the runner, so the sibling file is loaded by its path as well.
+#     import importlib.util as _util
+#
+#     _spec = _util.spec_from_file_location("co_optimisation_utils_common", Path(__file__).resolve().parents[1] / "utils" / "common.py")
+#     _common = _util.module_from_spec(_spec)
+#     _spec.loader.exec_module(_common)
+#     Population = _common.Population
+
 # ---------------------------------------------------------------------------
 # Families
 # ---------------------------------------------------------------------------
@@ -478,77 +491,6 @@ def _typed_ranges(param_ranges: dict | None) -> dict[str, ParamRange]:
             raise ValueError(f"parameter {name!r} has unknown type {kind!r}, expected one of {PARAM_TYPES}")
         out[name] = (kind, (float(lo), float(hi)))
     return out
-
-
-# ---------------------------------------------------------------------------
-# Population
-# ---------------------------------------------------------------------------
-
-
-class Population:
-    """A fixed set of robot designs, one per individual.
-
-    Each individual is a Universal Scene Description path, an actuator
-    parameter dict overriding the Python-side ``IdentifiedActuator``
-    attributes, and an absolute link-geometry dict for in-place morphology
-    updates.  ``root_body`` is the name of the emitted document's root body,
-    which the Isaac Sim MuJoCo importer interposes between the referenced
-    asset prim and every link prim, so ``utils/update.py`` needs it to address
-    a link.
-    """
-
-    def __init__(
-        self,
-        usd_files: list[str],
-        actuator_params: list[dict[str, dict]],
-        link_length_params: list[dict[str, dict]],
-        root_body: str,
-        specs: list | None = None,
-        nominal: list[dict] | None = None,
-    ) -> None:
-        self._usd_files = usd_files
-        self._actuator_params = actuator_params
-        self._link_length_params = link_length_params
-        self._root_body = root_body
-        self._specs = specs if specs is not None else []
-        self._nominal = nominal
-
-    def get_usd_files(self) -> list[str]:
-        """Return a list of Universal Scene Description paths, one per individual."""
-        return self._usd_files
-
-    def get_actuator_params(self) -> list[dict[str, dict]]:
-        """Return actuator override dicts, one per individual.
-
-        Each element is keyed by actuator group name (``"abad"``, ``"hip"``,
-        ``"knee"``, ``"ankle"``), whose value is a dict of scalar overrides for
-        the ``IdentifiedActuator`` attributes, as
-        ``design_generator.common.actuator_catalog.SIM_PARAM_KEYS`` names them.
-        """
-        return self._actuator_params
-
-    def get_link_length_params(self) -> list[dict[str, dict]]:
-        """Return absolute link-geometry dicts, one per individual."""
-        return self._link_length_params
-
-    def get_root_body(self) -> str:
-        """Return the emitted document's root body name."""
-        return self._root_body
-
-    def get_specs(self) -> list:
-        """Return the ``DesignSpec`` behind each individual, for logging."""
-        return self._specs
-
-    def get_nominal(self) -> list[dict] | None:
-        """Return each individual's nominal pose record.
-
-        A record carries ``offsets`` (thigh, knee and ankle, radians about +y,
-        the quadruped's ankle 0.0), ``dx`` (foot ahead of the hip pitch axis),
-        ``depth`` (foot body below the root), ``sole`` (sole below the foot
-        body) and ``height`` (``depth + sole``, the standing height), all from
-        Family.chain on the emitted specification.
-        """
-        return self._nominal
 
 
 # ---------------------------------------------------------------------------
@@ -1006,6 +948,28 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         return pop
 
     # --- Internal helpers --------------------------------------------
+
+    def _mean_population(self, generation: int) -> Population:
+        """The distribution mean, pycma's estimate of the optimum, in every one of num_individuals slots.
+
+        The mean is emitted and converted once and its records repeated, so the fine-tune costs one
+        conversion rather than num_individuals. The size is kept so that the runner's in-place update
+        still reaches every environment. The repeated records are shared, every consumer only reading them.
+        """
+        values, picks = self.optimised_design()
+
+        def mean(generation: int, idx: int):
+            self._current_parameters = dict(values)
+            spec = self._spec_from_parameters(values, picks)
+            return spec, self._actuator_params(spec)
+
+        one = self._build_population(generation, range(1), individual=mean, filtered=False)
+        n = self.num_individuals
+        return Population(
+            one.get_usd_files() * n, one.get_actuator_params() * n, one.get_link_length_params() * n,
+            one.get_root_body(), one.get_specs() * n, one.get_nominal() * n,
+            one.get_parameters() * n, one.get_xml_files() * n,
+        )
 
     def _generate_individual(self, generation: int, idx: int):
         if self.late_start:
