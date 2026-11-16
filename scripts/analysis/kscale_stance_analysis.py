@@ -41,12 +41,20 @@ DEFAULT_URDF = os.path.join(
 # of plans/kscale_actuator_limits_fix.md. It replaces the shallower knee 0.4 and ankle -0.3, and
 # it closes the sagittal chain exactly as that pose did, the standing height falling from
 # 0.77161 m to 0.73540 m. Mirror any further change here and in the asset configuration together.
+# Updated 2026-09-23 to the pose arm 5 of plans/kscale_gait_shaping.md installs, being the same
+# published K-Scale K-Bot posture of plus and minus 0.34907, 0.87266 and minus 0.52360 that stood
+# here between 2026-09-16 and 2026-09-17, now carried together with the mirrored hip roll and
+# ankle roll nominals the pose supplied on 2026-09-17 introduced and which arm 5 deliberately
+# retains. The standing height is 0.73492 m and NOT the 0.73540 m the entry above records, that
+# figure having been taken at a pose whose two roll nominals were zero, and the difference is
+# derived by nominal_pose.py under context/artefacts. Mirror any further change here and in the
+# asset configuration together.
 NOMINAL_POSE = {
-    "right_hip_pitch_04": -0.20369, "left_hip_pitch_04": 0.20369,
+    "right_hip_pitch_04": -0.34907, "left_hip_pitch_04": 0.34907,
     "right_hip_roll_03": 0.042951, "left_hip_roll_03": -0.042951,
     "right_hip_yaw_03": 0.0, "left_hip_yaw_03": 0.0,
-    "right_knee_04": 0.51239, "left_knee_04": 0.51239,
-    "right_foot_pitch_02": -0.3087, "left_foot_pitch_02": -0.3087,
+    "right_knee_04": 0.87266, "left_knee_04": 0.87266,
+    "right_foot_pitch_02": -0.52360, "left_foot_pitch_02": -0.52360,
     "right_foot_roll_02": 0.041254, "left_foot_roll_02": -0.041254,
 }
 

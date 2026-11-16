@@ -101,6 +101,9 @@ class KscaleBlindFlatEnvCfg(KscaleBaseEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
+        # 5000 reproduces run 2026-09-29_06-15-58 (arm 10), the baseline of the ablation.  The
+        # inherited 4096 stands for the rough and HIM tasks, and --num_envs still overrides.
+        self.scene.num_envs = 5000
         self.curriculum.terrain_levels = None
 
 

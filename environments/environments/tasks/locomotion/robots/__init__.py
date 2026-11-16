@@ -24,6 +24,7 @@ from ..cfg.SF import brs_base_env_cfg, kscale_base_env_cfg, limx_berkeley_env_cf
 from ..envs.him_env import HIMManagerBasedRLEnv
 from . import (
     brs_solefoot_env_cfg,
+    kscale_hip_yaw_fixed_env_cfg,
     kscale_solefoot_env_cfg,
     limx_pointfoot_env_cfg,
     limx_solefoot_env_cfg,
@@ -824,6 +825,37 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": kscale_solefoot_env_cfg.KscaleHIMBlindRoughEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+
+#############################
+# kscale hip yaw fixed, ARM 14 of plans/kscale_gait_shaping.md section 21.14
+#############################
+
+# The runner configuration is the SAME limx_kscale_runner_cfg instance the twelve joint tasks
+# use, built at :56, so the PPO hyperparameters, the network widths and the symmetry hook are
+# shared by construction and the two runs differ in the environment alone.  Both therefore
+# write to experiment_name "kscale_flat" and a run's own params/env.yaml is what distinguishes
+# them, which section 2.3's tree check already reads.
+
+gym.register(
+    id="Isaac-Limx-Kscale-HipYawFixed-Blind-Flat-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_hip_yaw_fixed_env_cfg.KscaleHipYawFixedBlindFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
+    },
+)
+
+gym.register(
+    id="Isaac-Limx-Kscale-HipYawFixed-Blind-Flat-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": kscale_hip_yaw_fixed_env_cfg.KscaleHipYawFixedBlindFlatEnvCfg_PLAY,
         "rsl_rl_cfg_entry_point": limx_kscale_runner_cfg,
     },
 )
