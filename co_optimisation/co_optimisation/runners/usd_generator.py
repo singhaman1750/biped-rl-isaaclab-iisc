@@ -627,6 +627,9 @@ class DesignGeneratorBase(ABC):
     def load_state(self, state: dict) -> None:
         pass
 
+    def search_statistics(self) -> dict | None:
+        """The search distribution in the units of ``param_ranges``, or None where there is none."""
+        return None
     # ---- shared population pipeline -----------------------------------------
 
     def _build_population(self, generation: int, indices) -> Population:
@@ -899,6 +902,21 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
     def toggle_late_start(self) -> None:
         self.late_start = not self.late_start
+
+    def search_statistics(self) -> dict | None:
+        lo = np.array([self.param_ranges[k][1][0] for k in self.param_keys])
+        span = np.array([self.param_ranges[k][1][1] for k in self.param_keys]) - lo
+        result = self._es.result
+        return {
+            "cma_iteration": int(self._es.countiter),
+            "evaluations": int(self._es.countevals),
+            "sigma": float(self._es.sigma),
+            "axis_ratio": float(self._es.D.max() / self._es.D.min()),
+            "terminated": float(self._terminated),
+            "stop": ", ".join(self._es.stop()),
+            "mean": dict(zip(self.param_keys, (lo + span * np.asarray(result.xfavorite)).tolist())),
+            "std": dict(zip(self.param_keys, (span * np.asarray(result.stds)).tolist())),
+        }
 
     def sample_batch(self) -> None:
         assert self._pending_solutions is None, "sample_batch called twice consecutively"

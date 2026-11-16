@@ -112,7 +112,7 @@ import os
 import torch
 from datetime import datetime
 
-from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper
+from highest_terrain_camera_wrapper import HighestTerrainCameraWrapper, PausableRecordVideo
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -217,7 +217,7 @@ def main():
         }
         print("[INFO] Recording videos during training.")
         # print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        env = PausableRecordVideo(env, **video_kwargs)
 
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
