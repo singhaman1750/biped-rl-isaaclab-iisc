@@ -82,6 +82,7 @@ simulation_app = app_launcher.app
 
 import copy
 import gymnasium as gym
+import json
 import numpy as np
 import os
 import re
