@@ -1,0 +1,232 @@
+{
+ "abad_R_Joint": {
+  "locked_min": 0.012091358108199673,
+  "locked_max": 1.2246007568828272,
+  "locked_pose": {
+   "hip_R_Joint": -0.9948350000000001,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": 1.30899
+  },
+  "free_min": 0.010541448240815765,
+  "free_pose": {
+   "abad_R_Joint": 0.5061450000000001,
+   "hip_R_Joint": -0.9948350000000001,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.0147166666666667,
+   "hip_L_Joint": 0.20943999999999985,
+   "abad_L_Joint": -0.38397
+  },
+  "reference": 0.008838337989182285,
+  "reference_pose": {
+   "abad_R_Joint": 0.3577925,
+   "hip_R_Joint": -0.9948350000000001,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.0147166666666667,
+   "hip_L_Joint": -1.1955475,
+   "ankle_L_Joint": -0.791917
+  }
+ },
+ "hip_R_Joint": {
+  "locked_min": 0.26313455501261107,
+  "locked_max": 1.2273265967284372,
+  "locked_pose": {
+   "knee_R_Joint": 1.17267,
+   "ankle_R_Joint": 1.30899
+  },
+  "free_min": 0.06080033885005183,
+  "free_pose": {
+   "abad_R_Joint": 1.2479075,
+   "hip_R_Joint": 0.4101524999999999,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": 0.6108649999999998,
+   "ankle_L_Joint": -0.791917
+  },
+  "reference": 0.02149497953236801,
+  "reference_pose": {
+   "abad_R_Joint": 1.099555,
+   "hip_R_Joint": 0.4101524999999999,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.0147166666666667,
+   "hip_L_Joint": -1.39626,
+   "abad_L_Joint": 1.2479075,
+   "ankle_L_Joint": -0.791917
+  }
+ },
+ "knee_R_Joint": {
+  "locked_min": 0.2649546649930845,
+  "locked_max": 0.27370812807484407,
+  "locked_pose": {
+   "ankle_R_Joint": -0.791917
+  },
+  "free_min": 0.03584227007990652,
+  "free_pose": {
+   "abad_R_Joint": -0.38397,
+   "hip_R_Joint": 0.8115774999999996,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": 0.8115774999999996,
+   "ankle_L_Joint": -0.791917,
+   "abad_L_Joint": 0.20944000000000002
+  },
+  "reference": 0.018351160256529893,
+  "reference_pose": {
+   "abad_R_Joint": -0.38397,
+   "hip_R_Joint": -1.39626,
+   "knee_R_Joint": -1.0147166666666667,
+   "ankle_R_Joint": 0.9577168734777026,
+   "abad_L_Joint": 1.3725356510519615,
+   "hip_L_Joint": -0.7544005542248673,
+   "knee_L_Joint": -0.8158633333333334,
+   "ankle_L_Joint": -0.7190052104345881
+  }
+ },
+ "ankle_R_Joint": {
+  "locked_min": 0.0085235,
+  "locked_max": 0.0085235,
+  "locked_pose": {},
+  "free_min": 0.008034514645535278,
+  "free_pose": {
+   "abad_R_Joint": 0.42982360829102845,
+   "hip_R_Joint": -0.7941225000000001,
+   "knee_R_Joint": 1.17267,
+   "ankle_R_Joint": 0.08346091666666688,
+   "abad_L_Joint": 1.39626,
+   "hip_L_Joint": 0.7133989697763294,
+   "knee_L_Joint": -1.0200155547983398,
+   "ankle_L_Joint": 0.7820945704575222
+  },
+  "reference": 0.007374587058388121,
+  "reference_pose": {
+   "abad_R_Joint": 1.39626,
+   "hip_R_Joint": -1.1955475,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": 0.08346091666666688,
+   "knee_L_Joint": -1.0147166666666667,
+   "hip_L_Joint": -1.1955475,
+   "ankle_L_Joint": -0.791917,
+   "abad_L_Joint": -0.38397
+  }
+ },
+ "abad_L_Joint": {
+  "locked_min": 0.012091358108199673,
+  "locked_max": 1.2246007568828272,
+  "locked_pose": {
+   "hip_L_Joint": -0.9948350000000001,
+   "knee_L_Joint": -1.21357,
+   "ankle_L_Joint": 1.30899
+  },
+  "free_min": 0.010224639284851804,
+  "free_pose": {
+   "abad_R_Joint": -0.23561749999999998,
+   "hip_R_Joint": -0.39269750000000014,
+   "knee_R_Joint": -0.6726700457885203,
+   "ankle_R_Joint": -0.6340790033937265,
+   "abad_L_Joint": 1.39626,
+   "hip_L_Joint": -0.9852422614265581,
+   "knee_L_Joint": -1.1808188993038313,
+   "ankle_L_Joint": -0.791917
+  },
+  "reference": 0.009109836879002426,
+  "reference_pose": {
+   "abad_R_Joint": 0.004592008466269337,
+   "hip_R_Joint": 0.8115774999999996,
+   "knee_R_Joint": -0.02045000000000008,
+   "ankle_R_Joint": -0.6340790033937265,
+   "abad_L_Joint": 1.39626,
+   "hip_L_Joint": -0.9948350000000001,
+   "knee_L_Joint": -1.1808188993038313,
+   "ankle_L_Joint": -0.791917
+  }
+ },
+ "hip_L_Joint": {
+  "locked_min": 0.26313455501261107,
+  "locked_max": 1.2273265967284372,
+  "locked_pose": {
+   "knee_L_Joint": 1.17267,
+   "ankle_L_Joint": 1.30899
+  },
+  "free_min": 0.06072744387827471,
+  "free_pose": {
+   "abad_R_Joint": 0.06108750000000002,
+   "hip_R_Joint": 0.8115774999999996,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": 0.4101524999999999,
+   "abad_L_Joint": 1.2479075,
+   "ankle_L_Joint": 0.4336120833333337
+  },
+  "reference": 0.021432656118657994,
+  "reference_pose": {
+   "abad_R_Joint": 1.099555,
+   "hip_R_Joint": -1.39626,
+   "knee_R_Joint": -1.0147166666666667,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": 0.20943999999999985,
+   "abad_L_Joint": 1.2479075,
+   "ankle_L_Joint": 1.30899
+  }
+ },
+ "knee_L_Joint": {
+  "locked_min": 0.2649546649930845,
+  "locked_max": 0.27370812807484407,
+  "locked_pose": {
+   "ankle_L_Joint": -0.791917
+  },
+  "free_min": 0.03584227007990651,
+  "free_pose": {
+   "abad_R_Joint": 0.20944000000000002,
+   "hip_R_Joint": 0.8115774999999996,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": 0.8115774999999996,
+   "ankle_L_Joint": -0.791917,
+   "abad_L_Joint": -0.38397
+  },
+  "reference": 0.018708486385143774,
+  "reference_pose": {
+   "abad_R_Joint": -0.38397,
+   "hip_R_Joint": -1.39626,
+   "knee_R_Joint": -1.0147166666666667,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": 0.4101524999999999,
+   "abad_L_Joint": -0.38397,
+   "ankle_L_Joint": 0.25853650000000017
+  }
+ },
+ "ankle_L_Joint": {
+  "locked_min": 0.0085235,
+  "locked_max": 0.0085235,
+  "locked_pose": {},
+  "free_min": 0.008034429599202596,
+  "free_pose": {
+   "abad_R_Joint": 1.2479075,
+   "hip_R_Joint": -1.39626,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": 1.17267,
+   "hip_L_Joint": 0.20943999999999985,
+   "abad_L_Joint": -0.38397,
+   "ankle_L_Joint": 0.08346091666666688
+  },
+  "reference": 0.007372209450294943,
+  "reference_pose": {
+   "abad_R_Joint": 1.39626,
+   "hip_R_Joint": -1.1955475,
+   "knee_R_Joint": -1.21357,
+   "ankle_R_Joint": -0.791917,
+   "knee_L_Joint": -1.21357,
+   "hip_L_Joint": -1.39626,
+   "ankle_L_Joint": -0.09161466666666651
+  }
+ }
+}

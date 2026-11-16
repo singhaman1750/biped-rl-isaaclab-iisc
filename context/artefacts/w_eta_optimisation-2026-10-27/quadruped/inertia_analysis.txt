@@ -1,0 +1,13 @@
+/ws/IsaacLab/logs/rsl_rl/quadruped_copt/2026-10-26_04-55-55/copt_usds/gen_0008/individual_0000.xml
+  12 hinges, floating base
+  mj_fullM: M 1.4e-15, M^-1 7.5e-16, projection formula 1.4e-15 relative error; JavaScript: 9.5e-16 relative error
+  trigonometric law, parallel axes, degree 1: 4 pairs, largest relative residual 4.9e-16
+  trigonometric law, skew axes, degree 2: 8 pairs, largest relative residual 6.1e-16
+  lambda_max(S W) with S = locked_min: 1.441
+  lambda_max(S W) with S = reference: 0.905
+  fast reference estimate / sweep: FR_hip_joint 0.998, FR_thigh_joint 1.001, FR_calf_joint 1.002
+  group | armature | locked nominal | locked min | locked max | free min | reference
+  abad | 0.0100 | 0.0266 | 0.0177 | 0.0303 | 0.0143 | 0.0097
+  hip | 0.0100 | 0.0227 | 0.0163 | 0.0251 | 0.0156 | 0.0129
+  knee | 0.0100 | 0.0122 | 0.0122 | 0.0122 | 0.0115 | 0.0095
+  wrote context/artefacts/w_eta_optimisation-2026-10-27/quadruped/inertia_dashboard.html and inertia_sweep.json

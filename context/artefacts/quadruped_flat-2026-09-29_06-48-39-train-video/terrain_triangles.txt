@@ -1,0 +1,13 @@
+columns per sub-terrain, of 64
+  flat                      20
+  hf_pyramid_slope           6
+  hf_pyramid_slope_inv       6
+  pyramid_stairs             4
+  pyramid_stairs_inv         3
+  waves                     13
+  random_rough              12
+
+height field columns 37, tiles 222 of 384
+
+horizontal_scale 0.05: grid 300 by 300, 178,802 triangles per tile, 39,694,044 triangles and 19,980,000 vertices in the concatenated collider
+horizontal_scale 0.1: grid 150 by 150, 44,402 triangles per tile, 9,857,244 triangles and 4,995,000 vertices in the concatenated collider

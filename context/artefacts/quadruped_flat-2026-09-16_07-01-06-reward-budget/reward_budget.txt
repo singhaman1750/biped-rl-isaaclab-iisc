@@ -1,0 +1,52 @@
+=== 2026-09-16_07-01-06  last step 9080 ===
+  Train/mean_reward                       89.8124
+  Train/mean_episode_length              958.6792
+  term                                       per second  per episode  share of |neg|
+  rew_lin_vel_xy                                6.56200     131.2400             nan
+  rew_ang_vel_z                                 2.82908      56.5816             nan
+  pen_feet_hold                                -1.97820     -39.5639           33.48
+  pen_lin_vel_z                                -1.56955     -31.3910           26.56
+  rew_foot_clearance                            0.51780      10.3560             nan
+  pen_abad_deviation                           -0.48861      -9.7723            8.27
+  pen_foot_landing_vel                         -0.36752      -7.3503            6.22
+  pen_joint_torque                             -0.24320      -4.8640            4.12
+  pen_action_smoothness                        -0.22088      -4.4175            3.74
+  feet_air_time                                -0.21899      -4.3799            3.71
+  pen_joint_accel                              -0.21229      -4.2458            3.59
+  pen_ang_vel_xy                               -0.17665      -3.5329            2.99
+  pen_undesired_contacts                       -0.12819      -2.5639            2.17
+  pen_action_rate                              -0.11862      -2.3723            2.01
+  feet_slide                                   -0.07404      -1.4808            1.25
+  keep_balance                                  0.04800       0.9600             nan
+  pen_joint_pos_limits                         -0.03926      -0.7851            0.66
+  pen_flat_orientation                         -0.02478      -0.4956            0.42
+  pen_joint_vel_l2                             -0.01721      -0.3442            0.29
+  pen_feet_impact                              -0.01705      -0.3409            0.29
+  pen_base_height                              -0.01361      -0.2723            0.23
+  SUM positive                                  9.95687     199.1375
+  SUM negative                                 -5.90864    -118.1728
+
+=== 2026-08-25_10-15-10  last step 17443 ===
+  Train/mean_reward                      220.0242
+  Train/mean_episode_length              933.6180
+  term                                       per second  per episode  share of |neg|
+  rew_lin_vel_xy                               17.46153     349.2305             nan
+  rew_ang_vel_z                                 7.05899     141.1798             nan
+  pen_action_smoothness                        -5.26278    -105.2556           37.48
+  pen_ang_vel_xy                               -2.19543     -43.9087           15.63
+  pen_lin_vel_z                                -2.08556     -41.7112           14.85
+  pen_action_rate                              -1.62086     -32.4172           11.54
+  pen_abad_deviation                           -1.36762     -27.3524            9.74
+  pen_joint_torque                             -0.44728      -8.9455            3.19
+  pen_joint_accel                              -0.40447      -8.0894            2.88
+  pen_joint_pos_limits                         -0.30811      -6.1623            2.19
+  feet_slide                                   -0.09590      -1.9181            0.68
+  pen_undesired_contacts                       -0.07884      -1.5767            0.56
+  feet_air_time                                -0.06573      -1.3146            0.47
+  pen_base_height                              -0.04832      -0.9665            0.34
+  keep_balance                                  0.04651       0.9302             nan
+  pen_joint_vel_l2                             -0.03316      -0.6633            0.24
+  pen_flat_orientation                         -0.02912      -0.5824            0.21
+  SUM positive                                 24.56702     491.3405
+  SUM negative                                -14.04319    -280.8639
+
