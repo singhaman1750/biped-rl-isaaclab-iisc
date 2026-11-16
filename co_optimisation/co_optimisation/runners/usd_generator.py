@@ -603,6 +603,7 @@ class DesignGeneratorBase(ABC):
     # the default, emits every document as before.
     builder_kwargs: dict = {}
 
+    filters: list = []
     # ---- abstract design hooks ----------------------------------------------
 
     @abstractmethod
@@ -634,29 +635,48 @@ class DesignGeneratorBase(ABC):
     def search_statistics(self) -> dict | None:
         """The search distribution in the units of ``param_ranges``, or None where there is none."""
         return None
+
+    def optimised_design(self) -> tuple[dict[str, float], dict[str, str] | None] | None:
+        """The parameters and actuator picks the search recommends, or None where there is no search."""
+        return None
+
+    def emit_design(self, parameters: dict[str, float], picks: dict[str, str] | None, path: str) -> bool:
+        """Write the MJCF of one design to *path*, False where the builder refused it for the last feasible one."""
+        self._current_parameters = parameters
+        spec = self._spec_from_parameters(parameters, picks)
+        xml = self._build_xml(spec)
+        with open(path, "w") as fh:
+            fh.write(xml)
+        return self._last_emitted is spec
+
     # ---- shared population pipeline -----------------------------------------
 
-    def _build_population(self, generation: int, indices) -> Population:
-        """Build generation *generation* for the individual indices *indices*."""
-        usd_files: list[str] = []
-        actuator_params: list[dict[str, dict]] = []
-        link_length_params: list[dict[str, dict]] = []
-        specs: list = []
-        nominal: list = []
-        for idx in indices:
-            spec, act = self._generate_individual(generation, idx)
-            xml_path = self._generate_individual_mjcf(generation, idx, spec)
-            if self._last_emitted is not spec:
-                # _build_xml refused the design and wrote the last feasible one.
-                spec = self._last_emitted
-                act = self._actuator_params(spec, self._current_parameters)
-            usd_files.append(self._generate_individual_usd(xml_path, idx))
-            actuator_params.append(act)
-            link_length_params.append(self.family.links(spec))
-            specs.append(spec)
-            nominal.append(self.family.nominal(spec))
-        return Population(usd_files, actuator_params, link_length_params,
-                          self.family.root_body, specs, nominal)
+    def _build_population(self, generation: int, indices, individual=None, filtered: bool = True) -> Population:
+        """Build generation *generation* for the individual indices *indices*.
+
+        *individual*, a callable of (generation, idx) returning (spec, actuator_params), takes
+        the place of _generate_individual where given. None, the default, builds as before.
+        Every document is emitted, then filtered where *filtered* and filters are set, and only
+        then converted, so that a refused design never costs a conversion.
+        """
+        generate = individual or self._generate_individual
+        indices = list(indices)
+        rows = [self._individual(generation, idx, generate) for idx in indices]
+        population = Population(*([row[key] for row in rows] for key in (
+            "usd_file", "actuator_params", "link_length_params")), self.family.root_body,
+            *([row[key] for row in rows] for key in ("spec", "nominal", "parameters", "xml_file")))
+        if filtered and self.filters:
+            self.filter_population(generation, population, indices, generate)
+        usd_files = population.get_usd_files()
+        for k, idx in enumerate(indices):
+            usd_files[k] = self._generate_individual_usd(population.get_xml_files()[k], idx)
+        return population
+
+    def _individual(self, generation: int, idx: int, generate) -> dict:
+    # ---- filtering -------------------------------------------------------------
+
+    def filter_population(self, generation: int, population: Population, indices: list[int], generate) -> None:
+        return None
 
     # ---- parameter sampling --------------------------------------------------
 
@@ -843,6 +863,11 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         late_start_prior_pop_size: int = 4096,
         max_cma_iter: int = 10000,
         variable_params_path: str | None = None,
+        tolx: float | None = None,
+        tolfun: float | None = None,
+        tolfunhist: float | None = None,
+        final_population: str = "last",
+        tolcat: float | None = None,
     ) -> None:
         super().__init__(
             family=family,
@@ -851,6 +876,24 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             output_dir=output_dir,
             variable_params_path=variable_params_path,
         )
+        # pycma's tolerances, see plans/copt_training_refinement.md section 3. None, the default,
+        # leaves pycma's 1e-11, 1e-11 and 1e-12, as every run before 2026-10-28.
+        self._tolerances: dict[str, float] = {
+            name: float(value)
+            for name, value in (("tolx", tolx), ("tolfun", tolfun), ("tolfunhist", tolfunhist))
+            if value is not None
+        }
+        # What a terminated search returns, "last" None, so the runner re-applies the last
+        # population as before, and "mean" the distribution mean in every individual slot.
+        if final_population not in ("last", "mean"):
+            raise ValueError(f"final_population must be 'last' or 'mean', got {final_population!r}")
+        self._final_population = final_population
+        # The categorical searches' own termination, see CatCMAESDesignGenerator._stop_reasons, which
+        # pycma's strategy neither needs nor reads.
+        self._tolcat = None if tolcat is None else float(tolcat)
+        self._best_history: list[float] = []
+        self._last_range = float("inf")
+        self._stop: list[str] = []
         self.late_start_prior_num_individual = late_start_prior_pop_size
         # Restrict CMA-ES to CMAES_PARAM_KEYS.
         # Caller-supplied param_ranges may tune the bounds of these keys
@@ -888,6 +931,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             "verb_filenameprefix": str(Path(self.output_dir) / "cma_log") + "/",
             "maxiter": self._max_cma_iter,
             "BoundaryHandler": "BoundTransform",
+            **self._tolerances,
         })
         return cma.CMAEvolutionStrategy(
             np.full(self.num_params, 0.5), self._sigma0, opts
@@ -922,6 +966,10 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             "std": dict(zip(self.param_keys, (span * np.asarray(result.stds)).tolist())),
         }
 
+    def optimised_design(self) -> tuple[dict[str, float], dict[str, str] | None] | None:
+        # xfavorite, the distribution mean, is pycma's estimate of the optimum.
+        return self._denormalise(self._es.result.xfavorite), None
+
     def sample_batch(self) -> None:
         assert self._pending_solutions is None, "sample_batch called twice consecutively"
         self._pending_solutions = self._es.ask()
@@ -941,8 +989,11 @@ class CMAESDesignGenerator(DesignGeneratorBase):
 
     def generate_population(self, generation: int) -> Population | None:  # type: ignore[override]
         if self._terminated:
-            print("CMAES Terminated. Fine-tuning parent policy on selected design only")
             self._pending_solutions = self._last_solutions
+            if self._final_population == "mean":
+                print("CMAES Terminated. Fine-tuning on the distribution mean in every individual slot")
+                return self._mean_population(generation)
+            print("CMAES Terminated. Fine-tuning parent policy on selected design only")
             return None
         print("Generating New Designs using CMAES output")
         if self.late_start:

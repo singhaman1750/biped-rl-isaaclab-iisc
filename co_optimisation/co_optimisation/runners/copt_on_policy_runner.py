@@ -17,6 +17,7 @@ import contextlib
 import itertools
 import math
 import os
+import shutil
 import time
 import torch
 import warnings
@@ -139,7 +140,11 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._eval_result: dict | None = None
         self._min_fitness_episode_length: int = copt_cfg.get(
             "min_fitness_episode_length", 0
-        )
+        self._finetune_iterations: int | None = copt_cfg.get("finetune_iterations")
+        # True from the generation boundary at which the search terminated, when the fine-tune begins.
+        self._finetuning: bool = False
+        # The last iteration of the fine-tune, set with _finetuning.
+        self._finetune_stop_it: int | None = None
         self._cmaes_history: list[dict] = []
         self._design_generator = design_generator
         # Per-generation state
@@ -187,6 +192,8 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             "current_population": _population_to_dict(self.current_population),
             "design_generator": self._design_generator.get_state(),
             "cmaes_history": self._cmaes_history,
+            "finetuning": self._finetuning,
+            "finetune_stop_it": self._finetune_stop_it,
         }
         saved["env_state"] = capture_env_state(self.env)
         torch.save(saved, path)
@@ -232,6 +239,8 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         # the restored population being measured afresh at its generation boundary.
         self._design_generator.load_state(c["design_generator"])
         self._cmaes_history = c.get("cmaes_history", [])
+        self._finetuning = c.get("finetuning", False)
+        self._finetune_stop_it = c.get("finetune_stop_it")
 
         self._restored_population = _population_from_dict(c["current_population"])
         self._restored_env_state = loaded["env_state"]
@@ -323,7 +332,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             late_start_toggled=False
             is_morph_update_time = (
                 (it + 1) % self._ea_update_interval == 0
-            ) and (is_late_start_toggle_time or self._randomise_before_late_start)
+            ) and (is_late_start_toggle_time or self._randomise_before_late_start) and not self._finetuning
             with torch.inference_mode():
                 for step in range(self.num_steps_per_env):
                     # Sample actions
@@ -402,6 +411,19 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             learn_time = stop - start
             self.current_learning_iteration = it
 
+            if self.log_dir is not None and not self.disable_logs:
+                boundary = (it + 1) % self.save_interval == 0
+                # Before the evaluation and the swap, so that model_<it>.pt, design_parameters_<it>.csv
+                # and cmaes_history row <it> all describe the population trained up to iteration it.
+                if self.current_population is not None and (is_morph_update_time or (boundary and self._finetuning)):
+                    pd.DataFrame(self.current_population.get_parameters()).to_csv(
+                        os.path.join(self.log_dir, "designs", f"design_parameters_{it}.csv"),
+                        index_label="individual",
+                    )
+                    self._log_population(it)
+                if boundary:
+                    self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
+
             # ---- COPT: EA generation update ---------------------------------
             if is_morph_update_time:
                 if (
@@ -418,6 +440,12 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     if self._copt_started and self.current_population is not None:
                         self._eval_result = self._evaluate_population()
                     self._update_morphology(it + 1, respawn=late_start_toggled)
+                    if (self._finetune_iterations is not None and not self._finetuning
+                            and getattr(self._design_generator, "_terminated", False)):
+                        self._finetuning = True
+                        self._finetune_stop_it = it + self._finetune_iterations
+                        print(f"CMA-ES terminated at iteration {it}, fine-tuning on the final design "
+                              f"until iteration {self._finetune_stop_it}")
                     self.env.episode_length_buf = torch.randint_like(
                         self.env.episode_length_buf, high=int(self.env.max_episode_length)
                     )
@@ -433,24 +461,11 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     if self.alg.rnd:
                         cur_ereward_sum[:] = 0
                         cur_ireward_sum[:] = 0
-                    link_lengths = self.current_population.get_link_length_params()
-                    keys = None
-                    if len(link_lengths) > 0:
-                        keys = link_lengths[0].keys()
-                    df = pd.DataFrame(self.current_population.get_link_length_params())
-                    df.to_csv(
-                        os.path.join(self.log_dir, "designs", f"link_lengths_{it}.csv"),
-                        header=False,
-                        columns=keys,
-                    )
             # ---- end COPT injection -----------------------------------------
 
             if self.log_dir is not None and not self.disable_logs:
                 # Log information
                 self.log(locals())
-                # Save model
-                if it % self.save_interval == 0:
-                    self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
 
             # Clear episode infos
             ep_infos.clear()
@@ -463,12 +478,18 @@ class CoptOnPolicyRunner(OnPolicyRunner):
                     for path in git_file_paths:
                         self.writer.save_file(path)
 
+            if self._finetuning and it >= self._finetune_stop_it:
+                print(f"Fine-tuning complete at iteration {it}")
+                break
+
         if self.log_dir is not None and not self.disable_logs:
             self.save(
                 os.path.join(
                     self.log_dir, f"model_{self.current_learning_iteration}.pt"
                 )
             )
+        # After the save, so the checkpoint holds the training state rather than the evaluation's.
+        self.log_optimised_designs()
 
     def _construct_algorithm(self, obs: TensorDict) -> PPO:
         # TODO Check if we can just run this method from the parent class by updating the configuration?
@@ -1102,6 +1123,112 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             else:
                 fitness.append(0.0)
         return fitness
+    def log_optimised_designs(self, width: int = 80, pad: int = 35) -> None:
+        """Evaluate the population on the scene once more and write the final design to designs/optimised.
+
+        The final design is the one the search recommends, optimised_design(), the distribution
+        mean, and it is the design every later evaluation of the run uses. It heads
+        final_results.txt, it is the single row of final_design.csv, and its MJCF is
+        distribution_mean.xml. After a fine-tune every individual slot carries it, so the
+        evaluation of the population on the scene is its evaluation under the fine-tuned policy,
+        averaged over every environment. Without a fine-tune the population on the scene is the
+        last generation sampled, which the evaluation ranks, and the final design is recorded
+        unevaluated. optimised_designs.csv and individual_<k>.xml record the population on the
+        scene in either case, individual k having run in environments k + N * j.
+        """
+        if not self._copt_started or self.current_population is None:
+            return
+        population = self.current_population
+        with torch.inference_mode():
+            evaluation = self._evaluate_population()
+        fitness = evaluation["fitness"].cpu()
+        order = fitness.argsort(descending=True).tolist()
+        best = order[0]
+        parameters = population.get_parameters()
+        if len(parameters) != len(fitness):
+            parameters = [{} for _ in range(len(fitness))]
+        write = self.log_dir is not None and not self.disable_logs
+        out = os.path.join(self.log_dir, "designs", "optimised") if write else None
+        if write:
+            os.makedirs(out, exist_ok=True)
+
+        final = {}
+        optimised = self._design_generator.optimised_design()
+        if optimised is not None:
+            values, picks = optimised
+            feasible = (self._design_generator.emit_design(values, picks, os.path.join(out, "distribution_mean.xml"))
+                        if write else None)
+            # The terminating generation is the last history row once the fine-tune has begun.
+            terminal = self._cmaes_history[-1] if self._finetuning and self._cmaes_history else {}
+            on_scene = self._finetuning
+            final = {
+                "source": "distribution_mean",
+                **{name: float(v) for name, v in values.items()},
+                **(picks or {}),
+                **self._design_generator.describe_design(values, picks),
+                "feasible": feasible,
+                "fine_tuned": on_scene,
+                "fitness": fitness.mean().item() if on_scene else None,
+                "fitness_std_over_slots": fitness.std().item() if on_scene else None,
+                **{f"eval_{key}": (evaluation[key].mean().item() if on_scene else None)
+                   for key in ("survival", "lin_vel_error", "yaw_rate_error")},
+                "termination_iteration": terminal.get("iteration"),
+                "termination_generation": terminal.get("generation"),
+                "stop": terminal.get("stop"),
+                "finetune_start_iteration": (self._finetune_stop_it - self._finetune_iterations
+                                             if on_scene else None),
+                "checkpoint_iteration": self.current_learning_iteration,
+            }
+
+        rows = [(f"final design/{key}", value) for key, value in final.items()]
+        rows += [
+            ("generation", self.generation - 1),
+            ("learning iteration", self.current_learning_iteration),
+            ("best individual", best),
+            ("best fitness", fitness[best].item()),
+        ]
+        rows += [(f"best/{name}", value) for name, value in parameters[best].items()]
+        rows += [
+            ("fitness_mean", fitness.mean().item()),
+            ("fitness_std", fitness.std().item()),
+            ("split_half_rank_correlation", evaluation["split_half_rank_correlation"]),
+        ]
+        for key in ("survival", "lin_vel_error", "yaw_rate_error"):
+            rows.append((f"eval/{key}", evaluation[key].mean().item()))
+        for r, value in evaluation["row_return"].items():
+            rows.append((f"eval/return_row_{r}", value))
+        for key, value in (self._design_generator.search_statistics() or {}).items():
+            if isinstance(value, dict):
+                rows += [(f"{key}/{name}", v) for name, v in value.items()]
+            else:
+                rows.append((key, value))
+        rows.append(("evaluation time", evaluation["time"]))
+
+        title = " Optimised population "
+        text = f"""{"#" * width}\n{title.center(width, " ")}\n\n"""
+        for key, value in rows:
+            shown = f"{value:.4f}" if isinstance(value, float) else f"{value}"
+            text += f"""{f"{key}:":>{pad}} {shown}\n"""
+        text += f"""\n{"Ranking, individual and fitness":>{pad}}\n"""
+        for k in order:
+            text += f"""{f"{k}:":>{pad}} {fitness[k].item():.4f}\n"""
+        text += f"""{"-" * width}\n"""
+        print(text, flush=True)
+        if not write:
+            return
+
+        for k, path in enumerate(population.get_xml_files()):
+            shutil.copy(path, os.path.join(out, f"individual_{k:04d}.xml"))
+        table = pd.DataFrame(parameters)
+        table["fitness"] = fitness.tolist()
+        for key in ("survival", "lin_vel_error", "yaw_rate_error"):
+            table[f"eval_{key}"] = evaluation[key].tolist()
+        table["rank"] = fitness.argsort(descending=True).argsort().tolist()
+        table.to_csv(os.path.join(out, "optimised_designs.csv"), index_label="individual")
+        if final:
+            pd.DataFrame([final]).to_csv(os.path.join(out, "final_design.csv"), index=False)
+        with open(os.path.join(out, "final_results.txt"), "w") as fh:
+            fh.write(text)
 
     def _assign_individuals_to_envs(self) -> list[int]:
         """Round-robin assignment: env_idx → individual_idx."""
