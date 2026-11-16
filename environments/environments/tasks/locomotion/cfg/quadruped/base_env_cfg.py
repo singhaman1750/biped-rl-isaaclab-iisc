@@ -1235,25 +1235,25 @@ class CoptRewardsCfg(RewardsCfg):
     reproduces its original while none is published (plan section 7).
     """
 
-    # RewardsCfg's 0.33 m target governs only until the runner publishes a standing
-    # height, each design then being held at its own crouch without the 38 mm extension.
+    # RewardsCfg's 0.35 m target governs only until the runner publishes a standing
+    # height, each design then being held at its own crouch, the donor's being 0.35 m.
     pen_base_height = RewTerm(
         func=mdp.base_height_rough_l2_v2,
         params={
-            "target_height": 0.33,
+            "target_height": 0.35,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
-        weight=-5.0,
+        weight=-15.0,
     )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_v3,
-        weight=10.0,
+        weight=12.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "command_name": "base_velocity",
             "threshold_min": 0.15,
             "threshold_max": 0.45,
-            "reference_height": 0.292,
+            "reference_height": 0.35,
         },
     )
     rew_foot_clearance = RewTerm(
@@ -1264,7 +1264,7 @@ class CoptRewardsCfg(RewardsCfg):
             "height_sensor_cfg": SceneEntityCfg("height_scanner"),
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="foot_.*_Link"),
             "target_height": 0.10,
-            "target_height_frac": 0.10 / 0.292,
+            "target_height_frac": 0.10 / 0.35,
             "std": 0.05,
             "tanh_mult": 2.0,
         },
@@ -1425,11 +1425,7 @@ class CurriculumCfg:
 
 @configclass
 class CoptCurriculumCfg(CurriculumCfg):
-    """CurriculumCfg's schedule of run 2026-09-11_11-24-52, in environment steps.
 
-    That run took 25 steps per iteration as this task does (quadruped_rsl_rl_ppo_cfg.py:16),
-    so the same step counts give the same schedule in iterations.
-    """
 
     terrain_levels = CurrTerm(
         func=mdp.terrain_levels_vel_delayed,
@@ -1443,8 +1439,8 @@ class CoptCurriculumCfg(CurriculumCfg):
         params={
             "term_name": "push_robot",
             "max_velocity": (1.0, 1.0),
-            "interval": 2400,
-            "starting_step": 2400,
+            "interval": 2500,
+            "starting_step": 12500,
             "increment_rate": 1.1,
             "decrement_rate": 0.8,
             "minimum_velocity": 0.2,
@@ -1455,9 +1451,9 @@ class CoptCurriculumCfg(CurriculumCfg):
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-1.5, 1.5),
-            "interval": 2400,
-            "starting_step": 2400,
-            "update_rate": 0.015,
+            "interval": 2500,
+            "starting_step": 12500,
+            "update_rate": 0.03,
             "update_threshold": 0.6,
         },
     )
@@ -1466,9 +1462,9 @@ class CoptCurriculumCfg(CurriculumCfg):
         params={
             "term_name": "rew_lin_vel_xy",
             "max_velocity": (-0.5, 0.5),
-            "interval": 2400,
-            "starting_step": 2400,
-            "update_rate": 0.005,
+            "interval": 2500,
+            "starting_step": 12500,
+            "update_rate": 0.01,
             "update_threshold": 0.5,
         },
     )
@@ -1477,8 +1473,8 @@ class CoptCurriculumCfg(CurriculumCfg):
         params={
             "term_name": "rew_ang_vel_z",
             "max_velocity": (-1.35, 1.35),
-            "interval": 2400,
-            "starting_step": 2400,
+            "interval": 2500,
+            "starting_step": 12500,
             "update_rate": 0.05,
             "update_threshold": 0.4,
         },
@@ -1487,22 +1483,28 @@ class CoptCurriculumCfg(CurriculumCfg):
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_lin_vel_xy",
-            "interval": 9600,
-            "starting_step": 2400,
-            "update_rate": 0.95,
+            "interval": 12500,
+            "starting_step": 12500,
+            "update_rate": 0.925,
             "update_threshold": 0.67,
-            "minimum_std": 0.09,
+            "minimum_std": 0.10,
+            "smoothing_episodes": 6400,
+            "widen_threshold": 0.55,
+            "maximum_std": 0.4,
         },
     )
     modify_angular_tracking_reward_std = CurrTerm(
         func=mdp.reduce_tracking_rewards_std,
         params={
             "term_name": "rew_ang_vel_z",
-            "interval": 9600,
-            "starting_step": 0,
-            "update_rate": 0.975,
-            "update_threshold": 0.5,
-            "minimum_std": 0.09,
+            "interval": 12500,
+            "starting_step": 12500,
+            "update_rate": 0.95,
+            "update_threshold": 0.60,
+            "minimum_std": 0.15,
+            "smoothing_episodes": 6400,
+            "widen_threshold": 0.45,
+            "maximum_std": 0.4,
         },
     )
 
@@ -1580,7 +1582,7 @@ class QuadrupedPFCoptEnvCfg(ManagerBasedRLEnvCfg):
 
     # Scene settings
     # 6144 = 24 * 256, divided by every population train.py builds.
-    scene: QuadrupedPFSceneCfg = QuadrupedPFSceneCfg(num_envs=8960, env_spacing=env_spacing)
+    scene: QuadrupedPFSceneCfg = QuadrupedPFSceneCfg(num_envs=6400, env_spacing=env_spacing)
     # Basic settings
     observations: CoptObservationsCfg = CoptObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

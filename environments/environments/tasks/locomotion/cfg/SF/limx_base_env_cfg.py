@@ -1042,6 +1042,13 @@ class CoptRewardsCfg(RewardsCfg):
     z_bottom_ankleAct2foot).
     """
 
+    # The biped's yaw error exceeds RewardsCfg's starting width of 0.4, copt_improvement.md section 6.3.
+    rew_ang_vel_z = RewTerm(
+        func=mdp.track_ang_vel_z_exp,
+        weight=7.5,
+        params={"command_name": "base_velocity", "std": 0.5},
+    )
+
     pen_base_height = RewTerm(
         func=mdp.base_height_rough_l2_v2,
         params={
@@ -1391,7 +1398,7 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the test environment"""
 
     # Scene settings
-    scene: SFSceneCfg = SFSceneCfg(num_envs=8960, env_spacing=env_spacing)
+    scene: SFSceneCfg = SFSceneCfg(num_envs=6400, env_spacing=env_spacing)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -1432,9 +1439,6 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
         self.observations.estimatorGT = ObservationsCfg.EstimatorGTCfg()
         self.observations.critic.link_lengths = _sf_link_lengths_obs_term()
         self.observations.critic.nominal_pose = _sf_nominal_pose_obs_term()
-        # The co-optimisation actor state is a single step, not the ten step
-        # history the plain task uses, reproducing the former CoptObservationsCfg.PolicyCfg.
-        self.observations.policy.history_length = 0
 
 
 

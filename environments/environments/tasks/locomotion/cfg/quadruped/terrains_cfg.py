@@ -16,8 +16,8 @@ from isaaclab.terrains import (
 QUADRUPED_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     size=(15.0, 15.0),
     border_width=5.0,
-    num_rows=6,
-    num_cols=64,
+    num_rows=5,
+    num_cols=80,
     horizontal_scale=0.1,
     vertical_scale=0.005,
     slope_threshold=0.75,
