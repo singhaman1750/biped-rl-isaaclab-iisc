@@ -349,7 +349,7 @@ class SD_BRS1FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class KscaleFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 30000
+    max_iterations = 10000
     save_interval = 500
     experiment_name = "kscale_flat"
     empirical_normalization = False

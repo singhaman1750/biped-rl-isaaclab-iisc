@@ -146,27 +146,119 @@ class CommandsCfg:
         ),
     )
 
-    gait_command = mdp.UniformGaitCommandCfg(
-        resampling_time_range=(10.0, 10.0),
-        debug_vis=False,
-        ranges=mdp.UniformGaitCommandCfg.Ranges(
-            frequencies=(1.0, 1.0),
-            offsets=(0.5, 0.5),
-            durations=(0.62, 0.62),
-            swing_height=(0.05, 0.05),
-        ),
-    )
+    # gait_command = mdp.UniformGaitCommandCfg(
+    #     resampling_time_range=(10.0, 10.0),
+    #     debug_vis=False,
+    #     ranges=mdp.UniformGaitCommandCfg.Ranges(
+    #         frequencies=(1.0, 1.0),
+    #         offsets=(0.5, 0.5),
+    #         durations=(0.62, 0.62),
+    #         swing_height=(0.05, 0.05),
+    #     ),
+    # )
 
 
 @configclass
 class ActionsCfg:
     """Action specifications for the MDP"""
 
+    # Per joint action scale, set 2026-09-22 as arm 4 of plans/kscale_gait_shaping.md, which
+    # section 21.4 details, reordered ahead of the nominal pose change at the user's direction.
+    # It was written as arm 5 before the lateral weight shift took that number on the same date,
+    # and the duplicate numbering by which it was also arm 10 was collapsed when that plan was
+    # restructured on 2026-09-23.  This comment was repointed at the restructured sections on
+    # the same date.  A single
+    # scale of 0.4 met six joint groups whose ceiling to stiffness ratios span 0.168 to 0.420 rad,
+    # so one action magnitude saturated the ankles where two and a half times as much was needed
+    # at the hip pitch, and the two joints reached at the smallest action are exactly the two the
+    # evaluation dumps find pinned against their stops.  Each scale below is the hip pitch's 0.4
+    # times the ratio of that group's saturation deflection to the hip pitch's, which equalises
+    # the action at saturation across the set at 1.050 and is the sizing rule section 4.6 states.
+    #
+    # The table below is re-derived 2026-09-23 by section G of nominal_pose.py in the ablation
+    # artefact scripts and it records TWO further interventions on top of arm 4 rather than one.
+    #
+    # The two ankle scales stand at 0.08 and not at the 0.1619 the rule above gives, which is
+    # ARM 6 of plans/kscale_gait_shaping.md at section 21.6, a halving that deliberately breaks
+    # the equalisation arm 4 established so that those two groups saturate at an action of 2.125
+    # against the 1.050 of the other four.  Its target is the commanded latch of section 11 of
+    # that plan, which finds the ankle roll driven onto its stop BY COMMAND rather than held there
+    # by torque, and it moves that stop to an action of 2.757 where the rule placed it at 1.362.
+    #
+    # And the stop column moves with the nominal pose, ARM 7 having deepened the sagittal fold on
+    # the same date, which is why the column is given at both poses.
+    #
+    # A run launched from this tree therefore carries arms 4, 4, 4b and 5 at once and cannot
+    # attribute an effect to any one of them.  That is the user's direction of 2026-09-23 and is
+    # recorded at section 21.7 of the plan rather than left to be inferred from the dump.
+    #
+    #   group        K     tau    tau/K    scale   action at saturation   action to nearer stop
+    #                                                                     2026-09-17     arm 7
+    #   hip_pitch   200    84.0   0.4200   0.4000          1.050             3.127        3.491
+    #   hip_yaw     100    42.0   0.4200   0.4000          1.050             3.927        3.927
+    #   knee        300    84.0   0.2800   0.2667          1.050             1.921        3.272
+    #   hip_roll    250    42.0   0.1680   0.1600          1.050             1.041        1.041
+    #   foot_pitch  100    17.0   0.1700   0.0800          2.125             7.050        4.363
+    #   foot_roll   100    17.0   0.1700   0.0800          2.125             2.757        2.757
+    #
+    # The ankle figures are tied to the 17.0 N.m ceiling at kscale_identified_cfg.py:152 and :168
+    # and must be re-derived if that ceiling moves, a 34 N.m ankle giving 0.3238 under the rule.
+    #
+    # Two properties of the dict form govern the entries.  Every joint MUST be covered, because
+    # joint_actions.py:85 initialises the scale tensor to ONES and writes only the matched
+    # columns, so an omitted joint silently takes a scale of 1.0 rather than keeping 0.4.  And the
+    # patterns must be mutually exclusive, a joint matching two keys raising at string.py:328.
+    # A key matching no joint raises at string.py:362, so a typo fails loudly rather than
+    # silently, which is the one failure mode that needs no guarding here.
     joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
-        scale=0.4,
+        scale={
+            "(left|right)_hip_pitch_04": 0.4,
+            "(left|right)_hip_yaw_03": 0.4,
+            "(left|right)_knee_04": 0.2667,
+            "(left|right)_hip_roll_03": 0.16,
+            "(left|right)_foot_pitch_02": 0.08,
+            "(left|right)_foot_roll_02": 0.08,
+        },
         use_default_offset=True,
+        # ARM 10 of plans/kscale_gait_shaping.md section 21.10, run as
+        # 2026-09-29_06-15-58.  Each bound is the joint's mechanical travel inset by 0.02 rad.
+        # The clamp is applied AFTER the default_joint_pos offset at joint_actions.py:175, so
+        # every pair below is an ABSOLUTE joint target and not a deviation.
+        #
+        # IT SUCCEEDED, and section 18.2 of that plan reports it.  The ankle roll saturation
+        # fell from 60.17 per cent to 0.06, its hard stop residency from 42.30 to 0.07, its
+        # sustained actuator demand from 13.0 N.m of a 17 N.m ceiling to 3.5, and the ankle
+        # pitch left its own stop with it.  This block is therefore a PRECONDITION of every
+        # later arm rather than an arm, and it should not be removed while any of them is
+        # being read.
+        #
+        # ITS SIZING RULE IS NONETHELESS WRONG AND SECTION 21.15 REPLACES IT.  Measured
+        # against the saturating deflection, being the effort limit divided by the stiffness,
+        # the ankle roll window below is 2.84 times that deflection and the hip roll window
+        # 14.51 times it.  The ankle roll is the joint this cured and the hip roll is the
+        # joint the fault moved to, section 18.3 measuring the hip roll at its stop for 45.9
+        # per cent of every episode under a raw action of nineteen standard deviations, the
+        # policy having answered a bound it could not reach by commanding far past it.  Arm 15
+        # sets every bound at the nominal plus and minus 1.5 times the deflection instead.
+        #
+        # ARM 11, pen_action_excess below, prices what this block removes.  Section
+        # 18.4 measures that excess growing from 0.000595 rad^2 per step at iteration 193 to
+        # 30.380 at iteration 10000 of the run that carries this clip WITHOUT the penalty, a
+        # factor of 51000, so a weight read from the early magnitude is read before the policy
+        # has learned to produce the quantity it prices.
+        clip={
+            "(left|right)_foot_roll_02": (-0.241799, 0.241799),
+            "(left|right)_foot_pitch_02": (-0.852665, 0.503599),
+            "(left|right)_knee_04": (0.020000, 2.685260),
+            "(left|right)_hip_yaw_03": (-1.550800, 1.550800),
+            "right_hip_roll_03": (-2.248930, 0.189440),
+            "left_hip_roll_03": (-0.189440, 2.248930),
+            "right_hip_pitch_04": (-2.196570, 1.027200),
+            "left_hip_pitch_04": (-1.027200, 2.196570),
+        },
+
     )
 
 
@@ -217,7 +309,7 @@ class ObservationsCfg:
         velocity_commands = ObsTerm(
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
         )
-        gait_phase = ObsTerm(func=mdp.get_gait_phase)
+        # gait_phase = ObsTerm(func=mdp.get_gait_phase)
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -264,7 +356,7 @@ class ObservationsCfg:
             clip=(-5000.0, 5000.0),
         )
 
-        gait_phase = ObsTerm(func=mdp.get_gait_phase)
+        # gait_phase = ObsTerm(func=mdp.get_gait_phase)
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -679,6 +771,8 @@ class EventsCfg:
 class RewardsCfg:
     """Reward terms for the MDP"""
 
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-4000.0)
+
     keep_balance = RewTerm(func=mdp.stay_alive, weight=0.05)
 
     rew_lin_vel_xy = RewTerm(
@@ -718,7 +812,7 @@ class RewardsCfg:
     )
     rew_keep_ankle_roll_zero_in_air = RewTerm(
         func=mdp.keep_ankle_pitch_zero_in_air,
-        weight=0.25,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=["(right|left)_foot_roll_02"]
@@ -731,20 +825,23 @@ class RewardsCfg:
             "use_default_offset": True
         },
     )
-    # rew_keep_hip_yaw_zero_in_air = RewTerm(
-    #     func=mdp.keep_ankle_pitch_zero_in_air,
-    #     weight=1.0,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot", joint_names=["(right|left)_hip_yaw_03"]
-    #         ),
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=_FOOT_LINKS),
-    #         "require_airborne": True,
-    #         "history_index": 0,
-    #         "force_threshold": 1.0,
-    #         "pitch_scale": 0.2,
-    #     },
-    # )
+    rew_keep_hip_yaw_zero_in_air = RewTerm(
+        func=mdp.keep_ankle_pitch_zero_in_air,
+        # 1.0 reproduces run 2026-09-29_06-15-58 (arm 10).  Arm 16 stage 1 raised it to 5.0,
+        # as run 2026-10-01_11-16-37 did.
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=["(right|left)_hip_yaw_03"]
+            ),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=_FOOT_LINKS),
+            "require_airborne": True,
+            "history_index": 0,
+            "force_threshold": 1.0,
+            "pitch_scale": 0.2,
+            "use_default_offset": True
+        },
+    )
     pen_hip_roll_deviation = RewTerm(
         func=mdp.joint_deviation_l1,
         weight=-0.1,
@@ -763,9 +860,18 @@ class RewardsCfg:
             )
         },
     )
+    # pen_ankle_roll_deviation = RewTerm(
+    #     func=mdp.joint_deviation_l1,
+    #     weight=-1.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot", joint_names=["(right|left)_foot_roll_02"]
+    #         )
+    #     },
+    # )
     pen_feet_heading = RewTerm(
         func=mdp.feet_yaw_alignment,
-        weight=-4.0,
+        weight=-8.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=_FOOT_LINKS),
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=_FOOT_LINKS),
@@ -781,18 +887,78 @@ class RewardsCfg:
     pen_base_height = RewTerm(
         func=mdp.base_height_rough_l2,
         params={
-            # 0.76633 m standing height of the nominal pose supplied 2026-09-17.
-            "target_height": 0.766,
+            # Arm 7 of plans/kscale_gait_shaping.md, set 2026-09-23.  0.73492 m is the standing
+            # height of the nominal pose at kscale_identified_cfg.py:197, computed by forward
+            # kinematics against kscale.urdf by nominal_pose.py in the ablation artefact scripts,
+            # and it is now also the spawn height, the settling margin having been zeroed in the
+            # same pass.  The three values are one value rather than three, the standing height
+            # following from the pose by forward kinematics, so a target set independently of the
+            # pose asks the policy to hold a height its own posture does not produce, which is the
+            # condition section 4.5 of that plan diagnoses.  It replaces the 0.73 that stood here
+            # from 2026-09-22 unrecorded and the 0.76633 of the pose supplied 2026-09-17.
+            # ARM 7 target.  ACTIVE, restored 2026-09-23 on the return to arm 7, the arm 6
+            # run taken without it having been abandoned and the arm 7 run taken on top of
+            # arm 6 having proved sound.  ARM 8 stage one is launched on top of it.
+            "target_height": 0.73492,
+            # ARM 6 target, 0.766297 m, the standing height of the pose supplied 2026-09-17
+            # and computed by forward kinematics against kscale.urdf by nominal_pose.py in
+            # the ablation artefact scripts, with the mirrored hip roll and ankle roll of
+            # that pose counted.  Commented out 2026-09-23 on the return to arm 7.
+            # "target_height": 0.76630,
             "sensor_cfg": SceneEntityCfg("height_scanner"),
         },
-        weight=-30.0,
+        weight=-45.0,
     )
     pen_lin_vel_z = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)
     pen_ang_vel_xy = RewTerm(func=mdp.ang_vel_xy_l2, weight=-5)
-    pen_joint_torque = RewTerm(func=mdp.joint_torques_l2, weight=-0.00001)
-    pen_joint_accel = RewTerm(func=mdp.joint_acc_l2, weight=-1e-7)
+    # ARM 8 of plans/kscale_gait_shaping.md section 21.8, set 2026-09-23 on top of
+    # arms 4, 4, 4b and 5.  The four energy weights are raised by a factor of ten and nothing
+    # else is touched.  Section 14.6 of that plan measures the four together at 1.04 per cent
+    # of run A's negative reward budget and 0.44 per cent of run C's, and prices the exchange
+    # the optimiser actually faces, run B burning 3.61 times run A's mechanical power, paying
+    # 0.4276 per second more for it and collecting 1.9175 per second more on tracking alone,
+    # an exchange rate of 4.48 to one in favour of the expensive gait.  Ten leaves a margin of
+    # 2.2 over the indifference point that 4.48 would set, indifference being the worst
+    # available choice since an objective indifferent between two gaits selects between them by
+    # the exploration noise, and it takes the group from 1.04 per cent of the negative budget
+    # to 9.4 per cent, a share that can shape without dominating.  All four move together and
+    # by the same factor, the measurement pricing them as a group rather than singly.
+    #
+    # pen_action_rate at :894 and pen_action_smoothness at :923 are deliberately NOT moved.
+    # Both are quadratic in the RAW action, so arm 4 multiplied their effect at the ankles by
+    # 6.1 and arm 6 by a further 4.1 without anyone choosing it, and raising them here would
+    # confound this arm with those two.  They are revisited once the action scale is settled.
+    #
+    #   term                    before     applied    factor
+    #   pen_joint_torque        -1.0e-5    -5.0e-4      50
+    #   pen_joint_accel         -1.0e-7    -5.0e-6      50
+    #   pen_joint_vel_l2        -1.0e-5    -5.0e-4      50
+    #   pen_joint_torque_rate   -1.0e-5    -5.0e-4      50
+    #
+    # CORRECTED 2026-09-30.  The table above read a factor of TEN until this date while the
+    # values beneath it were FIFTY, the tenfold rung having been run separately as
+    # 2026-09-23_11-40-12 and the fiftyfold one applied here without the comment moving with
+    # it.  Section 16.1 of the plan records the discrepancy and section 16.2 reads both as
+    # rungs of one ladder, which runs at one, ten, fifty, one hundred and five hundred times
+    # the pre arm 8 value.  ARM 8 SUCCEEDED.  The first order of magnitude carries most of the
+    # benefit, the mean reward rising from 887.6 to 955.4 with the velocity tracking reward
+    # unmoved, the second is very nearly free, and the FIVE HUNDREDFOLD RUN COLLAPSED to an
+    # eighteen step episode at a unit termination rate with nothing in the hundredfold run
+    # foreshadowing it.  Section 20.4 accordingly excludes going beyond one hundred.
+    #
+    # The prediction is that the absolute joint power falls from run C's 67.1 W, that the whole
+    # body torque rate falls from 120.8 N.m/s, and that rew_lin_vel_xy falls by less than the
+    # 1.9175 per second run B's excess power bought.  The falsifier is the mean reward falling
+    # while the power does not, which sends the arm to stage two.
+    pen_joint_torque = RewTerm(func=mdp.joint_torques_l2, weight=-5.0e-4)  # ARM 8, was -1.0e-5
+    pen_joint_accel = RewTerm(func=mdp.joint_acc_l2, weight=-5.0e-6)  # ARM 8, was -1.0e-7
     pen_action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     pen_joint_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-2.0)
+    pen_joint_power = RewTerm(
+        func=mdp.joint_powers_l1,
+        weight=-0.02,
+        params={"asset_cfg": SceneEntityCfg("robot")},
+    )
     pen_undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
         weight=-2.5,
@@ -823,7 +989,9 @@ class RewardsCfg:
     pen_action_smoothness = RewTerm(func=mdp.ActionSmoothnessPenalty, weight=-0.075)
     pen_joint_torque_rate = RewTerm(
         func=mdp.JointTorqueRatePenalty,
-        weight=-1.0e-5,
+        # ARM 8 stage one, raised by ten 2026-09-23 with the three terms at :892, :893 and
+        # :970, was -1.0e-5.  The reasoning is the comment block above pen_joint_torque.
+        weight=-5.0e-4,
         params={"asset_cfg": SceneEntityCfg("robot")},
     )
     pen_flat_orientation = RewTerm(func=mdp.flat_orientation_l2, weight=-50.0)
@@ -831,11 +999,14 @@ class RewardsCfg:
         func=mdp.feet_distance,
         weight=-100,
         params={
-            # The nominal pose supplied 2026-09-17 places the ankle frames 0.1992 m apart,
+            # The nominal pose supplied 2026-09-17 placed the ankle frames 0.1992 m apart,
             # the mirrored hip roll having drawn them 53 mm closer than the 0.2520 m every
             # earlier pose held. 0.24 stood 0.012 m below the old nominal and 0.19 stands
-            # 0.0092 m below the new one, so the floor keeps its clearance below the pose
-            # rather than firing at every reset, which at 0.24 it now would.
+            # 0.0092 m below that one, so the floor keeps its clearance below the pose
+            # rather than firing at every reset, which at 0.24 it now would.  Arm 7 deepened
+            # the sagittal fold on 2026-09-23 and the separation widened to 0.2044 m with it,
+            # the rolled hips standing further apart as the leg folds, so the floor now sits
+            # 0.0144 m below the nominal and is left where it is.
             "min_feet_distance": 0.19,
             "feet_links_name": [_FOOT_LINKS],
             "lateral_only": False,
@@ -846,13 +1017,23 @@ class RewardsCfg:
         weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=[_FOOT_LINKS]),
-            # The same standing height as pen_base_height above.
-            "base_height_target": 0.766,
+            # The same standing height as pen_base_height above, moved with it 2026-09-23 for
+            # arm 7.  It is INERT in this configuration and the value changes no behaviour,
+            # feet_regulation at rewards.py:1850 reading base_height_target only as the height
+            # gate length scale and only when height_decay_scale is absent, which it is not.  It
+            # is nonetheless held in step, being dumped to params/env.yaml where a later reader
+            # will take it for the standing height, as this document's own sections have.
+            # ARM 7 target.  ACTIVE, restored 2026-09-23 with pen_base_height above.
+            "base_height_target": 0.73492,
+            # ARM 6 target, commented out 2026-09-23 on the return to arm 7.
+            # "base_height_target": 0.76630,
             "foot_radius": 0.043,
             "height_decay_scale": 0.03,
         },
     )
-    pen_joint_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-1.0e-05)
+    # ARM 8 stage one, raised by ten 2026-09-23 with the three terms at :892, :893 and :928,
+    # was -1.0e-05.  The reasoning is the comment block above pen_joint_torque.
+    pen_joint_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5.0e-4)
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
@@ -872,12 +1053,13 @@ class RewardsCfg:
         },
     )
     rew_foot_clearance = RewTerm(
-        func=mdp.foot_clearance_reward_v3,
+        func=mdp.foot_clearance_reward_v2,
         weight=10.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=_FOOT_LINKS),
-            "command_name": "gait_command",
+            "target_height": 0.05,
             "std": 0.02,
+            "tanh_mult": 1.0,
             "sole_offsets": KSCALE_SOLE_OFFSETS,
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=_FOOT_LINKS),
             "force_threshold": 1.0,
@@ -902,20 +1084,77 @@ class RewardsCfg:
             "force_threshold": 290.0,
         },
     )
-    rew_gait = RewTerm(
-        func=mdp.GaitReward,
-        weight=40.0,
-        params={
-            "tracking_contacts_shaped_force": -1.0,
-            "tracking_contacts_shaped_vel": -1.0,
-            "gait_force_sigma": 25.0,
-            "gait_vel_sigma": 0.25,
-            "kappa_gait_probs": 0.05,
-            "command_name": "gait_command",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=_FOOT_LINKS),
-            "asset_cfg": SceneEntityCfg("robot", body_names=_FOOT_LINKS),
-        },
-    )
+    # rew_gait = RewTerm(
+    #     func=mdp.GaitReward,
+    #     weight=40.0,
+    #     params={
+    #         "tracking_contacts_shaped_force": -1.0,
+    #         "tracking_contacts_shaped_vel": -1.0,
+    #         "gait_force_sigma": 25.0,
+    #         "gait_vel_sigma": 0.25,
+    #         "kappa_gait_probs": 0.05,
+    #         "command_name": "gait_command",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=_FOOT_LINKS),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=_FOOT_LINKS),
+    #     },
+    # )
+    # rew_hip_lateral_sway = RewTerm(
+    #     func=mdp.HipLateralSwayReward,
+    #     weight=5.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=_TORSO_LINK),
+    #         "feet_cfg": SceneEntityCfg("robot", body_names=_FOOT_LINKS),
+    #         "command_name": "gait_command",
+    #         "std": 0.01,
+    #         "amplitude": 0.03,
+    #         "phase_shift": 0.0,
+    #         "resync_threshold": 0.04,
+    #         "resync_patience": 50,
+    #     },
+    # )
+
+    # ARM 12 of plans/kscale_gait_shaping.md section 21.12, prices the amount by
+    # which the clip at :251 removed the commanded target.  APPLIED TO THE WORKING TREE on
+    # 2026-09-30 at the CALIBRATED weight and awaiting its run.  ARM 11 is the same term at
+    # the two weights it was launched with, RUNNING as 2026-09-30_07-05-14 at -500 and as
+    # 2026-09-30_06-43-38 at -2, and section 21.11 is its record.
+    #
+    # SECTION 18.4 PRICES BOTH WEIGHTS AS MIS-SET AND THE READING THAT CHOSE THEM AS THE
+    # WRONG ONE.  The excess is a LEARNED EXPLOIT rather than an initial condition, standing
+    # at 0.000595 rad^2 per step at iteration 193 and at 30.380 at iteration 10000 of
+    # 2026-09-29_06-15-58, which carries the identical clip with no penalty, a factor of
+    # 51000.  The magnitude this term reports early in training is therefore the quantity
+    # BEFORE the policy has learned to produce it, and a weight read from it is wrong by that
+    # factor.  Against run E's negative budget of 11.99 per second and positive budget of 88,
+    # -2 reaches 60.8 per second at iteration 10000 and -500 reaches 15190, which is 173 times
+    # the whole task reward and which the arm 8 ladder above has already watched this robot
+    # collapse under at a smaller multiple.
+    #
+    # -14 IS THE CALIBRATED WEIGHT AND SECTION 21.12 DERIVES IT.  The onset of the exploit is
+    # taken as the excess reaching one action standard deviation at the joints that carry it,
+    # being 0.16 rad at each hip roll and 0.08 at each ankle roll, which sums to 0.0640 rad^2,
+    # and -14 places that at 0.896 per second, being one per cent of run E's positive budget.
+    # Section 18.4 published this calibration as 0.051 rad^2 and -17, which omits the ankle
+    # roll pair although the sentence naming it says four joints, and section 21.12 carries
+    # the correction.  The per joint measurement attributes 0.863 and 0.864 rad^2 of run E's
+    # excess to the two ankle rolls against 14.315 and 14.332 to the two hip rolls, so the
+    # pair carries 5.7 per cent of the quadratic excess and 20.4 per cent of the absolute one.
+    #
+    # THE FORM IS STILL THE PART TO CHANGE AND THIS WEIGHT DOES NOT SETTLE IT, which is why
+    # arm 13 follows.  A quadratic term on a quantity spanning five orders of magnitude spans
+    # ten, so no fixed coefficient is right at both ends, which section 19.2 records as a
+    # difficulty with a published name.  At -14 this form reaches 425.3 per second at run E's
+    # terminal excess, which is 483 per cent of the positive budget, where the l1 form of
+    # arm 13 at -1.8 reaches 13.21, a ratio of 32 to 1.  Arm 12 is expected to be insufficient
+    # and is run so that the form is refuted at a weight that was defensible.
+    # pen_action_excess = RewTerm(
+    #     func = mdp.action_clip_excess_l2,
+    #     weight=-4,
+    # )
+    # pen_action_excess = RewTerm(
+    #     func=mdp.action_clip_excess_l1,
+    #     weight=-0.02,
+    # )
 
 
 @configclass
@@ -952,7 +1191,7 @@ class CurriculumCfg:
         func=mdp.modify_push_force,
         params={
             "term_name": "push_robot",
-            "max_velocity": (3.0, 3.0),
+            "max_velocity": (2.0, 2.0),
             "interval": 300 * 24,
             "starting_step": 800 * 24,
             "increment_rate": 1.1,
@@ -1030,7 +1269,7 @@ class CurriculumCfg:
 class KscaleEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the kscale standard PPO environment"""
 
-    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=7000, env_spacing=env_spacing)
+    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=4096, env_spacing=env_spacing)
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
@@ -1060,7 +1299,7 @@ class KscaleEnvCfg(ManagerBasedRLEnvCfg):
 class KscaleHIMEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the kscale HIM environment"""
 
-    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=7000, env_spacing=env_spacing)
+    scene: KscaleSceneCfg = KscaleSceneCfg(num_envs=4096, env_spacing=env_spacing)
     observations: HIMObservationsCfg = HIMObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
@@ -1071,6 +1310,8 @@ class KscaleHIMEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         self.sim.physx.gpu_max_rigid_patch_count = 2**19 
+        self.sim.physx.gpu_collision_stack_size=2**28,  # 256 MB; bump to 2**29 / 2**30 if needed
+        self.sim.physx.gpu_max_rigid_contact_count=2**23,
         self.decimation = 4
         self.episode_length_s = 20.0
         self.sim.render_interval = 2 * self.decimation
@@ -1084,3 +1325,126 @@ class KscaleHIMEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.foot_pair_contact_right.update_period = self.sim.dt
         if self.scene.foot_pair_contact_left is not None:
             self.scene.foot_pair_contact_left.update_period = self.sim.dt
+
+
+# ============================================================================================
+# ARM 14 of plans/kscale_gait_shaping.md section 21.14, the hip yaw frozen in the URDF.
+# APPLIED 2026-10-01.  Everything above this line is untouched, so KscaleEnvCfg and
+# KscaleHIMEnvCfg resolve to exactly what they resolved to before this date.
+# ============================================================================================
+
+
+@configclass
+class ActionsCfgHipYawFixed:
+    """The action term of the ten joint robot, for KSCALE_IDENTIFIED_CFG_HIP_YAW_FIXED.
+
+    joint_names stays at [".*"], which now resolves to TEN joints rather than twelve and needs
+    no edit.  The scale and the clip dictionaries do need one, both being resolved key by key
+    against the term's own joint list, the scale at joint_actions.py:89 and the clip at :109,
+    and both raising at string.py:370 on a key that matches nothing.  Their hip yaw entries are
+    therefore removed rather than left harmlessly behind.
+
+    Every surviving value is byte identical to ActionsCfg at :212, so a policy trained here and
+    one trained there differ in their action dimension and in nothing else.  The clip is arm
+    10's, being each joint's mechanical travel inset by 0.02 rad, which is what the tree
+    carries and what 2026-09-29_06-15-58 was taken on.  Where this is run after arm 15 the clip
+    becomes arm 15's instead, likewise with its hip yaw entry removed, and the run notes must
+    say which.
+
+    The scale dictionary must cover every surviving joint and the reason is at :208,
+    joint_actions.py:85 initialising the scale tensor to ONES and writing only the matched
+    columns, so an omitted joint silently takes a scale of 1.0 rather than keeping its intended
+    value.  The five keys below cover all ten joints, which validate_arm14.py asserts against
+    the new URDF's revolute joint list rather than by inspection.
+    """
+
+    joint_pos = mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=[".*"],
+        scale={
+            "(left|right)_hip_pitch_04": 0.4,
+            "(left|right)_knee_04": 0.2667,
+            "(left|right)_hip_roll_03": 0.16,
+            "(left|right)_foot_pitch_02": 0.08,
+            "(left|right)_foot_roll_02": 0.08,
+        },
+        use_default_offset=True,
+        clip={
+            "(left|right)_foot_roll_02": (-0.241799, 0.241799),
+            "(left|right)_foot_pitch_02": (-0.852665, 0.503599),
+            "(left|right)_knee_04": (0.020000, 2.685260),
+            "right_hip_roll_03": (-2.248930, 0.189440),
+            "left_hip_roll_03": (-0.189440, 2.248930),
+            "right_hip_pitch_04": (-2.196570, 1.027200),
+            "left_hip_pitch_04": (-1.027200, 2.196570),
+        },
+    )
+
+
+@configclass
+class KscaleEnvHipYawFixedCfg(KscaleEnvCfg):
+    """The ten joint environment, differing from KscaleEnvCfg in four places and no others.
+
+    Every removal below is REQUIRED rather than tidy, each named path resolving the hip yaw
+    through a helper that raises on an expression matching no joint, so a retained reference
+    aborts at spawn or at the first reset rather than reporting zero.
+
+    Mutating the inherited terms here is safe.  configclass converts every mutable class
+    default into a field whose default_factory deep copies it per instance, at
+    configclass.py:381 and :491, so self.events is this instance's own object before
+    __post_init__ runs and nothing written here reaches KscaleEnvCfg or any other subclass.
+    """
+
+    actions: ActionsCfgHipYawFixed = ActionsCfgHipYawFixed()
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        # ONE, the two reward terms that resolve the hip yaw.  Both carry a SceneEntityCfg
+        # whose joint_names is resolved at scene_entity_cfg.py:175 through find_joints, which
+        # raises at string.py:268 on an expression matching no joint, so both must go rather
+        # than being left to report zero.  Removing them moves the objective by under one per
+        # cent, rew_keep_hip_yaw_zero_in_air paying 0.331 to 0.431 per second of a maximum of
+        # 1.0 against a positive budget of 88, which section 21.14 prices.
+        self.rewards.rew_keep_hip_yaw_zero_in_air = None
+        self.rewards.pen_hip_yaw_deviation = None
+
+        # TWO, the reset event that offsets the hip yaw.  reset_hip_yaw_joints passes
+        # joint_name to mdp.reset_joint_by_offset, which resolves it at events.py:367 through
+        # find_joints and raises the same way.  The whole term goes, there being no other
+        # joint it addresses.
+        self.events.reset_hip_yaw_joints = None
+
+        # THREE, the hip yaw entry of the gain randomisation group.  That term names three
+        # joint pairs in one SceneEntityCfg and only the hip yaw pair must go, the other two
+        # still being wanted, so the ENTRY is dropped rather than the term.
+        term = self.events.hip_joint_stiffness_and_damping
+        term.params["asset_cfg"].joint_names = [
+            n for n in term.params["asset_cfg"].joint_names if "hip_yaw" not in n
+        ]
+
+        # FOUR, nothing else.  The following are recorded because each is a place a reader
+        # expects an edit and finds none.
+        #
+        #   The observation groups.  joint_pos at :291, joint_vel at :297 and last_action at
+        #   :303, and the critic's robot_joint_* terms, all carry the default
+        #   SceneEntityCfg("robot") and therefore resolve whatever the articulation has, so
+        #   they narrow from twelve to ten by themselves and NO observation term changes.
+        #   robot_mass at :345 and robot_inertia at :346 are per BODY and the body count is
+        #   unchanged at thirteen, so their widths do not move at all.
+        #
+        #   randomize_joint_default_pos resolves every joint by ".*" and so needs no change,
+        #   matching ten joints instead of twelve.
+        #
+        #   The symmetry augmentation.  NO CHANGE.  _maps builds the joint permutation from
+        #   robot.joint_names at mdp/symmetry/kscale.py:215, so it is ten wide the moment the
+        #   articulation is; the two hip yaws are each other's mirror partner and leave
+        #   together, so the involution asserted at :163 still holds; "hip_yaw" stays in
+        #   _FLIP_JOINT_KINDS at :76 and becomes inert, the set being tested as a substring of
+        #   each surviving name rather than resolved against the articulation; and
+        #   _BODY_PARTNERS at :80 still names thirteen live bodies because the asset carries
+        #   merge_fixed_joints=False.  Section 21.14 carries the proof and validate_arm14.py
+        #   asserts every clause of it.
+        #
+        #   The curriculum, the commands and the terminations.  No term names a joint, and
+        #   base_contact names the torso, which survives.

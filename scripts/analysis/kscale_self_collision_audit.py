@@ -42,19 +42,27 @@ URDF_PATH = (
 )
 
 # from init_state.joint_pos in environments/environments/assets/config/kscale_identified_cfg.py
+#
+# Refreshed 2026-09-23 to the pose arm 5 of plans/kscale_gait_shaping.md installs. This dictionary
+# had stood at the pre 2026-09-16 pose of a 0.4 knee, a plus and minus 0.1 hip pitch and zero
+# rolls, so it was two revisions behind the asset configuration and every clearance this audit
+# reported was taken at a pose the robot has not held since. The refresh matters more here than at
+# the other two mirrors, since section 18 of context/KScale.md records a shank and foot bounding
+# box overlap and arm 5 folds the knee from 0.51239 to 0.87266 rad, which is the direction that
+# closes such a clearance. Re-run this audit before launching.
 NOMINAL_POSE = {
-    "right_hip_pitch_04": -0.1,
-    "left_hip_pitch_04": 0.1,
-    "right_hip_roll_03": 0.0,
-    "left_hip_roll_03": 0.0,
+    "right_hip_pitch_04": -0.34907,
+    "left_hip_pitch_04": 0.34907,
+    "right_hip_roll_03": 0.042951,
+    "left_hip_roll_03": -0.042951,
     "right_hip_yaw_03": 0.0,
     "left_hip_yaw_03": 0.0,
-    "right_knee_04": 0.4,
-    "left_knee_04": 0.4,
-    "right_foot_pitch_02": -0.3,
-    "left_foot_pitch_02": -0.3,
-    "right_foot_roll_02": 0.0,
-    "left_foot_roll_02": 0.0,
+    "right_knee_04": 0.87266,
+    "left_knee_04": 0.87266,
+    "right_foot_pitch_02": -0.52360,
+    "left_foot_pitch_02": -0.52360,
+    "right_foot_roll_02": 0.041254,
+    "left_foot_roll_02": -0.041254,
 }
 
 
