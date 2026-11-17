@@ -32,7 +32,7 @@ existed is unchanged.
   ``"hip_stiffness_scale"`` (0.875, 1.125), ``"hip_damping_scale"``
   (0.846, 1.154), ``"knee_stiffness_scale"`` (0.833, 1.167),
   ``"knee_damping_scale"`` (0.750, 1.250), ``"ankle_stiffness_scale"`` and
-  ``"ankle_damping_scale"`` (0.800, 1.200), biped only.
+  ``"ankle_damping_scale"`` (0.800, 1.200) (biped only).
 
 Six actuator scales are retired, ``joint_effort_scale``,
 ``velocity_limit_scale``, ``saturation_effort_scale``, ``armature_scale``,
@@ -506,9 +506,18 @@ def _document_mass(xml_text: str) -> float:
     return float(sum(float(e.get("mass", 0.0)) for e in ET.fromstring(xml_text).iter("inertial")))
 
 
+# The per-group servo gain scales, which _actuator_params consumes rather than the specification.
+GAIN_PARAM_KEYS: tuple[str, ...] = (
+    "abad_stiffness_scale", "abad_damping_scale", "hip_stiffness_scale", "hip_damping_scale",
+    "knee_stiffness_scale", "knee_damping_scale", "ankle_stiffness_scale", "ankle_damping_scale",
+)
+
 # Names rather than a second range structure, so a caller's override of a range reaches CMA-ES.
+# Every key a CMA-ES search may carry, the lengths and the pose, then the gain scales. The order is the
+# search vector's. CMAESDesignGenerator searches the keys param_ranges names, see its __init__.
 CMAES_PARAM_KEYS: tuple[str, ...] = (
     "thigh_length_scale", "shank_length_scale", "thigh_bend_offset", "knee_bend_offset",
+    *GAIN_PARAM_KEYS,
 )
 
 # The DesignSpec field each spec-bound parameter writes. A parameter absent here
@@ -911,6 +920,13 @@ class DesignGeneratorBase(ABC):
         return xml
 
     def _lean_max(self) -> float:
+        """The largest lean a draw may take, zero where the lean is not searched.
+
+        An unsearched lean is never drawn, so every design stands in the pose solve_nominal_pose finds
+        for it, and check_nominal_pose tolerates only the rounding of the solved hip offset.
+        """
+        if "thigh_bend_offset" not in self.param_ranges:
+            return 0.0
         _, (lo, hi) = self.param_ranges["thigh_bend_offset"]
         return max(abs(lo), abs(hi))
 
@@ -981,7 +997,8 @@ class FixedDesignGenerator(DesignGeneratorBase):
     Mirrors CMAESDesignGenerator._generate_individual, actuator parameters included, so the
     replayed robot is the one the search emitted. The base class's default ranges carry the
     scale or offset kind of every CMAES_PARAM_KEYS entry and the thigh_bend_offset range that
-    _lean_max reads, both as train.py gave them to the run.
+    _lean_max reads, both as train.py gave them to the run. Gain scales among *parameters* are
+    applied to the actuators, so a replayed design keeps the gains its search applied.
     """
 
     def __init__(self, parameters: dict[str, float], **kwargs):
@@ -994,7 +1011,7 @@ class FixedDesignGenerator(DesignGeneratorBase):
     def _generate_individual(self, generation: int, idx: int):
         self._current_parameters = dict(self.parameters)
         spec = self._spec_from_parameters(self.parameters)
-        return spec, self._actuator_params(spec)
+        return spec, self._actuator_params(spec, self.parameters)
 
 
 # ---------------------------------------------------------------------------
@@ -1005,8 +1022,11 @@ class FixedDesignGenerator(DesignGeneratorBase):
 class CMAESDesignGenerator(DesignGeneratorBase):
     """Generates robot designs by sampling from a CMA-ES search distribution.
 
-    The design vector is the unit-hypercube encoding of the parameters named by
-    :data:`CMAES_PARAM_KEYS`, the two length scales and the two pose offsets.
+    The design vector is the unit-hypercube encoding of the keys of
+    :data:`CMAES_PARAM_KEYS` that ``param_ranges`` names, the two length scales and
+    the two pose offsets where it names none.  A gain scale among them is applied
+    by ``_actuator_params`` to the actuators of the emitted design, and a geometry
+    key left unnamed keeps the baseline's value.
     CMA-ES adapts the multivariate Gaussian search distribution from the
     per-individual mean episode return reported by :class:`CoptOnPolicyRunner`.
     """
@@ -1065,10 +1085,15 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         self._last_range = float("inf")
         self._stop: list[str] = []
         self.late_start_prior_num_individual = late_start_prior_pop_size
-        # Restrict CMA-ES to CMAES_PARAM_KEYS.
-        # Caller-supplied param_ranges may tune the bounds of these keys
-        # but cannot add new dimensions (any extras would be inert).
-        self.param_ranges = {k: self.param_ranges[k] for k in CMAES_PARAM_KEYS}
+        # Restrict CMA-ES to the keys of CMAES_PARAM_KEYS the caller's param_ranges names, in that order,
+        # so the ranges alone decide what is tuned. No ranges at all search the four geometry keys, the
+        # default every caller passing none has always had. The argument is read rather than
+        # self.param_ranges, into which _typed_ranges merged every default.
+        named = param_ranges or dict.fromkeys(SPEC_PARAM_FIELDS)
+        self.param_ranges = {k: self.param_ranges[k] for k in CMAES_PARAM_KEYS if k in named}
+        for key in self.param_ranges.keys() - SPEC_PARAM_FIELDS.keys():
+            if key.split("_", 1)[0] not in self.family.groups:
+                raise ValueError(f"{key} names no joint group of the {family} family, {self.family.groups}")
 
         self.param_keys: list[str] = [k for k in self.param_ranges if k in self.searched_keys]
         self.num_params: int = len(self.param_keys)
@@ -1202,7 +1227,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         def mean(generation: int, idx: int):
             self._current_parameters = dict(values)
             spec = self._spec_from_parameters(values, picks)
-            return spec, self._actuator_params(spec)
+            return spec, self._actuator_params(spec, values)
 
         one = self._build_population(generation, range(1), individual=mean, filtered=False)
         n = self.num_individuals
@@ -1223,7 +1248,7 @@ class CMAESDesignGenerator(DesignGeneratorBase):
             parameters = self._denormalise(self._pending_solutions[idx])
         self._current_parameters = parameters
         spec = self._spec_from_parameters(parameters)
-        return spec, self._actuator_params(spec)
+        return spec, self._actuator_params(spec, parameters)
 
     def _denormalise(self, x) -> dict[str, float]:
         parameters: dict[str, float] = {}
@@ -1290,7 +1315,7 @@ class GrowingDesignDistCMAESDesignGenerator(CMAESDesignGenerator):
             parameters = self._denormalise(self._pending_solutions[idx])
         self._current_parameters = parameters
         spec = self._spec_from_parameters(parameters)
-        return spec, self._actuator_params(spec)
+        return spec, self._actuator_params(spec, parameters)
 
 
 # ---------------------------------------------------------------------------
@@ -1410,6 +1435,11 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
         assert got == int(self.num_individuals), (
             f"Checkpoint population size mismatch: pickled {got}, "
             f"expected {self.num_individuals}"
+        )
+        # The continuous dimension, zero without a continuous block, so that a checkpoint resumed under
+        # another set of gain scales is refused rather than decoded against the wrong ranges.
+        assert int(self._es._Nco) == self.num_params, (
+            f"Checkpoint dimension mismatch: pickled {self._es._Nco}, expected {self.num_params}"
         )
 
     def _dumps(self) -> bytes:
@@ -1596,7 +1626,7 @@ class CatCMAESDesignGenerator(CMAESDesignGenerator):
             picks = self._picks_from_solution(solution)
         self._current_parameters = parameters
         spec = self._spec_from_parameters(parameters, picks)
-        return spec, self._actuator_params(spec)
+        return spec, self._actuator_params(spec, parameters)
 
 
 # ---------------------------------------------------------------------------

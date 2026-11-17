@@ -25,8 +25,9 @@ class CMAESCfg:
     """The co-optimisation type, one of three. "leg_geometry" searches the link length scales and the
     nominal pose offsets, by CMA-ES after a random phase whose prior widens from the donor to the full
     box. "actuator_leg_geometry" searches the same together with the actuator of every joint group, by
-    CatCMAwM. "actuator" searches the actuator of every joint group alone on the baseline's link
-    lengths and pose, by CatCMAwM without a continuous block."""
+    CatCMAwM. "actuator" searches the actuator of every joint group together with the gain scales
+    param_ranges names, by CatCMAwM on the baseline's link lengths and pose, and requires param_ranges
+    to name gain scales alone, at least one, which train.py checks."""
 
     num_individuals: int = 80
     """Designs per generation, which must divide the scene's num_envs."""
@@ -43,7 +44,10 @@ class CMAESCfg:
         "thigh_bend_offset": ("offset", (-0.10, 0.10)),
         "knee_bend_offset": ("offset", (-0.25, 0.25)),
     }
-    """The searched parameters and their ranges, in the form usd_generator.DEFAULT_PARAM_RANGES takes."""
+    """The searched parameters and their ranges, in the form usd_generator.DEFAULT_PARAM_RANGES takes.
+    Its keys alone decide what is searched, a geometry key left out keeping the baseline's value. A gain
+    scale of usd_generator.GAIN_PARAM_KEYS, such as "knee_damping_scale", is searched and applied to the
+    actuators where named, and one naming no joint group of the robot raises."""
 
     sigma0: float = 0.25
     """Initial step size of CMA-ES in the unit box."""

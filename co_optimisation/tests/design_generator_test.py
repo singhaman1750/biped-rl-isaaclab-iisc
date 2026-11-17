@@ -92,6 +92,8 @@ class _StubCatCMAwM:
     def __init__(self, x_space=None, z_space=None, c_space=None, population_size=None,
                  mean=None, sigma=None, cov=None, cat_param=None, seed=None):
         self._x = np.asarray(x_space, dtype=float)
+        # The continuous dimension, as cmaes/_catcmawm.py names it, which _check_dimension reads.
+        self._Nco = len(x_space) if x_space is not None else 0
         self._c = list(c_space or [])
         self._popsize = int(population_size or 8)
         self._mean = (np.asarray(mean, dtype=float) if mean is not None
@@ -224,7 +226,162 @@ def test_cma_search_is_the_lengths_and_the_pose(family, out_dir):
                 U.CatCMAESDesignGenerator):
         gen = cls(family=family, num_individuals=N, output_dir=out_dir)
         assert gen.num_params == 4, cls.__name__
-        assert gen.param_keys == list(U.CMAES_PARAM_KEYS)
+        # The geometry keys alone, a gain scale of CMAES_PARAM_KEYS being searched only where named.
+        assert gen.param_keys == list(U.SPEC_PARAM_FIELDS)
+
+
+# ---------------------------------------------------------------------------
+# The gain scales, searched where named and applied to the actuators
+# ---------------------------------------------------------------------------
+
+GAIN_RANGES = {
+    "hip_stiffness_scale": ("scale", (0.875, 1.125)),
+    "knee_damping_scale": ("scale", (0.750, 1.250)),
+}
+# The ranges alone decide what is searched, so a search of the geometry and the gains names both.
+GEOMETRY_AND_GAINS = {**{k: U.DEFAULT_PARAM_RANGES[k] for k in U.SPEC_PARAM_FIELDS}, **GAIN_RANGES}
+CONTINUOUS =(U.CMAESDesignGenerator, U.GrowingDesignDistCMAESDesignGenerator, U.CatCMAESDesignGenerator)
+
+
+def _catalogue_params(family, spec) -> dict[str, dict]:
+    """The unscaled simulator parameters of every group of *spec*, as the catalogue states them."""
+    return {g: a.sim_params() for g, a in zip(U.FAMILIES[family].groups, spec.actuators())}
+
+
+def _phases(cls, family, out_dir, **kw):
+    """A random phase population and then a search population of one generator."""
+    gen = _make(cls, family, out_dir, late_start=True, late_start_prior_pop_size=N, late_start_it=4, seed=1, **kw)
+    late = gen.generate_population(0)
+    gen.toggle_late_start()
+    gen.sample_batch()
+    return gen, late, gen.generate_population(1)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_named_gain_scales_are_searched_and_applied(cls, family, out_dir):
+    gen, late, search = _phases(cls, family, out_dir, param_ranges=GEOMETRY_AND_GAINS)
+    assert gen.param_keys == [*U.SPEC_PARAM_FIELDS, "hip_stiffness_scale", "knee_damping_scale"]
+    assert gen.num_params == 6
+    for pop in (late, search):
+        drawn = []
+        for spec, act, params in zip(pop.get_specs(), pop.get_actuator_params(), pop.get_parameters()):
+            base = _catalogue_params(family, spec)
+            assert act["hip"]["stiffness"] == round(base["hip"]["stiffness"] * params["hip_stiffness_scale"], 6)
+            assert act["knee"]["damping"] == round(base["knee"]["damping"] * params["knee_damping_scale"], 6)
+            # A scale left unnamed leaves its gain at the catalogue's.
+            assert act["hip"]["damping"] == round(base["hip"]["damping"], 6)
+            assert act["abad"]["stiffness"] == round(base["abad"]["stiffness"], 6)
+            drawn.append(params["hip_stiffness_scale"])
+        assert any(v != 1.0 for v in drawn)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_no_named_gain_scale_keeps_the_catalogue_gains_and_the_geometry_draws(cls, family, out_dir):
+    gen, late, search = _phases(cls, family, out_dir)
+    for pop in (late, search):
+        for spec, act in zip(pop.get_specs(), pop.get_actuator_params()):
+            base = _catalogue_params(family, spec)
+            for group, params in act.items():
+                for key in ("stiffness", "damping"):
+                    assert params[key] == round(base[group][key], 6)
+    # Naming gain scales appends dimensions after the geometry, so the random phase's geometry draws are unchanged.
+    _, named, _ = _phases(cls, family, str(pathlib.Path(out_dir) / "named"), param_ranges=GEOMETRY_AND_GAINS)
+    for a, b in zip(late.get_parameters(), named.get_parameters()):
+        assert all(a[k] == b[k] for k in U.SPEC_PARAM_FIELDS)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", [U.CMAESDesignGenerator, U.GrowingDesignDistCMAESDesignGenerator])
+def test_the_optimised_gain_scales_replay_through_the_fixed_generator(cls, family, out_dir):
+    gen, _, _ = _phases(cls, family, out_dir, param_ranges=GEOMETRY_AND_GAINS)
+    values, picks = gen.optimised_design()
+    assert {"hip_stiffness_scale", "knee_damping_scale"} <= set(values)
+    record = gen.describe_design(values, picks)
+    fixed = U.FixedDesignGenerator(values, family=family, output_dir=str(pathlib.Path(out_dir) / "fixed"))
+    act = fixed.generate_population(0).get_actuator_params()[0]
+    assert act["hip"]["stiffness"] == record["hip_actuator_stiffness"]
+    assert act["knee"]["damping"] == record["knee_actuator_damping"]
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_the_fine_tune_applies_the_mean_gain_scales(cls, family, out_dir):
+    gen, _, _ = _phases(cls, family, out_dir, param_ranges=GEOMETRY_AND_GAINS, final_population="mean")
+    gen._terminated = True
+    values, _ = gen.optimised_design()
+    pop = gen.generate_population(2)
+    for spec, act in zip(pop.get_specs(), pop.get_actuator_params()):
+        base = _catalogue_params(family, spec)
+        assert act["hip"]["stiffness"] == round(base["hip"]["stiffness"] * values["hip_stiffness_scale"], 6)
+
+
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_a_gain_scale_of_a_missing_group_is_refused(cls, out_dir):
+    with pytest.raises(ValueError, match="names no joint group"):
+        cls(family="quadruped", num_individuals=N, output_dir=out_dir,
+            param_ranges={"ankle_stiffness_scale": ("scale", (0.8, 1.2))})
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_a_checkpoint_of_another_dimension_is_refused(cls, family, out_dir):
+    four = _make(cls, family, out_dir, seed=3)
+    four.generate_population(0)
+    state = pickle.loads(pickle.dumps(four.get_state()))
+    six = _make(cls, family, str(pathlib.Path(out_dir) / "six"), seed=3, param_ranges=GEOMETRY_AND_GAINS)
+    with pytest.raises(AssertionError, match="dimension mismatch"):
+        six.load_state(state)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_search_state_with_gain_scales_round_trips(cls, family, out_dir):
+    gen = _make(cls, family, out_dir, seed=3, param_ranges=GEOMETRY_AND_GAINS)
+    gen.generate_population(0)
+    gen.update_with_fitness([float(i) for i in range(N)])
+    gen.load_state(pickle.loads(pickle.dumps(gen.get_state())))
+    assert gen.generate_population(1) is not None
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+@pytest.mark.parametrize("cls", CONTINUOUS)
+def test_the_ranges_alone_decide_what_is_searched(cls, family, out_dir):
+    lengths = {k: U.DEFAULT_PARAM_RANGES[k] for k in ("thigh_length_scale", "shank_length_scale")}
+    gen = _make(cls, family, out_dir, param_ranges=lengths)
+    assert gen.param_keys == ["thigh_length_scale", "shank_length_scale"]
+    for params in gen.generate_population(0).get_parameters():
+        assert not {"thigh_bend_offset", "knee_bend_offset"} & set(params)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_actuator_search_tunes_the_picks_and_their_gains_alone(family, out_dir):
+    gen = _make(U.CatCMAESDesignGenerator, family, out_dir, param_ranges=GAIN_RANGES, late_start=True,
+                late_start_prior_pop_size=N, late_start_it=4, seed=1)
+    assert gen.param_keys == list(GAIN_RANGES) and gen._lean_max() == 0.0
+    # The last generation of the random phase, which draws from the whole shelf.
+    late = gen.generate_population(3)
+    gen.toggle_late_start()
+    gen.sample_batch()
+    search = gen.generate_population(4)
+    base = gen.baseline
+    for pop in (late, search):
+        for spec, act, params in zip(pop.get_specs(), pop.get_actuator_params(), pop.get_parameters()):
+            # The baseline's geometry, emitted as drawn, every pick refused by no narrowed tolerance.
+            assert (spec.thigh_length, spec.shank_length) == (base.thigh_length, base.shank_length)
+            assert params["feasible"] and not set(U.SPEC_PARAM_FIELDS) & set(params)
+            cat = _catalogue_params(family, spec)
+            assert act["hip"]["stiffness"] == round(cat["hip"]["stiffness"] * params["hip_stiffness_scale"], 6)
+            assert act["knee"]["damping"] == round(cat["knee"]["damping"] * params["knee_damping_scale"], 6)
+    picks = {tuple(p[g] for g in gen.family.groups) for p in late.get_parameters()}
+    assert len(picks) > 1
+    gen.update_with_fitness([float(i) for i in range(N)])
+    assert set(gen.search_statistics()["mean"]) == set(GAIN_RANGES)
+    values, chosen = gen.optimised_design()
+    assert set(values) == set(GAIN_RANGES) and set(chosen) == set(gen.family.groups)
+    gen.load_state(pickle.loads(pickle.dumps(gen.get_state())))
+    assert gen.generate_population(5) is not None
 
 
 def test_ranges_are_typed_and_the_untyped_form_reads_as_scale(out_dir):
@@ -723,7 +880,10 @@ def test_joint_rot_is_the_documents_body_quat(family, out_dir):
 
 @pytest.mark.parametrize("family", FAMILIES)
 def test_zero_width_pose_ranges_search_the_lengths_alone(family, out_dir):
-    zero = {"thigh_bend_offset": ("offset", (0.0, 0.0)), "knee_bend_offset": ("offset", (0.0, 0.0))}
+    # The lengths are named, the ranges alone deciding what is searched.
+    zero = {"thigh_length_scale": U.DEFAULT_PARAM_RANGES["thigh_length_scale"],
+            "shank_length_scale": U.DEFAULT_PARAM_RANGES["shank_length_scale"],
+            "thigh_bend_offset": ("offset", (0.0, 0.0)), "knee_bend_offset": ("offset", (0.0, 0.0))}
     gen = _make(U.CMAESDesignGenerator, family, out_dir, param_ranges=zero)
     for spec in gen.generate_population(0).get_specs():
         assert spec.knee_bend_offset == 0.0
