@@ -205,6 +205,9 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         self._resumed_from_checkpoint: bool = False
         self._restored_population: Population | None = None
         self._restored_env_state: dict | None = None
+        # The link dicts of the population last spawned, each housing's spawned size, which the
+        # in place redraw scales from. Set by _respawn_population.
+        self._spawned_link_params: list[dict] | None = None
 
     # ------------------------------------------------------------------
     # Checkpoint persistence
@@ -643,6 +646,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
         finally:
             unwrapped_env._suppress_terrain_curriculum = False
             unwrapped_env._suppress_curriculum = False
+        self._spawned_link_params = population.get_link_length_params()
 
     def _apply_nominal_pose(self, reset: bool) -> None:
         """Measure every environment's nominal pose, set its spawn height and publish the height.
@@ -751,6 +755,7 @@ class CoptOnPolicyRunner(OnPolicyRunner):
             self.env.unwrapped,
             self.current_population.get_link_length_params(),
             self.current_population.get_root_body(),
+            self._spawned_link_params,
         )
         if written:
             print(f"Refreshed {written} rendered geometry prims in {time.perf_counter() - start:.2f} s")

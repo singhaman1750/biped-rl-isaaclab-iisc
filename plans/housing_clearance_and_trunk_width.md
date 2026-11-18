@@ -45,6 +45,10 @@ Still to do in the training container, since Isaac Sim is not available here. Re
 
 The quadruped's width rule was first the abduction term alone, as the user stated it. The new contact test found the left and right hip housings of an axle touching in 56 of 2744 combinations, a narrow abduction housing carrying a long hip one, which the baseline and the A1 entries never meet. The second term of Rule 5 for the quadruped was added to close it, as the biped's already was for the one pair of its shelf that the abduction term left infeasible.
 
+## 7a. Rendering regression found 2026-11-17
+
+Run `quadruped_copt/2026-11-16_08-05-55` showed gaps between the hip and knee housings that the documents do not contain. The cause lay outside this plan's files. `refresh_rendered_geometry` in `co_optimisation/co_optimisation/utils/update.py` redrew boxes only, on the premise that no quadruped housing changes size, which this plan voided. The refresh now redraws a resized cylinder by scale, as recorded in the 2026-11-17 correction in section 10 of `context/co_optimisation_audit.md`. Physics was unaffected. Addition of 2026-11-17, later the same day. That redraw did not take effect in runs `quadruped_copt/2026-11-17_05-25-55` and `2026-11-17_07-11-53`, the refresh skipping every resized cylinder and its writes not reaching the world matrices the renderer draws from. It was repaired by [cylinder_render_refresh.md](cylinder_render_refresh.md).
+
 ## 8. Risks
 
 The in place trunk edit is unverified, as stated. The width rule makes leg track and trunk inertia depend on the abduction pick, which CMA-ES will see as part of that pick's effect. The eleven quadruped entries took the biped catalogue's housing sizes, and their masses differ for five of them.

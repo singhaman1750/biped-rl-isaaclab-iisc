@@ -44,12 +44,12 @@ The simulation must be stopped before calling these helpers; a single timed
 
 from __future__ import annotations
 
+import math
 import time
-
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdUtils, Vt
 
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.sim.utils.stage import get_current_stage
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdUtils, Vt
 
 
 def _source_spec(attr):
@@ -303,10 +303,42 @@ def apply_link_length_params(
 
 
 
+def _scaled_cylinder(prim, matrix, fabric_copy, spawned=None):
+    """The local matrix and extent that draw a spawned cylinder at the size its prototype now carries.
+
+    The RTX delegate keeps the tessellation it populated at spawn, so the cylinder is drawn as that
+    tessellation scaled in its own frame by the ratio of the written size to the spawned one.
+    *spawned*, the (radius, height) in metres the environment's design was spawned with, is that
+    baseline where given. None reads it from the Fabric copy's own radius and height, which the reset
+    after an in place write overwrites with the written size while the renderer keeps the spawned
+    tessellation, so that the copy then reports no change and the cylinder is left undrawn.
+    None when there is no baseline to measure against, or when the written size is the spawned one,
+    so that a design keeping its actuators leaves its copy exactly as spawned.
+    """
+    if spawned is not None:
+        r0, h0 = (float(v) for v in spawned)
+    elif fabric_copy.IsValid() and fabric_copy.HasAttribute("radius") and fabric_copy.HasAttribute("height"):
+        r0, h0 = float(fabric_copy.GetAttribute("radius").Get()), float(fabric_copy.GetAttribute("height").Get())
+    else:
+        return None
+    cylinder = UsdGeom.Cylinder(prim)
+    axis = cylinder.GetAxisAttr().Get()
+    r, h = float(cylinder.GetRadiusAttr().Get()), float(cylinder.GetHeightAttr().Get())
+    if math.isclose(r, r0, rel_tol=1e-6) and math.isclose(h, h0, rel_tol=1e-6):
+        return None
+    i = "XYZ".index(axis)
+    ratio, half = [r / r0] * 3, [r0] * 3
+    ratio[i], half[i] = h / h0, h0 / 2.0
+    scaled = Gf.Matrix4d().SetScale(Gf.Vec3d(*ratio)) * matrix
+    # The scaled matrix maps the spawned tessellation to the written size, so the extent is the spawned one, scaled once by that matrix and not twice.
+    return scaled, (Gf.Vec3d(*(-v for v in half)), Gf.Vec3d(*half))
+
+
 def refresh_rendered_geometry(
     env: ManagerBasedRLEnv,
     link_length_params_list: list[dict[str, dict]],
     root_body: str,
+    spawned_link_params_list: list[dict[str, dict]] | None = None,
 ) -> int:
     """Rewrite the renderer's copies of the visual geometry from the edited prototypes.
 
@@ -320,14 +352,21 @@ def refresh_rendered_geometry(
     where the new design puts them, a shank drawn through or short of its foot.
     Physics is unaffected, and so are the collision copies, which are not drawn.
 
-    Only boxes are redrawn, a box's size living in the local matrix of its copy, the cube
-    itself keeping the importer's size of 2.  A cylinder's size lives in its own
-    ``radius`` and ``height``, which the RTX delegate does not re-tessellate when they
-    change, so the housings of a categorical design written in place are drawn at the
-    size of the design they replaced until the next respawn.  That defect is left
-    standing, since no housing of the quadruped changes size and the biped's
-    converted cylinders are themselves drawn through the importer's extent, which
-    names the wrong axis (MjcfUsd.cpp:813-815), leaving no rendering to match.
+    Boxes and cylinders are both redrawn. A box's size lives in the local matrix of its copy, the
+    cube itself keeping the importer's size of 2. A cylinder's size lives in its own ``radius`` and
+    ``height``, which the RTX delegate does not re-tessellate when they change, so the cylinder is
+    drawn as its spawned tessellation scaled in its own frame by the ratio of the written size to the
+    spawned one. A cylinder whose written size is its spawned size is not touched at all.
+
+    *spawned_link_params_list*, the link dicts of the population last spawned, gives each housing's
+    spawned size, its entry's ``radius`` and twice its ``half_length``, design ``i`` having been
+    spawned as entry ``i % len(spawned_link_params_list)``. None reads the spawned size from the
+    Fabric copy, which the reset has already overwritten with the written size, so that a resized
+    cylinder is not redrawn, the defect this argument repairs and which an unset default leaves standing.
+
+    The writes are carried into ``omni:fabric:worldMatrix``, which the renderer draws from, by
+    ``IFabricHierarchy.update_world_xforms()``, since Fabric's change tracking does not pick up a
+    local matrix written straight after the reset.
 
     Call after :func:`apply_link_length_params`.  Environment ``e`` shows design
     ``e % len(link_length_params_list)``, the round-robin assignment of the spawn.
@@ -337,6 +376,7 @@ def refresh_rendered_geometry(
     """
     import carb
     import usdrt
+    import usdrt.hierarchy
 
     if not carb.settings.get_settings().get_as_bool("/app/useFabricSceneDelegate"):
         return 0
@@ -345,7 +385,10 @@ def refresh_rendered_geometry(
     xform_cache = UsdGeom.XformCache()
     env_paths = env.scene.env_prim_paths
     per_design = []
+    redrawn = 0
     for individual, params in enumerate(link_length_params_list):
+        spawned_params = (None if spawned_link_params_list is None
+                          else spawned_link_params_list[individual % len(spawned_link_params_list)])
         entries = []
         for link_name in params:
             suffix = f"Robot/{root_body}/{link_name}/visuals"
@@ -354,14 +397,27 @@ def refresh_rendered_geometry(
             if not proto:
                 continue
             for prim in Usd.PrimRange(proto):
-                if not prim.IsA(UsdGeom.Cube):
+                if not (prim.IsA(UsdGeom.Cube) or prim.IsA(UsdGeom.Cylinder)):
                     continue
+                rel = f"{suffix}/{prim.GetPath().MakeRelativePath(proto.GetPath())}"
                 matrix, _ = xform_cache.ComputeRelativeTransform(prim, proto)
+                if prim.IsA(UsdGeom.Cube):
+                    extent = UsdGeom.Boundable(prim).GetExtentAttr().Get()
+                else:
+                    # The spawned size from the spawned design where given, the Fabric copy otherwise.
+                    entry = (spawned_params or {}).get(link_name) or {}
+                    spawned = ((entry["radius"], 2.0 * entry["half_length"])
+                               if "radius" in entry and "half_length" in entry else None)
+                    copy = rt_stage.GetPrimAtPath(f"{env_paths[individual]}/{rel}")
+                    redraw = _scaled_cylinder(prim, matrix, copy, spawned)
+                    if redraw is None:
+                        continue
+                    matrix, extent = redraw
+                    redrawn += 1
                 # Fabric's extent carries the scale and rotation of the copy's local matrix, not its translation.
-                extent = UsdGeom.Boundable(prim).GetExtentAttr().Get()
                 linear = Gf.Matrix4d(matrix).SetTranslateOnly(Gf.Vec3d(0.0))
                 box = Gf.BBox3d(Gf.Range3d(Gf.Vec3d(extent[0]), Gf.Vec3d(extent[1])), linear).ComputeAlignedRange()
-                entries.append((f"{suffix}/{prim.GetPath().MakeRelativePath(proto.GetPath())}", {
+                entries.append((rel, {
                     "omni:fabric:localMatrix": usdrt.Gf.Matrix4d(*(matrix[i][j] for i in range(4) for j in range(4))),
                     "extent": usdrt.Gf.Range3d(usdrt.Gf.Vec3d(*box.GetMin()), usdrt.Gf.Vec3d(*box.GetMax())),
                 }))
@@ -376,6 +432,12 @@ def refresh_rendered_geometry(
                 if fprim.HasAttribute(name):
                     fprim.GetAttribute(name).Set(value)
             written += 1
+    # The local matrices reach the world matrices the renderer draws from only through the hierarchy.
+    usdrt.hierarchy.IFabricHierarchy().get_fabric_hierarchy(
+        rt_stage.GetFabricId(), rt_stage.GetStageIdAsStageId()
+    ).update_world_xforms()
+    if redrawn:
+        print(f"[refresh] {redrawn} resized cylinders redrawn from their spawned size")
     return written
 
 

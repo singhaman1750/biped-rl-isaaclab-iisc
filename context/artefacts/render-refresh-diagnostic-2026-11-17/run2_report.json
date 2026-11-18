@@ -1,0 +1,74 @@
+{
+ "fabric_scene_delegate": true,
+ "knee_link_entry_B": {
+  "radius": 0.045,
+  "half_length": 0.0475,
+  "parent_pos": [
+   0.0,
+   0.0775,
+   0.0
+  ]
+ },
+ "modes": {
+  "FL": "attr_set_then_update",
+  "FR": "attr_set_then_update",
+  "RL": "set_local_xform_then_update",
+  "RR": "set_local_xform_then_update"
+ },
+ "variant_inputs": {
+  "FL": {
+   "path": "/World/envs/env_0/Robot/trunk/knee_FL_act/visuals/_geom_17/_geom_17",
+   "fabric_valid": true,
+   "fabric_radius": "0.045",
+   "fabric_height": "0.095",
+   "usd_radius": 0.045,
+   "scaled": false
+  },
+  "FR": {
+   "path": "/World/envs/env_0/Robot/trunk/knee_FR_act/visuals/_geom_6/_geom_6",
+   "fabric_valid": true,
+   "fabric_radius": "0.045",
+   "fabric_height": "0.095",
+   "usd_radius": 0.045,
+   "scaled": false
+  },
+  "RL": {
+   "path": "/World/envs/env_0/Robot/trunk/knee_RL_act/visuals/_geom_39/_geom_39",
+   "fabric_valid": true,
+   "fabric_radius": "0.045",
+   "fabric_height": "0.095",
+   "usd_radius": 0.045,
+   "scaled": false
+  },
+  "RR": {
+   "path": "/World/envs/env_0/Robot/trunk/knee_RR_act/visuals/_geom_28/_geom_28",
+   "fabric_valid": true,
+   "fabric_radius": "0.045",
+   "fabric_height": "0.095",
+   "usd_radius": 0.045,
+   "scaled": false
+  }
+ },
+ "fix_variants": {
+  "FL": {
+   "local": "( (1, 0, 0, 0), (0, 1.34359e-, 1, 0), (0, -1, 1.34359e-, 0), (0, 0, 0, 1) )",
+   "world_before_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (0.176, -0.1705, 0.5, 1) )",
+   "world_after_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (0.176, -0.1705, 0.5, 1) )"
+  },
+  "FR": {
+   "local": "( (1, 0, 0, 0), (0, 1.34359e-, 1, 0), (0, -1, 1.34359e-, 0), (0, 0, 0, 1) )",
+   "world_before_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (0.176, -0.4295, 0.5, 1) )",
+   "world_after_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (0.176, -0.4295, 0.5, 1) )"
+  },
+  "RL": {
+   "local": "( (1, 0, 0, 0), (0, 1.34359e-, 1, 0), (0, -1, 1.34359e-, 0), (0, 0, 0, 1) )",
+   "world_before_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (-0.176, -0.1705, 0.5, 1) )",
+   "world_after_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (-0.176, -0.1705, 0.5, 1) )"
+  },
+  "RR": {
+   "local": "( (1, 0, 0, 0), (0, 1.34359e-, 1, 0), (0, -1, 1.34359e-, 0), (0, 0, 0, 1) )",
+   "world_before_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (-0.176, -0.4295, 0.5, 1) )",
+   "world_after_render": "( (1, 6.8148e-1, -2.4689e-, 0), (2.4689e-0, 1.08983e-, 1, 0), (9.50548e-, -1, 1.08983e-, 0), (-0.176, -0.4295, 0.5, 1) )"
+  }
+ }
+}
