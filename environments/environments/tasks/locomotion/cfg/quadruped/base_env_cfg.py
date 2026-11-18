@@ -1128,13 +1128,13 @@ class RewardsCfg:
     pen_joint_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-2.0)
     pen_joint_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5.0e-05)
     pen_action_smoothness = RewTerm(func=mdp.ActionSmoothnessPenalty, weight=-0.01)
-    pen_flat_orientation = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
+    pen_flat_orientation = RewTerm(func=mdp.flat_orientation_l2, weight=-3.0)
 
     # Every body except the four feet. The feet are named foot_<LEG>_Link and are
     # therefore disjoint from all three expressions below.
     pen_undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-2.5,
+        weight=-5.0,
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
@@ -1289,7 +1289,7 @@ class TerminationsCfg:
     #     func=mdp.illegal_contact,
     #     params={
     #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[
-    #             "thigh_.*", "shank_.*",
+    #             "abad_.*_act", "hip_.*_act", "knee_.*_act",
     #         ]),
     #         "threshold": 1.0,
     #     },

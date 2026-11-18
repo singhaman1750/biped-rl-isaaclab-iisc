@@ -1,0 +1,4 @@
+individual_base.xml {'all': np.float64(0.123), 'abad only': np.float64(0.16), 'all but abad': np.float64(0.0)} symmetric abad roll at first contact: {-1: np.float64(0.095)}
+individual_0006.xml {'all': np.float64(0.263), 'abad only': np.float64(0.287), 'all but abad': np.float64(0.0)} symmetric abad roll at first contact: {-1: np.float64(0.05)}
+individual_0000.xml {'all': np.float64(0.187), 'abad only': np.float64(0.22), 'all but abad': np.float64(0.0)} symmetric abad roll at first contact: {-1: np.float64(0.065)}
+individual_0033.xml {'all': np.float64(0.257), 'abad only': np.float64(0.303), 'all but abad': np.float64(0.0)} symmetric abad roll at first contact: {-1: np.float64(0.055)}

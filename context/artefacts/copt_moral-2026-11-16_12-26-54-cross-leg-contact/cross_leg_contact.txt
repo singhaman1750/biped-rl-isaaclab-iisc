@@ -1,0 +1,11 @@
+foot y (half track) mean 94.2 mm, min 74.8, max 148.9
+nominal cross-leg clearance mean 65.9 mm, min 54.6
+reset samples in collision 0.127; corr(gap, collision) -0.53
+CROSS-LEG: [(('ankle_S_act', 'foot_S_Link'), 746), (('foot_S_Link', 'foot_S_Link'), 641), (('ankle_S_act', 'ankle_S_act'), 389), (('ankle_S_act', 'shank_S_Link'), 232), (('shank_S_Link', 'shank_S_Link'), 73), (('foot_S_Link', 'shank_S_Link'), 14)]
+SAME-LEG: []
+
+foot y (half track) mean 89.9 mm, min 89.9, max 89.9
+nominal cross-leg clearance mean 66.8 mm, min 66.8
+reset samples in collision 0.110; corr(gap, collision) nan
+CROSS-LEG: [(('ankle_S_act', 'foot_S_Link'), 9), (('foot_S_Link', 'foot_S_Link'), 8), (('shank_S_Link', 'shank_S_Link'), 2), (('ankle_S_act', 'ankle_S_act'), 2), (('ankle_S_act', 'shank_S_Link'), 1)]
+SAME-LEG: []

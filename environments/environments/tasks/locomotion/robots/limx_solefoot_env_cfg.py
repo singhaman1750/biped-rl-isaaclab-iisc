@@ -413,6 +413,7 @@ class SFCoptBlindRoughEnvCfg(SFCoptBaseEnvCfg):
         super().__post_init__()
 
         self.scene.terrain.terrain_type = "generator"
+        # self.scene.terrain.terrain_generator = BERKELEY_MIMIC_TERRAINS_CFG.replace(num_cols=64)
         self.scene.terrain.terrain_generator = BERKELEY_MIMIC_TERRAINS_CFG
 
 

@@ -955,12 +955,12 @@ class RewardsCfg:
 
     pen_undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-0.5,
+        weight=-2.0,
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
                 body_names=[
-                    "abad_.*", "hip_.*", "knee_.*", "thigh_.*", "shank_.*", "base_Link",
+                    "abad_.*", "hip_.*", "knee_.*", "thigh_.*", "shank_.*", "ankle_.*_act", "base_Link",
                 ],
             ),
             "threshold": 10.0,
@@ -1099,9 +1099,24 @@ class TerminationsCfg:
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces",
             body_names=[
-                "thigh_.*", "shank_.*", ".*_act"
+                "thigh_.*", "shank_.*", "(abad|hip|knee)_.*_act"
             ]),
             "threshold": 1.0,
+        },
+    )
+
+
+@configclass
+class CoptTerminationsCfg(TerminationsCfg):
+    """:class:`TerminationsCfg` with the trunk's fall below a fraction of its design's standing height ending the episode."""
+
+    base_height = DoneTerm(
+        func=mdp.root_height_below_fraction_rough,
+        params={
+            "min_height_fraction": 0.55,
+            "reference_height": 0.804,
+            "sensor_cfg": SceneEntityCfg("height_scanner"),
+            "asset_cfg": SceneEntityCfg("robot"),
         },
     )
 
@@ -1398,14 +1413,14 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the test environment"""
 
     # Scene settings
-    scene: SFSceneCfg = SFSceneCfg(num_envs=5120, env_spacing=env_spacing)
+    scene: SFSceneCfg = SFSceneCfg(num_envs=6400, env_spacing=env_spacing)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
     rewards: CoptRewardsCfg = CoptRewardsCfg()
-    terminations: TerminationsCfg = TerminationsCfg()
+    terminations: CoptTerminationsCfg = CoptTerminationsCfg()
     events: EventsCfg = EventsCfg()
     curriculum: CoptCurriculumCfg = CoptCurriculumCfg()
 

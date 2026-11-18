@@ -1,0 +1,2 @@
+resets in cross-leg contact 0.131; ending under current leg_contact 0.100; under abad|hip|knee only 0.031
+resets in cross-leg contact 0.110; ending under current leg_contact 0.085; under abad|hip|knee only 0.010
