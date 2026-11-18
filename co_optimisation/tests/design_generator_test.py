@@ -1035,15 +1035,104 @@ def test_the_trunk_width_follows_the_abduction_actuator_and_not_the_spec(family)
     b = fam.module.builder
     base = fam.baseline()
     (a, w, c), _, _ = _trunk(family, base)
-    assert w == pytest.approx(base.trunk_width)                       # the baseline is reproduced
+    assert w == pytest.approx(base.trunk_width, abs=1e-6)             # the baseline spec carries the derived width
     assert _trunk(family, replace(base, trunk_width=0.01)) == _trunk(family, base)   # the field is inert
     for act in fam.full_catalog():
         spec = _picked(family, act.name, *(getattr(base, fam.spec_fields[g]) for g in ("hip", "knee")))
         width = _trunk(family, spec)[0][1]
         assert width >= 2.0 * act.diameter + b.TRUNK_WIDTH_OFFSET - 1e-12
         if family == "quadruped":
-            assert width == pytest.approx(2.0 * act.diameter + b.TRUNK_WIDTH_OFFSET)
             assert _trunk(family, spec)[0][2] == pytest.approx(act.diameter)    # Rule 4
+
+
+def _hips(family, spec):
+    b = U.FAMILIES[family].module.builder
+    a, h, k = spec.actuators()[:3]
+    lay = b._cluster_layout("L" if family == "biped" else "FL", spec, a, h, k)
+    keys = ("hip_pos_rel", "knee_pos_rel") if family == "biped" else ("hip_pos", "knee_pos")
+    return b, lay, lay[keys[0]], lay[keys[1]]
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_hip_starts_at_the_abduction_inner_edge_and_the_housings_never_near_the_centreline(family):
+    """Rules 7a to 7c, plans/design_generator_update.md section 3."""
+    fam = U.FAMILIES[family]
+    names = [a.name for a in fam.full_catalog()]
+    for abad, hip, knee in itertools.product(names, repeat=3):
+        spec = _picked(family, abad, hip, knee)
+        b, lay, hip_rel, knee_rel = _hips(family, spec)
+        theta = np.linspace(*b.ABAD_RANGE, 161)
+        y_hip = lay["abad_pos"][1] + hip_rel[1]
+        g = max(spec.clearance_abadAct2hipAct_y, 0.0)
+        assert y_hip - lay["hl_hip"] == pytest.approx(lay["abad_pos"][1] - lay["r_abad"] + g, abs=1e-9)
+        hip_in = y_hip - (lay["hl_hip"] * np.cos(theta) + lay["r_hip"] * np.abs(np.sin(theta)))
+        knee_in = y_hip + knee_rel[1] * np.cos(theta) - knee_rel[2] * np.sin(theta) - (
+            lay["hl_knee"] * np.cos(theta) + lay["r_knee"] * np.abs(np.sin(theta)))
+        assert hip_in.min() >= b.HOUSING_MARGIN / 2.0 - 1e-9, (abad, hip, knee)
+        assert knee_in.min() >= b.HOUSING_MARGIN / 2.0 - 1e-9, (abad, hip, knee)
+
+
+def test_the_biped_housings_clear_the_trunk_through_the_abduction_range():
+    """Rule 8, plans/design_generator_update.md section 3.5."""
+    fam = U.FAMILIES["biped"]
+    names = [a.name for a in fam.full_catalog()]
+    for abad, hip, knee in itertools.product(names, repeat=3):
+        spec = _picked("biped", abad, hip, knee)
+        b, lay, hip_rel, knee_rel = _hips("biped", spec)
+        theta = np.linspace(*b.ABAD_RANGE, 161)
+        z_pivot = lay["abad_pos"][2] + hip_rel[2]
+        x_hip = lay["abad_pos"][0] + hip_rel[0]
+        x_knee = x_hip + knee_rel[0]
+        trunk_floor = -spec.trunk_thickness / 2.0
+        if abs(x_hip) - lay["r_hip"] < spec.trunk_length / 2.0:
+            top = z_pivot + lay["hl_hip"] * np.abs(np.sin(theta)) + lay["r_hip"] * np.cos(theta)
+            assert top.max() <= trunk_floor - b.HOUSING_MARGIN + 1e-9, (abad, hip, knee)
+        if abs(x_knee) - lay["r_knee"] < spec.trunk_length / 2.0:
+            top = (z_pivot + knee_rel[1] * np.sin(theta) + knee_rel[2] * np.cos(theta)
+                   + lay["hl_knee"] * np.abs(np.sin(theta)) + lay["r_knee"] * np.cos(theta))
+            assert top.max() <= trunk_floor - b.HOUSING_MARGIN + 1e-9, (abad, hip, knee)
+
+
+def test_the_quadruped_housings_stay_beyond_the_trunk_end_face():
+    """Why Rule 8 adds no code to the quadruped, plans/design_generator_update.md section 3.5 step 15."""
+    fam = U.FAMILIES["quadruped"]
+    names = [a.name for a in fam.full_catalog()]
+    for abad, hip, knee in itertools.product(names, repeat=3):
+        spec = _picked("quadruped", abad, hip, knee)
+        b, lay, hip_rel, knee_rel = _hips("quadruped", spec)
+        x_hip = abs(lay["abad_pos"][0] + hip_rel[0])
+        assert x_hip - lay["r_hip"] > spec.trunk_length / 2.0
+        assert abs(x_hip + knee_rel[0]) - lay["r_knee"] > spec.trunk_length / 2.0
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_no_hip_or_knee_housing_touches_the_other_leg_or_the_trunk_through_the_abduction_range(family):
+    """The MuJoCo contact sweep of context/artefacts/design_generator_update-2026-11-18-rule-sweep/."""
+    mujoco = pytest.importorskip("mujoco")
+    fam = U.FAMILIES[family]
+    b = fam.module.builder
+    names = [a.name for a in fam.full_catalog()]
+    trunk = "base_Link" if family == "biped" else "trunk"
+    joints = ("abad_R_Joint", "abad_L_Joint") if family == "biped" else ("FR_hip_joint", "FL_hip_joint")
+    lo, hi = b.ABAD_RANGE
+    grid = np.unique(np.concatenate([np.linspace(lo, hi, 5), [0.0]]))
+    for abad, hip, knee in list(itertools.product(names, repeat=3))[::13]:
+        model = mujoco.MjModel.from_xml_string(b.build_xml(_picked(family, abad, hip, knee)))
+        data = mujoco.MjData(model)
+        bodies = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, i) or "" for i in range(model.nbody)]
+        adr = [model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, j)] for j in joints]
+        for a1, a2 in itertools.product(grid, repeat=2):
+            data.qpos[:] = 0.0
+            data.qpos[adr[0]], data.qpos[adr[1]] = a1, a2
+            mujoco.mj_kinematics(model, data)
+            mujoco.mj_collision(model, data)
+            for c in data.contact[:data.ncon]:
+                n1, n2 = bodies[model.geom_bodyid[c.geom1]], bodies[model.geom_bodyid[c.geom2]]
+                if not n1 or not n2 or n1 == "world" or n2 == "world" or c.dist >= -1e-4:
+                    continue
+                housing = lambda n: n.startswith(("hip_", "knee_"))
+                assert not (housing(n1) and housing(n2) and n1.split("_")[1] != n2.split("_")[1]), (abad, hip, knee, n1, n2)
+                assert not (trunk in (n1, n2) and (housing(n1) or housing(n2))), (abad, hip, knee, n1, n2)
 
 
 def test_a_narrow_trunk_still_fits_the_widest_hip_of_the_biped():

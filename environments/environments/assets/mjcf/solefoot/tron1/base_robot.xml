@@ -36,19 +36,19 @@
   <worldbody>
     <body name="base_Link" pos="0 0 0">
       <freejoint name="root"/>
-      <inertial pos="0 0 0" mass="5.010000" diaginertia="0.043286 0.045498 0.058647"/>
+      <inertial pos="0 0 0" mass="5.010072" diaginertia="0.049891 0.045498 0.065252"/>
       
-      <geom class="visual" type="box" size="0.135000 0.130000 0.095000" rgba="0.79216 0.81961 0.93333 1"/>
-      <geom class="collision" type="box" size="0.135000 0.130000 0.095000"/>
+      <geom class="visual" type="box" size="0.135000 0.144416 0.095000" rgba="0.79216 0.81961 0.93333 1"/>
+      <geom class="collision" type="box" size="0.135000 0.144416 0.095000"/>
 
       <!-- ==================== RIGHT LEG (actuator cluster + thigh) ==================== -->
-      <body name="abad_R_act" pos="0.087250 -0.081700 -0.187500">
+      <body name="abad_R_act" pos="0.087250 -0.096116 -0.187500">
         <!-- welded to base: no <joint> element -->
         <inertial pos="0 0 0" quat="0.707107 0 0.707107 0" mass="0.950000" diaginertia="0.000789 0.000789 0.001108"/>
         <geom class="visual" type="cylinder" size="0.048300 0.027250" quat="0.707107 0 0.707107 0" rgba="0.85 0.35 0.10 1"/>
           <geom class="collision" type="cylinder" size="0.048300 0.027250" quat="0.707107 0 0.707107 0"/>
 
-        <body name="hip_R_act" pos="-0.095550 -0.000000 0.000000">
+        <body name="hip_R_act" pos="-0.095550 0.021050 0.000000">
           <joint class="abad" name="abad_R_Joint" axis="-1 0 0" range="-0.383970 1.396260"/>
           <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.469000" diaginertia="0.001220 0.001220 0.001714"/>
           <geom class="visual" type="cylinder" size="0.048300 0.027250" quat="0.707107 0.707107 0 0" rgba="0.15 0.45 0.85 1"/>
@@ -91,13 +91,13 @@
       </body>
 
       <!-- ==================== LEFT LEG (actuator cluster + thigh) ==================== -->
-      <body name="abad_L_act" pos="0.087250 0.081700 -0.187500">
+      <body name="abad_L_act" pos="0.087250 0.096116 -0.187500">
         <!-- welded to base: no <joint> element -->
         <inertial pos="0 0 0" quat="0.707107 0 0.707107 0" mass="0.950000" diaginertia="0.000789 0.000789 0.001108"/>
         <geom class="visual" type="cylinder" size="0.048300 0.027250" quat="0.707107 0 0.707107 0" rgba="0.85 0.35 0.10 1"/>
           <geom class="collision" type="cylinder" size="0.048300 0.027250" quat="0.707107 0 0.707107 0"/>
 
-        <body name="hip_L_act" pos="-0.095550 0.000000 0.000000">
+        <body name="hip_L_act" pos="-0.095550 -0.021050 0.000000">
           <joint class="abad" name="abad_L_Joint" axis="1 0 0" range="-0.383970 1.396260"/>
           <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="1.469000" diaginertia="0.001220 0.001220 0.001714"/>
           <geom class="visual" type="cylinder" size="0.048300 0.027250" quat="0.707107 0.707107 0 0" rgba="0.15 0.45 0.85 1"/>
