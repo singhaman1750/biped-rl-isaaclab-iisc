@@ -126,6 +126,9 @@ def build_population(env, agent_cfg, out_dir):
         param_ranges={
             "thigh_length_scale": ("scale", (0.75, 1.25)),
             "shank_length_scale": ("scale", (0.75, 1.25)),
+            # Named so that the search keeps the pose offsets it carried when they were searched unnamed.
+            "thigh_bend_offset": ("offset", (-0.10, 0.10)),
+            "knee_bend_offset": ("offset", (-0.25, 0.25)),
         },
         output_dir=os.path.join(out_dir, "copt_usds"),
         sigma0=0.25,

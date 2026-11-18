@@ -100,8 +100,8 @@ from co_optimisation.config import CMAES_CFG_BY_FAMILY, CMAESCfg, without_termin
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
+    GAIN_PARAM_KEYS,
     CatCMAESDesignGenerator,
-    CatOnlyCMAESDesignGenerator,
     GrowingDesignDistCMAESDesignGenerator,
 )
 
@@ -264,11 +264,19 @@ def main():
         generator_cls = {
             "leg_geometry": GrowingDesignDistCMAESDesignGenerator,
             "actuator_leg_geometry": CatCMAESDesignGenerator,
-            "actuator": CatOnlyCMAESDesignGenerator,
+            "actuator": CatCMAESDesignGenerator,
         }.get(cmaes_cfg.design_search)
         if generator_cls is None:
             raise ValueError(f"design_search {cmaes_cfg.design_search!r} is none of 'leg_geometry', "
                              "'actuator_leg_geometry' and 'actuator'")
+        # The actuator search tunes the picks and their gains on the baseline's geometry, so its ranges
+        # must name gain scales and nothing else.
+        if cmaes_cfg.design_search == "actuator":
+            names = set(cmaes_cfg.param_ranges)
+            if not names or names - set(GAIN_PARAM_KEYS):
+                raise ValueError(
+                    f"design_search 'actuator' needs param_ranges of gain scales alone, at least one of "
+                    f"{list(GAIN_PARAM_KEYS)}, got {sorted(names)}")
         # Every type stops on the tolerances, the categorical ones on CatCMAESDesignGenerator._stop_reasons.
         termination = dict(
             **tolerances,

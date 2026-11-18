@@ -131,7 +131,7 @@ class BipedCMAESCfg(CMAESCfg):
 
     design_search: str = "actuator_leg_geometry"
 
-    num_individuals: int = 64
+    num_individuals: int = 80
 
 
 @configclass
@@ -151,7 +151,7 @@ class QuadrupedCMAESCfg(CMAESCfg):
         "knee_bend_offset": ("offset", (-0.5, 0.5)),
     }
 
-    ea_late_start: int = 7500
+    ea_late_start: int = 9000
 
     design_search: str = "actuator_leg_geometry"
 

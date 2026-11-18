@@ -1179,7 +1179,8 @@ def main():
         else:
             _num_individuals = 256
             param_ranges = {}
-            params = ["thigh_length_scale", "shank_length_scale"]
+            # The four geometry keys, which the search carries only because they are named here.
+            params = ["thigh_length_scale", "shank_length_scale", "thigh_bend_offset", "knee_bend_offset"]
             for param in params:
                 param_ranges[param] = DEFAULT_PARAM_RANGES[param]
             design_generator = CMAESDesignGenerator(
