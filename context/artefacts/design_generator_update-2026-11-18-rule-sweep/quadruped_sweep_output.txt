@@ -1,0 +1,15 @@
+quadruped designs 2744 poses/design 81 seconds 47
+designs with contact
+category                     old      R7 R7+knee   R7+R8 R7+knee+R8
+ANY                         2744    2744    2744    2744    2744
+cross-hip-hip               1008       0       0       0       0
+cross-hip-hip|outward       1008       0       0       0       0
+cross-lower-lower           2744    2744    2744    2744    2744
+cross-lower-thigh           2699    2604    2604    2604    2604
+cross-thigh-thigh           2722    2604    2604    2604    2604
+design-pose contact records
+cross-hip-hip              29204       0       0       0       0
+cross-hip-hip|outward      10486       0       0       0       0
+cross-lower-lower          43285   42322   42322   42322   42322
+cross-lower-thigh           9030    8484    8484    8484    8484
+cross-thigh-thigh          11038    9408    9408    9408    9408

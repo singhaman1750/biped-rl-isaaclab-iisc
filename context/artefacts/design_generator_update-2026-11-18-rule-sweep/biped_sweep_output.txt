@@ -1,0 +1,19 @@
+biped designs 3375 poses/design 100 seconds 54
+designs with contact
+category                     old      R7 R7+knee   R7+R8 R7+knee+R8
+ANY                         3375    3375    3375    3375    3375
+cross-knee-knee               75     255       0     255       0
+cross-knee-knee|outward       75     255       0     255       0
+cross-lower-lower           3375    3375    3375    3375    3375
+cross-lower-thigh           1050    1125    1125    1125    1125
+cross-thigh-thigh           2895    3375    3375    3375    3375
+trunk-knee                    18      27      27       0       0
+trunk-knee|outward            18      27      27       0       0
+design-pose contact records
+cross-knee-knee              149     990       0     990       0
+cross-knee-knee|outward      149     990       0     990       0
+cross-lower-lower          24615   29475   28875   29475   28875
+cross-lower-thigh           2100    2700    2370    2700    2370
+cross-thigh-thigh           7395    9225    9195    9225    9195
+trunk-knee                   425    1207    1207       0       0
+trunk-knee|outward           333     923     923       0       0

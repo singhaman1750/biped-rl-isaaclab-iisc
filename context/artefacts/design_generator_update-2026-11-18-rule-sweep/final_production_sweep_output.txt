@@ -1,0 +1,22 @@
+biped designs 3375 poses/design 100 seconds 11
+designs with contact
+category                   final
+ANY                         3375
+cross-lower-lower           3375
+cross-lower-thigh           1125
+cross-thigh-thigh           3375
+design-pose contact records
+cross-lower-lower          28875
+cross-lower-thigh           2370
+cross-thigh-thigh           9195
+quadruped designs 2744 poses/design 81 seconds 9
+designs with contact
+category                   final
+ANY                         2744
+cross-lower-lower           2744
+cross-lower-thigh           2618
+cross-thigh-thigh           2604
+design-pose contact records
+cross-lower-lower          42088
+cross-lower-thigh           6940
+cross-thigh-thigh           8040

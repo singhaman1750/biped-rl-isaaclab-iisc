@@ -1,0 +1,181 @@
+diff -ru -x __pycache__ -x '*.egg-info' -x build design_generator/biped/builder.py /tmp/claude-0/-ws-tron1-rl-isaaclab-cozum/57c305e0-f534-415b-8940-16403ca6f288/scratchpad/proto/design_generator/biped/builder.py
+--- design_generator/biped/builder.py	2026-11-16 10:43:45.922354395 +0000
++++ /tmp/claude-0/-ws-tron1-rl-isaaclab-cozum/57c305e0-f534-415b-8940-16403ca6f288/scratchpad/proto/design_generator/biped/builder.py	2026-11-18 05:13:54.054616687 +0000
+@@ -127,6 +127,36 @@
+ # Rule 5 and Rule 6 of GEOMETRY_RULES.md. The trunk is as wide as twice the abduction actuator's diameter
+ # plus TRUNK_WIDTH_OFFSET, and the knee housing keeps HOUSING_MARGIN of clear x distance from the abduction
+ # housing, so that no actuator pick makes two housings of one leg intersect.
++ABAD_SWEEP_SIN = math.sin(min(max(abs(v) for v in ABAD_RANGE), math.pi / 2.0))
++
++HIP_FLUSH = False
++HIP_KNEE = False
++def _ext(A, B, t0, t1, sgn):
++    cands = [t0, t1]
++    ts = math.atan2(A * sgn, B * sgn)
++    if t0 < ts < t1: cands.append(ts)
++    return max(sgn * (A * math.sin(t) + B * math.cos(t)) for t in cands) * sgn
++def _knee_min(u, z, r, hl, lo, hi):
++    """min over theta of u*cos - z*sin - hl*cos - r*|sin|"""
++    P = u - hl
++    best = 1e9
++    for A, t0, t1 in ((-z - r, max(lo, 0.0), max(hi, 0.0)), (-z + r, min(lo, 0.0), min(hi, 0.0))):
++        cands = [t0, t1]
++        ts = math.atan2(-A, -P)
++        if t0 < ts < t1: cands.append(ts)
++        best = min(best, min(A * math.sin(t) + P * math.cos(t) for t in cands))
++    return best
++
++HIP_Z = False
++def _lift(r, hl, u, z, lo, hi):
++    best = -1e9
++    for A, t0, t1 in ((u + hl, max(lo, 0.0), max(hi, 0.0)), (u - hl, min(lo, 0.0), min(hi, 0.0))):
++        B = z + r
++        cands = [t0, t1]
++        ts = math.atan2(A, B)
++        if t0 < ts < t1: cands.append(ts)
++        best = max(best, max(A * math.sin(t) + B * math.cos(t) for t in cands))
++    return best
+ HOUSING_MARGIN = _C["HOUSING_MARGIN"]                 # m, minimum gap between the knee and abduction housings
+ TRUNK_WIDTH_OFFSET = _C["TRUNK_WIDTH_OFFSET"]         # m, trunk width less twice the abduction diameter
+ 
+@@ -298,6 +328,15 @@
+     r_abad, _ = _housing_dims(act_abad)
+     r_hip, _ = _housing_dims(act_hip)
+     own = 2.0 * act_abad.diameter + TRUNK_WIDTH_OFFSET
++    if HIP_FLUSH:
++        W = 2.0 * (2.0 * r_abad + r_hip * ABAD_SWEEP_SIN - spec.clearance_trunk2abadAct_y) + HOUSING_MARGIN
++        if HIP_KNEE:
++            ak = spec.actuators()[2]; rk, hk = _housing_dims(ak); _, hh = _housing_dims(act_hip)
++            u = hh + (2.0 * THIGH_BOX_HALF[1] + spec.clearance_hipAct2kneeAct_y) + hk
++            mn = _knee_min(u, spec.clearance_hipAct2kneeAct_z, rk, hk, ABAD_RANGE[0], ABAD_RANGE[1])
++            Y = HOUSING_MARGIN / 2.0 + r_abad - hh - mn
++            W = max(W, 2.0 * (Y + r_abad - spec.clearance_trunk2abadAct_y))
++        return max(own, W)
+     fit = 2.0 * (r_abad + r_hip - spec.clearance_trunk2abadAct_y
+                  - spec.clearance_abadAct2hipAct_y) + HOUSING_MARGIN
+     return max(own, fit)
+@@ -369,7 +408,9 @@
+     x_offset_abadAct2hipAct = -max(hl_abad + r_hip + spec.clearance_abadAct2hipAct_x,
+                                    hl_abad + r_knee + HOUSING_MARGIN + spec.clearance_hipAct2kneeAct_x)
+     under_sqrt = max((y_offset_trunk2abadAct + spec.clearance_abadAct2hipAct_y) ** 2 - r_hip ** 2, 0.0)
+-    y_offset_abadAct2hipAct = -sign * (math.sqrt(under_sqrt) - 2.0 * hl_hip)   # NOTE: inverted sign vs abad/knee -- established explicitly when this formula was first given (hip's y-offset is "negative for left, positive for right", the opposite of abad/knee's convention)
++    y_offset_abadAct2hipAct = -sign * (math.sqrt(under_sqrt) - 2.0 * hl_hip)
++    if HIP_FLUSH:
++        y_offset_abadAct2hipAct = sign * (hl_hip - r_abad + max(spec.clearance_abadAct2hipAct_y, 0.0))   # NOTE: inverted sign vs abad/knee -- established explicitly when this formula was first given (hip's y-offset is "negative for left, positive for right", the opposite of abad/knee's convention)
+     z_offset_abadAct2hipAct = spec.clearance_abadAct2hipAct_z
+     hip_pos_rel = np.array([x_offset_abadAct2hipAct, y_offset_abadAct2hipAct, z_offset_abadAct2hipAct])
+ 
+@@ -384,6 +425,18 @@
+     z_offset_kneeAct2thigh = spec.clearance_kneeAct2thigh_z
+     thigh_pos_rel = np.array([x_offset_kneeAct2thigh, y_offset_kneeAct2thigh, z_offset_kneeAct2thigh])
+ 
++    if HIP_Z:
++        lo, hi = ABAD_RANGE
++        zr = hip_pos_rel[2]; c = spec.trunk_thickness
++        need = -1e9
++        xh = abad_pos[0] + hip_pos_rel[0]; xk = xh + knee_pos_rel[0]
++        if abs(xh) - r_hip < spec.trunk_length / 2.0:
++            need = max(need, _lift(r_hip, hl_hip, 0.0, 0.0, lo, hi))
++        if abs(xk) - r_knee < spec.trunk_length / 2.0:
++            need = max(need, _lift(r_knee, hl_knee, sign * knee_pos_rel[1], knee_pos_rel[2], lo, hi))
++        if need > -1e8:
++            clr = max(spec.clearance_trunk2abadAct_z, need - r_abad + zr + HOUSING_MARGIN)
++            abad_pos = abad_pos.copy(); abad_pos[2] = -(c / 2.0 + r_abad + clr)
+     return {
+         "abad_pos": abad_pos, "hip_pos_rel": hip_pos_rel, "knee_pos_rel": knee_pos_rel,
+         "thigh_pos_rel": thigh_pos_rel,
+diff -ru -x __pycache__ -x '*.egg-info' -x build design_generator/quadruped/builder.py /tmp/claude-0/-ws-tron1-rl-isaaclab-cozum/57c305e0-f534-415b-8940-16403ca6f288/scratchpad/proto/design_generator/quadruped/builder.py
+--- design_generator/quadruped/builder.py	2026-11-16 10:43:45.924354394 +0000
++++ /tmp/claude-0/-ws-tron1-rl-isaaclab-cozum/57c305e0-f534-415b-8940-16403ca6f288/scratchpad/proto/design_generator/quadruped/builder.py	2026-11-18 05:13:54.054616687 +0000
+@@ -99,6 +99,35 @@
+ 
+ # The housing cylinders are no longer fixed shells. Each takes its radius and half length from the
+ # catalogue entry its joint picks, see _housing_dims, as the biped's do.
++
++HIP_FLUSH = False
++HIP_KNEE = False
++def _ext(A, B, t0, t1, sgn):
++    cands = [t0, t1]
++    ts = math.atan2(A * sgn, B * sgn)
++    if t0 < ts < t1: cands.append(ts)
++    return max(sgn * (A * math.sin(t) + B * math.cos(t)) for t in cands) * sgn
++def _knee_min(u, z, r, hl, lo, hi):
++    """min over theta of u*cos - z*sin - hl*cos - r*|sin|"""
++    P = u - hl
++    best = 1e9
++    for A, t0, t1 in ((-z - r, max(lo, 0.0), max(hi, 0.0)), (-z + r, min(lo, 0.0), min(hi, 0.0))):
++        cands = [t0, t1]
++        ts = math.atan2(-A, -P)
++        if t0 < ts < t1: cands.append(ts)
++        best = min(best, min(A * math.sin(t) + P * math.cos(t) for t in cands))
++    return best
++
++HIP_Z = False
++def _lift(r, hl, u, z, lo, hi):
++    best = -1e9
++    for A, t0, t1 in ((u + hl, max(lo, 0.0), max(hi, 0.0)), (u - hl, min(lo, 0.0), min(hi, 0.0))):
++        B = z + r
++        cands = [t0, t1]
++        ts = math.atan2(A, B)
++        if t0 < ts < t1: cands.append(ts)
++        best = max(best, max(A * math.sin(t) + B * math.cos(t) for t in cands))
++    return best
+ HOUSING_MARGIN = _C["HOUSING_MARGIN"]           # m, minimum gap between the knee and abduction housings (Rule 6)
+ TRUNK_WIDTH_OFFSET = _C["TRUNK_WIDTH_OFFSET"]   # m, trunk width less twice the abduction diameter (Rule 5)
+ 
+@@ -127,7 +156,8 @@
+ 
+ KNEE_RANGE = tuple(_C["KNEE_RANGE"])    # same all legs
+ ABAD_RANGE = tuple(_C["ABAD_RANGE"])    # same all legs
+-HIP_RANGE = tuple(_C["HIP_RANGE"])      # same all legs
++HIP_RANGE = tuple(_C["HIP_RANGE"])
++ABAD_SWEEP_SIN = math.sin(min(max(abs(v) for v in ABAD_RANGE), math.pi / 2.0))
+ 
+ # Home-pose hip/knee joint angles -- fixed, hand-set constants (degrees in
+ # JSON, converted to radians here), matching ConvexMPC-Biped's
+@@ -192,6 +222,16 @@
+     r_abad, _ = _housing_dims(act_abad)
+     _, hl_hip = _housing_dims(act_hip)
+     own = 2.0 * act_abad.diameter + TRUNK_WIDTH_OFFSET
++    if HIP_FLUSH:
++        r_hip = act_hip.diameter / 2.0
++        W = 2.0 * (2.0 * r_abad + r_hip * ABAD_SWEEP_SIN - spec.clearance_trunk2abadAct_y) + HOUSING_MARGIN
++        if HIP_KNEE:
++            ak = spec.actuators()[2]; rk, hk = _housing_dims(ak)
++            u = hl_hip + hk + spec.clearance_hipAct2kneeAct_y
++            mn = _knee_min(u, spec.clearance_hipAct2kneeAct_z, rk, hk, ABAD_RANGE[0], ABAD_RANGE[1])
++            Y = HOUSING_MARGIN / 2.0 + r_abad - hl_hip - mn
++            W = max(W, 2.0 * (Y + r_abad - spec.clearance_trunk2abadAct_y))
++        return max(own, W)
+     fit = 2.0 * (r_abad + hl_hip - spec.clearance_trunk2abadAct_y
+                  - spec.clearance_abadAct2hipAct_y) + HOUSING_MARGIN
+     return max(own, fit)
+@@ -399,7 +439,7 @@
+                  hl_abad + r_knee + HOUSING_MARGIN - sx * spec.clearance_hipAct2kneeAct_x)
+     hip_pos = (
+         sx * hip_dx,
+-        spec.clearance_abadAct2hipAct_y,
++        (sy * (hl_hip - r_abad + max(spec.clearance_abadAct2hipAct_y, 0.0)) if HIP_FLUSH else spec.clearance_abadAct2hipAct_y),
+         spec.clearance_abadAct2hipAct_z,
+     )
+     knee_pos = (
+@@ -416,6 +456,19 @@
+         sy * (hl_knee + THIGH_BOX_HALF[1] + spec.clearance_kneeAct2thigh_y),
+         spec.clearance_kneeAct2thigh_z,
+     )
++    if HIP_Z:
++        lo, hi = ABAD_RANGE if sy > 0 else (-ABAD_RANGE[1], -ABAD_RANGE[0])
++        c = trunk_thickness(act_abad); zr = hip_pos[2]
++        xh = abad_pos[0] + hip_pos[0]; xk = xh + knee_pos[0]
++        need = None
++        if abs(xh) - r_hip < spec.trunk_length / 2.0:
++            need = _lift(r_hip, hl_hip, 0.0, 0.0, lo, hi)
++        if abs(xk) - r_knee < spec.trunk_length / 2.0:
++            k = _lift(r_knee, hl_knee, sy * knee_pos[1], knee_pos[2], lo, hi)
++            need = k if need is None else max(need, k)
++        if need is not None:
++            zc = min(abad_pos[2] + zr, -c / 2.0 - HOUSING_MARGIN - need)
++            abad_pos = (abad_pos[0], abad_pos[1], zc - zr)
+     return {
+         "abad_pos": abad_pos, "hip_pos": hip_pos, "knee_pos": knee_pos, "thigh_pos": thigh_pos,
+         "r_abad": r_abad, "hl_abad": hl_abad, "r_hip": r_hip, "hl_hip": hl_hip,
