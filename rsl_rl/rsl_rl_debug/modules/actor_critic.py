@@ -17,6 +17,17 @@ class DebugActorCritic(ActorCritic):
                 ].unique()
                 print(f"NaN in {key} at indices:\n{nan_indices}")
 
+    def _network_weights(
+        self, network_names: tuple[str, ...]
+    ) -> dict[str, torch.Tensor]:
+        weights = {
+            f"{network_name}_{weight_name}": weight
+            for network_name in network_names
+            for weight_name, weight in getattr(self, network_name).named_parameters()
+        }
+        weights.update(self.named_parameters(recurse=False))
+        return weights
+
     def _update_distribution(self, obs: torch.Tensor) -> None:
         # The inherited act passes the concatenated and normalised actor input,
         # not the TensorDict its annotation names, so the per group check is
@@ -32,6 +43,7 @@ class DebugActorCritic(ActorCritic):
         )
 
     def act(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
+        self._report_nan(self._network_weights(("actor",)))
         self._report_nan(obs)
         obs = self.get_actor_obs(obs)
         obs = self.actor_obs_normalizer(obs)
@@ -39,6 +51,7 @@ class DebugActorCritic(ActorCritic):
         return self.distribution.sample()
 
     def evaluate(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
+        self._report_nan(self._network_weights(("critic",)))
         obs = self.get_critic_obs(obs)
         obs = self.critic_obs_normalizer(obs)
         value = self.critic(obs)

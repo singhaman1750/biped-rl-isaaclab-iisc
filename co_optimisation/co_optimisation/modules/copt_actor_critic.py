@@ -44,6 +44,22 @@ def report_nan(tensors: TensorDict | dict[str, torch.Tensor]) -> None:
             print(f"NaN in {key} at indices:\n{nan_indices}")
 
 
+def network_weights(
+    module: torch.nn.Module, network_names: tuple[str, ...]
+) -> dict[str, torch.Tensor]:
+    """Map <network_name>_<weight_name> to each weight of the named networks of module.
+
+    The parameters held directly by module, the action std of ActorCritic, keep their own name.
+    """
+    weights = {
+        f"{network_name}_{weight_name}": weight
+        for network_name in network_names
+        for weight_name, weight in getattr(module, network_name).named_parameters()
+    }
+    weights.update(module.named_parameters(recurse=False))
+    return weights
+
+
 class CoptMorALActorCritic(ActorCritic):
     """Actor-critic whose estimator is configured entirely by observation sets.
 
@@ -171,12 +187,14 @@ class CoptMorALActorCritic(ActorCritic):
     def act(
         self, obs: TensorDict, **kwargs: dict[str, Any]
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        self._report_nan(network_weights(self, ("actor", "estimator")))
         actor_obs, encoder_output = self._actor_input(obs)
         self._report_nan(self._with_encoder_output(obs, encoder_output))
         self._update_distribution(actor_obs)
         return self.distribution.sample(), encoder_output
 
     def evaluate(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
+        self._report_nan(network_weights(self, ("critic",)))
         critic_obs = self.critic_obs_normalizer(self.get_critic_obs(obs))
         value = self.critic(critic_obs)
         self._report_nan({"normalised critic input": critic_obs, "value": value})
@@ -232,10 +250,12 @@ class CoptActorCritic(ActorCritic):
                     "std": self.distribution.stddev})
 
     def act(self, obs: TensorDict, **kwargs: dict[str, Any]) -> tuple[torch.Tensor, None]:
+        report_nan(network_weights(self, ("actor",)))
         report_nan({group: obs[group] for group in self.obs_groups["policy"]})
         return super().act(obs, **kwargs), None
 
     def evaluate(self, obs: TensorDict, **kwargs: dict[str, Any]) -> torch.Tensor:
+        report_nan(network_weights(self, ("critic",)))
         critic_obs = self.critic_obs_normalizer(self.get_critic_obs(obs))
         value = self.critic(critic_obs)
         report_nan({"normalised critic input": critic_obs, "value": value})
