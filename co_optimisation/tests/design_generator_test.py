@@ -227,7 +227,7 @@ def test_cma_search_is_the_lengths_and_the_pose(family, out_dir):
         gen = cls(family=family, num_individuals=N, output_dir=out_dir)
         assert gen.num_params == 4, cls.__name__
         # The geometry keys alone, a gain scale of CMAES_PARAM_KEYS being searched only where named.
-        assert gen.param_keys == list(U.SPEC_PARAM_FIELDS)
+        assert gen.param_keys == GEOMETRY_KEYS
 
 
 # ---------------------------------------------------------------------------
@@ -239,13 +239,14 @@ GAIN_RANGES = {
     "knee_damping_scale": ("scale", (0.750, 1.250)),
 }
 # The ranges alone decide what is searched, so a search of the geometry and the gains names both.
-GEOMETRY_AND_GAINS = {**{k: U.DEFAULT_PARAM_RANGES[k] for k in U.SPEC_PARAM_FIELDS}, **GAIN_RANGES}
+GEOMETRY_KEYS = [k for k in U.SPEC_PARAM_FIELDS if k not in U.GAIN_PARAM_KEYS]
+GEOMETRY_AND_GAINS = {**{k: U.DEFAULT_PARAM_RANGES[k] for k in GEOMETRY_KEYS}, **GAIN_RANGES}
 CONTINUOUS =(U.CMAESDesignGenerator, U.GrowingDesignDistCMAESDesignGenerator, U.CatCMAESDesignGenerator)
 
 
-def _catalogue_params(family, spec) -> dict[str, dict]:
-    """The unscaled simulator parameters of every group of *spec*, as the catalogue states them."""
-    return {g: a.sim_params() for g, a in zip(U.FAMILIES[family].groups, spec.actuators())}
+def _gain(family, group, key, scale=1.0):
+    """The baseline's gain of *group* times *scale*, unrounded."""
+    return getattr(U.FAMILIES[family].baseline(), f"{group}_{key}") * scale
 
 
 def _phases(cls, family, out_dir, **kw):
@@ -261,35 +262,31 @@ def _phases(cls, family, out_dir, **kw):
 @pytest.mark.parametrize("cls", CONTINUOUS)
 def test_named_gain_scales_are_searched_and_applied(cls, family, out_dir):
     gen, late, search = _phases(cls, family, out_dir, param_ranges=GEOMETRY_AND_GAINS)
-    assert gen.param_keys == [*U.SPEC_PARAM_FIELDS, "hip_stiffness_scale", "knee_damping_scale"]
+    assert gen.param_keys == [*GEOMETRY_KEYS, "hip_stiffness_scale", "knee_damping_scale"]
     assert gen.num_params == 6
     for pop in (late, search):
         drawn = []
         for spec, act, params in zip(pop.get_specs(), pop.get_actuator_params(), pop.get_parameters()):
-            base = _catalogue_params(family, spec)
-            assert act["hip"]["stiffness"] == round(base["hip"]["stiffness"] * params["hip_stiffness_scale"], 6)
-            assert act["knee"]["damping"] == round(base["knee"]["damping"] * params["knee_damping_scale"], 6)
-            # A scale left unnamed leaves its gain at the catalogue's.
-            assert act["hip"]["damping"] == round(base["hip"]["damping"], 6)
-            assert act["abad"]["stiffness"] == round(base["abad"]["stiffness"], 6)
+            assert act["hip"]["stiffness"] == _gain(family, "hip", "stiffness", params["hip_stiffness_scale"])
+            assert act["knee"]["damping"] == _gain(family, "knee", "damping", params["knee_damping_scale"])
+            assert act["hip"]["stiffness"] == spec.hip_stiffness
+            # A scale left unnamed leaves its gain out, to the environment.
+            assert "damping" not in act["hip"] and "stiffness" not in act["abad"]
             drawn.append(params["hip_stiffness_scale"])
         assert any(v != 1.0 for v in drawn)
 
 
 @pytest.mark.parametrize("family", FAMILIES)
 @pytest.mark.parametrize("cls", CONTINUOUS)
-def test_no_named_gain_scale_keeps_the_catalogue_gains_and_the_geometry_draws(cls, family, out_dir):
+def test_no_named_gain_scale_leaves_every_gain_to_the_environment_and_keeps_the_geometry_draws(cls, family, out_dir):
     gen, late, search = _phases(cls, family, out_dir)
     for pop in (late, search):
         for spec, act in zip(pop.get_specs(), pop.get_actuator_params()):
-            base = _catalogue_params(family, spec)
-            for group, params in act.items():
-                for key in ("stiffness", "damping"):
-                    assert params[key] == round(base[group][key], 6)
+            assert not any(k in params for params in act.values() for k in ("stiffness", "damping"))
     # Naming gain scales appends dimensions after the geometry, so the random phase's geometry draws are unchanged.
     _, named, _ = _phases(cls, family, str(pathlib.Path(out_dir) / "named"), param_ranges=GEOMETRY_AND_GAINS)
     for a, b in zip(late.get_parameters(), named.get_parameters()):
-        assert all(a[k] == b[k] for k in U.SPEC_PARAM_FIELDS)
+        assert all(a[k] == b[k] for k in GEOMETRY_KEYS)
 
 
 @pytest.mark.parametrize("family", FAMILIES)
@@ -313,13 +310,12 @@ def test_the_fine_tune_applies_the_mean_gain_scales(cls, family, out_dir):
     values, _ = gen.optimised_design()
     pop = gen.generate_population(2)
     for spec, act in zip(pop.get_specs(), pop.get_actuator_params()):
-        base = _catalogue_params(family, spec)
-        assert act["hip"]["stiffness"] == round(base["hip"]["stiffness"] * values["hip_stiffness_scale"], 6)
+        assert act["hip"]["stiffness"] == _gain(family, "hip", "stiffness", values["hip_stiffness_scale"])
 
 
 @pytest.mark.parametrize("cls", CONTINUOUS)
 def test_a_gain_scale_of_a_missing_group_is_refused(cls, out_dir):
-    with pytest.raises(ValueError, match="names no joint group"):
+    with pytest.raises(ValueError, match="names no field"):
         cls(family="quadruped", num_individuals=N, output_dir=out_dir,
             param_ranges={"ankle_stiffness_scale": ("scale", (0.8, 1.2))})
 
@@ -370,10 +366,9 @@ def test_the_actuator_search_tunes_the_picks_and_their_gains_alone(family, out_d
         for spec, act, params in zip(pop.get_specs(), pop.get_actuator_params(), pop.get_parameters()):
             # The baseline's geometry, emitted as drawn, every pick refused by no narrowed tolerance.
             assert (spec.thigh_length, spec.shank_length) == (base.thigh_length, base.shank_length)
-            assert params["feasible"] and not set(U.SPEC_PARAM_FIELDS) & set(params)
-            cat = _catalogue_params(family, spec)
-            assert act["hip"]["stiffness"] == round(cat["hip"]["stiffness"] * params["hip_stiffness_scale"], 6)
-            assert act["knee"]["damping"] == round(cat["knee"]["damping"] * params["knee_damping_scale"], 6)
+            assert params["feasible"] and not set(GEOMETRY_KEYS) & set(params)
+            assert act["hip"]["stiffness"] == _gain(family, "hip", "stiffness", params["hip_stiffness_scale"])
+            assert act["knee"]["damping"] == _gain(family, "knee", "damping", params["knee_damping_scale"])
     picks = {tuple(p[g] for g in gen.family.groups) for p in late.get_parameters()}
     assert len(picks) > 1
     gen.update_with_fitness([float(i) for i in range(N)])
@@ -600,30 +595,148 @@ def test_every_body_carries_a_mass(family, out_dir):
 IDENTIFIED = {
     "biped": {
         "TRON1-ABAD": dict(effort_limit=60.0, velocity_limit=23.0, saturation_effort=402.0,
-                           armature=6.9e-5 * 81, stiffness=55.0, damping=13.5,
+                           armature=6.9e-5 * 81,
                            friction_static=0.3, friction_dynamic=0.02, activation_vel=0.1),
         "TRON1-HIP": dict(effort_limit=60.0, velocity_limit=20.0, saturation_effort=443.0,
-                          armature=9.4e-5 * 81, stiffness=80.0, damping=13.0,
+                          armature=9.4e-5 * 81,
                           friction_static=0.3, friction_dynamic=0.02, activation_vel=0.1),
         "TRON1-KNEE": dict(effort_limit=90.0, velocity_limit=14.0, saturation_effort=560.0,
-                           armature=1.5e-4 * 81, stiffness=60.0, damping=4.0,
+                           armature=1.5e-4 * 81,
                            friction_static=0.8, friction_dynamic=0.02, activation_vel=0.1),
         "TRON1-ANKLE": dict(effort_limit=40.0, velocity_limit=20.0, saturation_effort=402.0,
-                            armature=6.9e-5 * 81, stiffness=10.0, damping=0.5,
+                            armature=6.9e-5 * 81,
                             friction_static=0.1, friction_dynamic=0.02, activation_vel=0.1),
     },
     "quadruped": {
         "A1-ABAD": dict(effort_limit=23.622511, velocity_limit=30.0, saturation_effort=158.0,
-                        armature=0.01, stiffness=40.0, damping=1.2,
+                        armature=0.01,
                         friction_static=0.2, friction_dynamic=0.02, activation_vel=0.1),
         "A1-HIP": dict(effort_limit=23.622511, velocity_limit=30.0, saturation_effort=158.0,
-                       armature=0.01, stiffness=40.0, damping=1.1,
+                       armature=0.01,
                        friction_static=0.2, friction_dynamic=0.02, activation_vel=0.1),
         "A1-KNEE": dict(effort_limit=35.238, velocity_limit=20.0, saturation_effort=236.0,
-                        armature=0.01, stiffness=50.0, damping=0.9,
+                        armature=0.01,
                         friction_static=0.2, friction_dynamic=0.02, activation_vel=0.1),
     },
 }
+
+
+# The gains of the baseline robot's identified configuration, which DesignSpec defaults to and
+# variable_params.json states, environments/assets/config/{solefoot,quadruped}_identified_cfg.py.
+BASELINE_GAINS = {
+    "biped": {"abad": (55.0, 13.5), "hip": (80.0, 13.0), "knee": (60.0, 4.0), "ankle": (10.0, 0.5)},
+    "quadruped": {"abad": (40.0, 1.2), "hip": (40.0, 1.1), "knee": (50.0, 0.9)},
+}
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_baseline_specification_carries_the_identified_gains(family):
+    fam = U.FAMILIES[family]
+    spec = fam.baseline()
+    default = type(spec).from_dict({k: v for k, v in spec.to_dict().items() if not k.endswith(("_stiffness", "_damping"))})
+    for group, (stiffness, damping) in BASELINE_GAINS[family].items():
+        for s in (spec, default):
+            assert getattr(s, f"{group}_stiffness") == stiffness and getattr(s, f"{group}_damping") == damping
+    gen = U.FixedDesignGenerator({}, family=family, output_dir="/tmp/copt_gain_default")
+    act = gen._actuator_params(spec, _all_gains(family))
+    for group, (stiffness, damping) in BASELINE_GAINS[family].items():
+        assert (act[group]["stiffness"], act[group]["damping"]) == (stiffness, damping)
+    assert set(BASELINE_GAINS[family]) == set(fam.groups)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_gains_follow_variable_params_json(family, out_dir, tmp_path):
+    import json
+    fam = U.FAMILIES[family]
+    path = pathlib.Path(fam.module.__file__).parent / "variable_params.json"
+    data = json.loads(path.read_text())
+    edited = {k: v * 1.5 + 1.0 for k, v in data.items() if k.endswith(("_stiffness", "_damping"))}
+    assert set(edited) == {f"{g}_{k}" for g in fam.groups for k in ("stiffness", "damping")}
+    custom = tmp_path / "variable_params.json"
+    custom.write_text(json.dumps({**data, **edited}))
+    gen = U.FixedDesignGenerator({}, family=family, output_dir=out_dir, variable_params_path=str(custom))
+    named = _all_gains(family)
+    for picks in ({}, {g: fam.catalog()[-1].name for g in fam.groups}):
+        act = gen._actuator_params(gen._spec_from_parameters(named, picks), named)
+        for g in fam.groups:
+            assert act[g]["stiffness"] == edited[f"{g}_stiffness"] and act[g]["damping"] == edited[f"{g}_damping"]
+    # A scale multiplies the edited default and not the catalogue's gain.
+    act = gen._actuator_params(gen._spec_from_parameters({"hip_damping_scale": 1.1}), {"hip_damping_scale": 1.1})
+    assert act["hip"]["damping"] == edited["hip_damping"] * 1.1
+    # The unedited file is still the baseline's.
+    plain = U.FixedDesignGenerator({}, family=family, output_dir=out_dir)._actuator_params(
+        U.FixedDesignGenerator({}, family=family, output_dir=out_dir).baseline, named)
+    assert all((plain[g]["stiffness"], plain[g]["damping"]) == BASELINE_GAINS[family][g] for g in fam.groups)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_a_pick_does_not_change_the_baseline_gains_of_its_joint(family, out_dir):
+    gen = U.FixedDesignGenerator({}, family=family, output_dir=out_dir)
+    for group in gen.family.groups:
+        for entry in gen.family.catalog():
+            spec = gen._spec_from_parameters(_all_gains(family), {group: entry.name})
+            act = gen._actuator_params(spec, _all_gains(family))[group]
+            assert (act["stiffness"], act["damping"]) == BASELINE_GAINS[family][group], (group, entry.name)
+            assert {k: v for k, v in act.items() if k not in ("stiffness", "damping")} == {
+                k: float(v) for k, v in entry.sim_params().items()}
+
+
+def _all_gains(family, scale=1.0):
+    """Every gain scale of the family named at *scale*, so that every gain reaches the actuator parameters."""
+    fields = U.FAMILIES[family].baseline().to_dict()
+    return {k: scale for k in U.GAIN_PARAM_KEYS if U.SPEC_PARAM_FIELDS[k] in fields}
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_a_gain_that_is_not_searched_is_left_to_the_environment(family, out_dir):
+    gen = U.FixedDesignGenerator({}, family=family, output_dir=out_dir)
+    spec = gen._spec_from_parameters({"hip_stiffness_scale": 1.1})
+    act = gen._actuator_params(spec, {"hip_stiffness_scale": 1.1})
+    assert act["hip"]["stiffness"] == BASELINE_GAINS[family]["hip"][0] * 1.1
+    gains = {(g, k) for g, p in act.items() for k in ("stiffness", "damping") if k in p}
+    assert gains == {("hip", "stiffness")}
+    assert not any(k in p for p in gen._actuator_params(spec).values() for k in ("stiffness", "damping"))
+    base = gen.base_record()
+    assert not any(k.endswith(("_actuator_stiffness", "_actuator_damping")) for k in base)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_a_gain_scale_is_applied_once_whatever_the_pick(family, out_dir):
+    gen = U.FixedDesignGenerator({}, family=family, output_dir=out_dir)
+    for entry in gen.family.catalog():
+        spec = gen._spec_from_parameters({"hip_stiffness_scale": 1.1}, {"hip": entry.name})
+        want = BASELINE_GAINS[family]["hip"][0] * 1.1
+        assert spec.hip_stiffness == want
+        assert gen._actuator_params(spec, {"hip_stiffness_scale": 1.1})["hip"]["stiffness"] == want
+
+
+def test_the_quadruped_has_no_ankle_gain(out_dir):
+    ranges = {"ankle_stiffness_scale": ("scale", (0.8, 1.2))}
+    spec = U.FixedDesignGenerator({}, family="quadruped", output_dir=out_dir)._spec_from_parameters(
+        {"ankle_stiffness_scale": 1.1})
+    assert not hasattr(spec, "ankle_stiffness")
+    assert hasattr(U.FixedDesignGenerator({}, family="biped", output_dir=out_dir)._spec_from_parameters({}), "ankle_stiffness")
+    pop = U.RandomDesignGenerator(family="quadruped", num_individuals=2, output_dir=out_dir).generate_population(0)
+    assert all(not hasattr(s, "ankle_stiffness") for s in pop.get_specs())
+    with pytest.raises(ValueError, match="names no field"):
+        U.CMAESDesignGenerator(family="quadruped", num_individuals=N, output_dir=out_dir, param_ranges=ranges)
+    U.CMAESDesignGenerator(family="biped", num_individuals=N, output_dir=out_dir, param_ranges=ranges)
+
+
+def test_the_spec_fields_are_the_search_keys():
+    assert tuple(U.SPEC_PARAM_FIELDS) == U.CMAES_PARAM_KEYS
+    assert tuple(U.SPEC_PARAM_FIELDS)[-len(U.GAIN_PARAM_KEYS):] == U.GAIN_PARAM_KEYS
+    biped = {f for f in U.FAMILIES["biped"].baseline().to_dict()}
+    quad = {f for f in U.FAMILIES["quadruped"].baseline().to_dict()}
+    assert set(U.SPEC_PARAM_FIELDS.values()) <= biped
+    assert set(U.SPEC_PARAM_FIELDS.values()) - quad == {"ankle_stiffness", "ankle_damping"}
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_catalogue_states_no_gain(family):
+    for entry in U.FAMILIES[family].full_catalog():
+        assert not hasattr(entry, "stiffness") and not hasattr(entry, "damping")
+        assert not {"stiffness", "damping"} & set(entry.sim_params())
 
 
 @pytest.mark.parametrize("family", FAMILIES)
@@ -647,8 +760,8 @@ def test_unstated_simulator_fields_fall_back_rather_than_fabricate(family):
     assert got["velocity_limit"] == 20.0
     assert got["saturation_effort"] == pytest.approx(10.0 * DEFAULT_STALL_RATIO)
     assert got["armature"] == 0.0
-    # friction and the two gains are omitted rather than invented
-    assert not {"friction_static", "stiffness", "damping"} & set(got)
+    # friction is omitted rather than invented
+    assert "friction_static" not in got
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 The identified actuators, TRON1-* in the biped catalogue and A1-* in the quadruped's, are those every
 training run to date used, and they are left as they are. Every other entry receives, in its own
-definition, the stiffness, damping, friction triple and joint side armature of the identified entry
+definition, the friction triple and joint side armature of the identified entry
 nearest to it in log peak torque, log peak speed and log mass, the three specifications every entry
 states, a tie going to the earlier identified entry in the catalogue. An entry that already states a
 key keeps its own value. See plans/design_filtering.md section 7.
@@ -16,7 +16,7 @@ import os
 
 IDENTIFIED = {"biped": "TRON1-", "quadruped": "A1-"}
 SPECS = ("peak_torque", "peak_speed", "mass")
-COPIED = ("stiffness", "damping", "friction_static", "friction_dynamic", "activation_vel")
+COPIED = ("friction_static", "friction_dynamic", "activation_vel")
 DATE = "2026-11-12"
 
 
@@ -47,8 +47,8 @@ def fill(catalog: dict, prefix: str) -> list[tuple[str, str, float]]:
                 out.update({k: v for k, v in values.items() if k not in entry})
             out[key] = value
         out.update({k: v for k, v in values.items() if k not in out})
-        if "Simulator parameters (stiffness" not in out.get("notes", ""):
-            out["notes"] = (out.get("notes", "") + f" Simulator parameters (stiffness, damping, friction, armature) copied"
+        if "Simulator parameters (" not in out.get("notes", ""):
+            out["notes"] = (out.get("notes", "") + f" Simulator parameters (friction, armature) copied"
                             f" from {ref['name']}, the nearest identified actuator in peak torque, peak speed and mass,"
                             f" pending identification ({DATE}).").strip()
         entries[i] = out

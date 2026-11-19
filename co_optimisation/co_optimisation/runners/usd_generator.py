@@ -24,8 +24,9 @@ existed is unchanged.
   angle that :func:`solve_nominal_pose` finds for the design's lengths and
   knee.  Checked by :func:`check_nominal_pose` before the specification is
   emitted, the biped's ankle offset being computed so that the sole stays flat.
-- Per-group stiffness and damping scales, applied post-spawn via
-  ``apply_actuator_params``.  Ranges are the symmetric equivalents of the
+- Per-group stiffness and damping scales, multiplying the baseline's gain
+  field of the specification (``DesignSpec.hip_stiffness`` and so on, never the
+  picked actuator's) and written to the simulator via ``apply_actuator_params``.  Ranges are the symmetric equivalents of the
   runtime domain-randomisation absolute ranges, an asymmetric absolute range
   being resolved by taking the smaller half: ``"abad_stiffness_scale"``
   (0.909, 1.091), ``"abad_damping_scale"`` (0.889, 1.111),
@@ -520,13 +521,21 @@ CMAES_PARAM_KEYS: tuple[str, ...] = (
     *GAIN_PARAM_KEYS,
 )
 
-# The DesignSpec field each spec-bound parameter writes. A parameter absent here
-# (the stiffness and damping scales) is consumed by _actuator_params instead.
+# The DesignSpec field each searched parameter writes, a length, a pose offset or the gain of a joint
+# group. _spec_from_parameters applies each, and _actuator_params hands the gains to the simulator.
 SPEC_PARAM_FIELDS: dict[str, str] = {
     "thigh_length_scale": "thigh_length",
     "shank_length_scale": "shank_length",
     "thigh_bend_offset": "thigh_bend_offset",
     "knee_bend_offset": "knee_bend_offset",
+    "abad_stiffness_scale": "abad_stiffness",
+    "abad_damping_scale": "abad_damping",
+    "hip_stiffness_scale": "hip_stiffness",
+    "hip_damping_scale": "hip_damping",
+    "knee_stiffness_scale": "knee_stiffness",
+    "knee_damping_scale": "knee_damping",
+    "ankle_stiffness_scale": "ankle_stiffness",
+    "ankle_damping_scale": "ankle_damping",
 }
 
 DEPRECATED_PARAM_KEYS = (
@@ -871,9 +880,11 @@ class DesignGeneratorBase(ABC):
         """
         fields = self.baseline.to_dict()
         for name, field in SPEC_PARAM_FIELDS.items():
-            if name in parameters:
+            if name in parameters and field in fields:
                 kind, value = self.param_ranges[name][0], parameters[name]
-                fields[field] = round(fields[field] * value, 2) if kind == "scale" else fields[field] + value
+                scaled = fields[field] * value if kind == "scale" else fields[field] + value
+                # A length is quantised to two decimals, a gain is not.
+                fields[field] = round(scaled, 2) if kind == "scale" and name not in GAIN_PARAM_KEYS else scaled
         for group, name in (picks or {}).items():
             fields[self.family.spec_fields[group]] = name
         design_spec = self.family.module.generate.DesignSpec
@@ -885,16 +896,20 @@ class DesignGeneratorBase(ABC):
         return design_spec.from_dict({**fields, **offsets, "body_height": self.family.nominal(spec)["height"]})
 
     def _actuator_params(self, spec, parameters: dict[str, float] | None = None) -> dict[str, dict]:
-        """Simulator-side actuator parameters for every group of one design."""
-        parameters = parameters or {}
+        """Simulator-side actuator parameters for every group of one design.
+
+        The torque envelope, armature and friction are the picked actuator's. A gain is the specification's
+        field of the group, the scale already applied by _spec_from_parameters, where *parameters* names
+        it, and is left out otherwise, so that the environment's own gains, randomised at startup, stay.
+        """
         out: dict[str, dict] = {}
         for group, actuator in zip(self.family.groups, spec.actuators()):
             params = actuator.sim_params()
-            for key in ("stiffness", "damping"):
-                scale_key = f"{group}_{key}_scale"
-                if key in params and scale_key in parameters:
-                    params[key] *= parameters[scale_key]
-            out[group] = {k: round(float(v), 6) for k, v in params.items()}
+            for name in GAIN_PARAM_KEYS:
+                field = SPEC_PARAM_FIELDS[name]
+                if name in (parameters or {}) and field.startswith(f"{group}_") and hasattr(spec, field):
+                    params[field.removeprefix(f"{group}_")] = getattr(spec, field)
+            out[group] = {k: float(v) for k, v in params.items()}
         return out
 
     # ---- emission and conversion --------------------------------------------
@@ -998,7 +1013,7 @@ class FixedDesignGenerator(DesignGeneratorBase):
     replayed robot is the one the search emitted. The base class's default ranges carry the
     scale or offset kind of every CMAES_PARAM_KEYS entry and the thigh_bend_offset range that
     _lean_max reads, both as train.py gave them to the run. Gain scales among *parameters* are
-    applied to the actuators, so a replayed design keeps the gains its search applied.
+    applied to the specification's gains, so a replayed design keeps the gains its search applied.
     """
 
     def __init__(self, parameters: dict[str, float], **kwargs):
@@ -1089,11 +1104,12 @@ class CMAESDesignGenerator(DesignGeneratorBase):
         # so the ranges alone decide what is tuned. No ranges at all search the four geometry keys, the
         # default every caller passing none has always had. The argument is read rather than
         # self.param_ranges, into which _typed_ranges merged every default.
-        named = param_ranges or dict.fromkeys(SPEC_PARAM_FIELDS)
+        named = param_ranges or dict.fromkeys(k for k in SPEC_PARAM_FIELDS if k not in GAIN_PARAM_KEYS)
         self.param_ranges = {k: self.param_ranges[k] for k in CMAES_PARAM_KEYS if k in named}
-        for key in self.param_ranges.keys() - SPEC_PARAM_FIELDS.keys():
-            if key.split("_", 1)[0] not in self.family.groups:
-                raise ValueError(f"{key} names no joint group of the {family} family, {self.family.groups}")
+        spec_fields = self.baseline.to_dict()
+        for key in self.param_ranges:
+            if SPEC_PARAM_FIELDS[key] not in spec_fields:
+                raise ValueError(f"{key} names no field of the {family} specification")
 
         self.param_keys: list[str] = [k for k in self.param_ranges if k in self.searched_keys]
         self.num_params: int = len(self.param_keys)

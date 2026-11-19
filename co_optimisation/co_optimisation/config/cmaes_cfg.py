@@ -46,8 +46,8 @@ class CMAESCfg:
     }
     """The searched parameters and their ranges, in the form usd_generator.DEFAULT_PARAM_RANGES takes.
     Its keys alone decide what is searched, a geometry key left out keeping the baseline's value. A gain
-    scale of usd_generator.GAIN_PARAM_KEYS, such as "knee_damping_scale", is searched and applied to the
-    actuators where named, and one naming no joint group of the robot raises."""
+    scale of usd_generator.GAIN_PARAM_KEYS, such as "knee_damping_scale", scales the baseline's gain of 
+    that joint group where named, and one naming a field the robot's specification lacks raises."""
 
     sigma0: float = 0.25
     """Initial step size of CMA-ES in the unit box."""

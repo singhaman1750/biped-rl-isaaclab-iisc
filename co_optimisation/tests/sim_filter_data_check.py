@@ -69,13 +69,17 @@ def check(runner, where):
         for group, act in art.actuators.items():
             entry = catalog[getattr(spec, gen.family.spec_fields[group])]
             chosen.append(entry.name)
-            expect = entry.sim_params()
+            # A gain the design does not search is the environment's own, randomised at startup, and is
+            # held by the actuator without being in the design's parameters.
+            expect = {**entry.sim_params(), **{k: params[group][k] for k in ("stiffness", "damping") if k in params[group]}}
             for key in keys:
-                worst["params_vs_catalog"] = max(worst["params_vs_catalog"], abs(params[group][key] - expect[key]))
+                if key in expect:
+                    worst["params_vs_catalog"] = max(worst["params_vs_catalog"], abs(params[group][key] - expect[key]))
             sat = act._saturation_effort
             for k, j in enumerate(_ids(act, art)):
                 for key in keys:
-                    worst[key] = max(worst[key], abs(_value(getattr(act, key), e, k) - expect[key]))
+                    if key in expect:
+                        worst[key] = max(worst[key], abs(_value(getattr(act, key), e, k) - expect[key]))
                 worst["saturation_effort"] = max(worst["saturation_effort"], abs(_value(sat, e, k) - expect["saturation_effort"]))
                 worst["armature"] = max(worst["armature"], abs(float(armature[e, j]) - expect["armature"]))
                 name = art.joint_names[j]

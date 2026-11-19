@@ -19,7 +19,7 @@ from design_generator.common.actuator_catalog import SIM_PARAM_KEYS, is_sim_comp
 
 ORIGINAL = os.environ.get("ORIGINAL_DESIGN_GENERATOR")
 FAMILIES = {"biped": (biped, "TRON1-"), "quadruped": (quadruped, "A1-")}
-COPIED = ("stiffness", "damping", "friction_static", "friction_dynamic", "activation_vel", "armature")
+COPIED = ("friction_static", "friction_dynamic", "activation_vel", "armature")
 
 
 def _original(family):

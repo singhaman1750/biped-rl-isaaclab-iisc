@@ -15,6 +15,7 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.envs.mdp.events import randomize_actuator_gains
 from isaaclab.sim.utils.stage import get_current_stage
 from pxr import Usd
 
@@ -204,6 +205,14 @@ class respawn_robots:
                             term_instance.asset = new_articulation
                         if hasattr(term_instance, "robot"):
                             term_instance.robot = new_articulation
+
+        # The new articulation's actuators carry the configuration's gains, so the startup gain
+        # randomisation is applied to them again, and a design's actuator parameters then replace
+        # only the gains it searches.
+        if event_manager is not None:
+            for term_cfg in event_manager._mode_term_cfgs.get("startup", []):
+                if isinstance(term_cfg.func, randomize_actuator_gains):
+                    term_cfg.func(env, None, **term_cfg.params)
 
         # ------------------------------------------------------------------
         # Step 10: Re-bind CommandManager term asset references
