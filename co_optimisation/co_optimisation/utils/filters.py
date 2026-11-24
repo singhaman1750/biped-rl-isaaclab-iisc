@@ -22,6 +22,10 @@ class FilterBase(ABC):
         family: The design generator family, "biped" or "quadruped", for a filter that needs it.
     """
 
+    # True for a filter whose filter() also takes the design records, one dict per document, as
+    # DesignGeneratorBase.design_record writes them. False, the default, keeps filter(xml_files).
+    uses_records: bool = False
+
     def __init__(self, family: str) -> None:
         self.family = family
         self.statistics: dict = {}
@@ -397,7 +401,107 @@ class StandingFilter(FilterBase):
         }
 
 
-FILTERS: dict[str, type[FilterBase]] = {"StandingFilter": StandingFilter}
+
+# ---------------------------------------------------------------------------
+# Actuator adequacy filter
+# ---------------------------------------------------------------------------
+
+
+class ActuatorAdequacyFilter(FilterBase):
+    """Refuse a design whose picked actuators cannot carry the body they drive under the task's fixed gains.
+
+    Robot agnostic. Every quantity is read per joint class from the emitted MJCF, the classes being whatever the
+    family's builder sets on its joints (abad, hip, knee for the quadruped, abad, hip, knee, ankle for the biped),
+    and every threshold is a dictionary keyed by joint class, a class it does not name being left untested. No
+    family's numbers are built in, each family's CMAESCfg.filter_params supplying its own.
+
+    Three tests per joint class, each read at the nominal pose q = 0, where standing_statics balances the weight on
+    every ground contact of the document.
+      torque: the static torque times peak_factor, the gait's peak foot force over the all contact static share,
+              against the motor's forcerange.
+      sag:    the static torque over the class's stiffness, the steady state PD deflection the policy must cancel
+              with an action offset, the gains being the environment's and not the pick's.
+      speed:  the picked velocity_limit, read from the design record key "<class>_actuator_velocity_limit",
+              against min_velocity. A record without the key passes, so the test needs the design record.
+    See /ws/plans/quadruped_copt_improvement2.md section 6.1.
+
+    Args:
+        family: The design generator family, unused by the tests.
+        stiffness: Kp of each joint class as the environment configures it, required by max_sag_rad.
+        peak_factor: Peak foot force of the gait the policy is expected to learn over the static share.
+        max_peak_load: Largest peak torque as a fraction of forcerange, per joint class.
+        max_sag_rad: Largest static PD deflection in radians, per joint class.
+        min_velocity: Smallest velocity_limit in rad/s, per joint class.
+    """
+
+    uses_records = True
+
+    def __init__(
+        self,
+        family: str,
+        stiffness: dict | None = None,
+        peak_factor: float = 1.0,
+        max_peak_load: dict | None = None,
+        max_sag_rad: dict | None = None,
+        min_velocity: dict | None = None,
+    ) -> None:
+        super().__init__(family)
+        self.stiffness = {k: float(v) for k, v in (stiffness or {}).items()}
+        self.peak_factor = float(peak_factor)
+        self.max_peak_load = {k: float(v) for k, v in (max_peak_load or {}).items()}
+        self.max_sag_rad = {k: float(v) for k, v in (max_sag_rad or {}).items()}
+        self.min_velocity = {k: float(v) for k, v in (min_velocity or {}).items()}
+        missing = sorted(set(self.max_sag_rad) - set(self.stiffness))
+        if missing:
+            raise ValueError(f"max_sag_rad names joint classes {missing} that stiffness does not give a Kp for")
+
+    def evaluate(self, xml_files: list[str], records: list[dict] | None = None) -> dict:
+        """Every quantity the filter decides on, per design and joint class."""
+        models = [MjcfStatics(path) for path in xml_files]
+        if any(m.topology() != models[0].topology() for m in models[1:]):
+            raise ValueError("the documents of one population must share one topology")
+        stance = standing_statics(models, np.zeros((len(models), 1, len(models[0].joint_names))))
+        tau = np.abs(stance["torque"][:, 0])                                            # (D, J)
+        limit = _stack(models, "limit")                                                 # (D, J)
+        classes = np.array(models[0].joint_classes)
+        out, failed = {}, np.zeros(len(models), dtype=bool)
+        for name in sorted(set(classes)):
+            cols = classes == name
+            load = (self.peak_factor * tau[:, cols] / np.maximum(limit[:, cols], 1e-9)).max(axis=1)
+            out[f"actuator_peak_load_{name}"] = load
+            if name in self.max_peak_load:
+                failed |= load > self.max_peak_load[name]
+            if name in self.stiffness:
+                sag = tau[:, cols].max(axis=1) / self.stiffness[name]
+                out[f"actuator_sag_rad_{name}"] = sag
+                if name in self.max_sag_rad:
+                    failed |= sag > self.max_sag_rad[name]
+            if name in self.min_velocity and records is not None:
+                speed = np.array([float(r.get(f"{name}_actuator_velocity_limit") or np.inf) for r in records])
+                out[f"actuator_velocity_limit_{name}"] = speed
+                failed |= speed < self.min_velocity[name]
+        out["failed"] = failed
+        return out
+
+    def filter(self, xml_files: list[str], records: list[dict] | None = None) -> list[int]:
+        if not xml_files:
+            return []
+        result = self.evaluate(xml_files, records)
+        refused = np.flatnonzero(result["failed"])
+        self.statistics = {"designs": len(xml_files), "refused": int(refused.size)}
+        return refused.tolist()
+
+    def scores(self, xml_files: list[str]) -> dict[str, list[float]]:
+        if not xml_files:
+            return {}
+        result = self.evaluate(xml_files)
+        return {k: np.asarray(v, dtype=float).tolist() for k, v in result.items() if k != "failed"}
+
+
+FILTERS: dict[str, type[FilterBase]] = {
+    "StandingFilter": StandingFilter,
+    "ActuatorAdequacyFilter": ActuatorAdequacyFilter,
+}
 
 
 def make_filters(names: list[str], family: str, params: dict | None = None) -> list[FilterBase]:

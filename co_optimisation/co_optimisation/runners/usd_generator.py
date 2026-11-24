@@ -810,8 +810,11 @@ class DesignGeneratorBase(ABC):
                 pending = self._designs_not_compliant
                 xml_files = [population.get_xml_files()[k] for k in pending]
                 refused: set[int] = set()
+                # A filter declaring uses_records, such as ActuatorAdequacyFilter, also reads the design records of
+                # the pending designs, every other filter being called with the documents alone as before.
+                records = [population.get_parameters()[k] for k in pending]
                 for f in self.filters:
-                    hits = f.filter(xml_files)
+                    hits = f.filter(xml_files, records) if getattr(f, "uses_records", False) else f.filter(xml_files)
                     record["refused"][f.name] = record["refused"].get(f.name, 0) + len(hits)
                     refused.update(hits)
                 self._designs_not_compliant = [pending[i] for i in sorted(refused)]
