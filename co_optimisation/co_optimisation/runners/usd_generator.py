@@ -514,6 +514,16 @@ def _document_mass(xml_text: str) -> float:
 # governs normal running and the solver only an overspeed.
 VELOCITY_LIMIT_SIM_FACTOR = 1.2
 
+# Catalogue specifications of a pick that reach the observations rather than the simulation, each a (catalogue
+# attribute, factor) pair, the radius being half the diameter. Written per environment by
+# co_optimisation/utils/respawn.py apply_actuator_params and read by mdp.robot_actuator_property. See
+# /ws/plans/quadruped_copt_improvement2.md section 6.4.
+HOUSING_PARAM_KEYS: dict[str, tuple[str, float]] = {
+    "housing_mass": ("mass", 1.0),
+    "housing_radius": ("diameter", 0.5),
+    "housing_length": ("length", 1.0),
+}
+
 # The per-group servo gain scales, which _actuator_params consumes rather than the specification.
 GAIN_PARAM_KEYS: tuple[str, ...] = (
     "abad_stiffness_scale", "abad_damping_scale", "hip_stiffness_scale", "hip_damping_scale",
@@ -916,6 +926,10 @@ class DesignGeneratorBase(ABC):
         for group, actuator in zip(self.family.groups, spec.actuators()):
             params = actuator.sim_params()
             params["velocity_limit_sim"] = VELOCITY_LIMIT_SIM_FACTOR * params["velocity_limit"]
+            for key, (attr, factor) in HOUSING_PARAM_KEYS.items():
+                value = getattr(actuator, attr, None)
+                if value is not None:
+                    params[key] = factor * float(value)
             for name in GAIN_PARAM_KEYS:
                 field = SPEC_PARAM_FIELDS[name]
                 if name in (parameters or {}) and field.startswith(f"{group}_") and hasattr(spec, field):

@@ -27,7 +27,9 @@ class CMAESCfg:
     box. "actuator_leg_geometry" searches the same together with the actuator of every joint group, by
     CatCMAwM. "actuator" searches the actuator of every joint group together with the gain scales
     param_ranges names, by CatCMAwM on the baseline's link lengths and pose, and requires param_ranges
-    to name gain scales alone, at least one, which train.py checks."""
+    to name gain scales alone, at least one, which train.py checks. Each family's class of a design search is
+    chosen by scripts/rsl_rl/train.py --design_search through CMAES_CFG_BY_DESIGN_SEARCH, the classes forming
+    the chains of /ws/plans/quadruped_copt_improvement2.md section 6.2."""
 
     num_individuals: int = 80
     """Designs per generation, which must divide the scene's num_envs."""
@@ -105,11 +107,23 @@ class CMAESCfg:
     """Keyword arguments of each filter, keyed as filters names it. A filter left out takes its defaults."""
 
 
+# StandingFilter at the defaults of plans/design_filtering.md section 2.5, written out so that params/cmaes.yaml
+# records them.
+_STANDING_FILTER_PARAMS: dict = {
+    "num_positions": 16,
+    "num_torques": 16,
+    "max_failure_fraction": 0.25,
+    "position_fraction": 0.25,
+    "torque_fraction": [0.5, 1.0],
+    "soft_limit_factor": 0.9,
+    "seed": 0,
+}
+
+
 @configclass
-class BipedCMAESCfg(CMAESCfg):
-    """The TRON1 solefoot biped, tasks Isaac-Limx-SF-Copt-*. Tolerances of plans/copt_training_refinement.md section 3.9,
-    and the standing filter at the defaults of plans/design_filtering.md section 2.5, written out so that
-    params/cmaes.yaml records them."""
+class BipedLLCMAESCfg(CMAESCfg):
+    """The TRON1 solefoot biped's link length search, tasks Isaac-Limx-SF-Copt-*. Tolerances of
+    plans/copt_training_refinement.md section 3.9 and the standing filter."""
 
     tolx: float | None = 0.02
     tolfun: float | None = 0.8
@@ -117,26 +131,45 @@ class BipedCMAESCfg(CMAESCfg):
     finetune_iterations: int | None = 400
     tolcat: float | None = 0.05
     filters: list = ["StandingFilter"]
-    filter_params: dict = {
-        "StandingFilter": {
-            "num_positions": 16,
-            "num_torques": 16,
-            "max_failure_fraction": 0.25,
-            "position_fraction": 0.25,
-            "torque_fraction": [0.5, 1.0],
-            "soft_limit_factor": 0.9,
-            "seed": 0,
-        },
-    }
-
-    design_search: str = "actuator_leg_geometry"
-
+    filter_params: dict = {"StandingFilter": dict(_STANDING_FILTER_PARAMS)}
+    design_search: str = "leg_geometry"
     num_individuals: int = 80
 
 
 @configclass
-class QuadrupedCMAESCfg(CMAESCfg):
-    """The quadruped, tasks Isaac-Quadruped-Copt-*. Tolerances of plans/copt_training_refinement.md section 3.9."""
+class BipedALLCMAESCfg(BipedLLCMAESCfg):
+    """The biped's actuator and link length search. ActuatorAdequacyFilter scores the four joint classes against the
+    environment's stiffness, environments/assets/config/solefoot_identified_cfg.py, and refuses nothing until its
+    thresholds are calibrated, /ws/plans/quadruped_copt_improvement2.md section 6.1."""
+
+    param_ranges: dict = {
+        "thigh_length_scale": ("scale", (0.5, 1.5)),
+        "shank_length_scale": ("scale", (0.5, 1.5)),
+        "thigh_bend_offset": ("offset", (-0.50, 0.50)),
+        "knee_bend_offset": ("offset", (-0.5, 0.5)),
+    }
+
+    filters: list = ["StandingFilter", "ActuatorAdequacyFilter"]
+    filter_params: dict = {
+        "StandingFilter": dict(_STANDING_FILTER_PARAMS),
+        "ActuatorAdequacyFilter": {
+            "stiffness": {"abad": 55.0, "hip": 80.0, "knee": 60.0, "ankle": 10.0},
+            "peak_factor": 2.0,  # single support, the whole weight on one foot
+            "max_peak_load": {"abad": 0.10, "hip": 0.10, "knee": 0.60},
+            "min_velocity": {"abad": 10.0, "hip": 10.0, "knee": 12.0, "ankle": 20.0},
+        },
+    }
+    design_search: str = "actuator_leg_geometry"
+
+    num_individuals: int = 64
+
+    ea_late_start: int = 7500
+
+
+@configclass
+class QuadrupedLLCMAESCfg(CMAESCfg):
+    """The quadruped's link length search, tasks Isaac-Quadruped-Copt-*. Tolerances of
+    plans/copt_training_refinement.md section 3.9."""
 
     tolx: float | None = 0.035
     tolfun: float | None = 0.15
@@ -150,17 +183,54 @@ class QuadrupedCMAESCfg(CMAESCfg):
         "thigh_bend_offset": ("offset", (-0.50, 0.50)),
         "knee_bend_offset": ("offset", (-0.5, 0.5)),
     }
-
     ea_late_start: int = 9000
+    design_search: str = "leg_geometry"
 
+
+@configclass
+class QuadrupedALLCMAESCfg(QuadrupedLLCMAESCfg):
+    """The quadruped's actuator and link length search, with ActuatorAdequacyFilter at the thresholds of
+    /ws/plans/quadruped_copt_improvement2.md section 6.1. The stiffness is the environment's,
+    environments/assets/config/quadruped_identified_cfg.py, and must follow it."""
+
+    filters: list = ["ActuatorAdequacyFilter"]
+    filter_params: dict = {
+        "ActuatorAdequacyFilter": {
+            "stiffness": {"abad": 40.0, "hip": 40.0, "knee": 50.0},
+            "peak_factor": 3.141592653589793,  # pi / (8 beta) / 0.25 at a trot duty factor beta of 0.5
+            "max_peak_load": {"hip": 1.0, "knee": 1.0},
+            "max_sag_rad": {"hip": 0.10, "knee": 0.16},
+            "min_velocity": {"hip": 8.5, "knee": 15.0},
+        },
+    }
     design_search: str = "actuator_leg_geometry"
 
 
-# The configuration of each design generator family, as scripts/rsl_rl/train.py resolves the family from the task.
-CMAES_CFG_BY_FAMILY: dict[str, type[CMAESCfg]] = {
-    "biped": BipedCMAESCfg,
-    "quadruped": QuadrupedCMAESCfg,
+# The configuration of every design search of each family, as scripts/rsl_rl/train.py selects it by --design_search.
+CMAES_CFG_BY_DESIGN_SEARCH: dict[str, dict[str, type[CMAESCfg]]] = {
+    "biped": {
+        "leg_geometry": BipedLLCMAESCfg,
+        "actuator_leg_geometry": BipedALLCMAESCfg,
+    },
+    "quadruped": {
+        "leg_geometry": QuadrupedLLCMAESCfg,
+        "actuator_leg_geometry": QuadrupedALLCMAESCfg,
+    },
 }
+
+# The design search a launch without --design_search takes, the default of both families before the refactor.
+DEFAULT_DESIGN_SEARCH: str = "actuator_leg_geometry"
+
+# Each family's configuration under DEFAULT_DESIGN_SEARCH, kept for co_optimisation/tests/sim_filter_data_check.py.
+CMAES_CFG_BY_FAMILY: dict[str, type[CMAESCfg]] = {
+    family: by_search[DEFAULT_DESIGN_SEARCH]
+    for family, by_search in CMAES_CFG_BY_DESIGN_SEARCH.items()
+}
+
+# The names before the refactor, kept so that params/cmaes.pkl of a run begun under them still unpickles. A pickled
+# instance restores its own field values, so the alias decides no value of a resumed run.
+BipedCMAESCfg = BipedALLCMAESCfg
+QuadrupedCMAESCfg = QuadrupedALLCMAESCfg
 
 
 def without_termination(cfg: CMAESCfg) -> CMAESCfg:

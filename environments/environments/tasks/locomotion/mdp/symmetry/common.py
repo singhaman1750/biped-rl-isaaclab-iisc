@@ -54,6 +54,8 @@ TERM_KINDS = {
     "velocity_commands": "cmd", "gait_phase": "gait", "heights": "heights",
     "robot_joint_torque": "joint", "robot_joint_acc": "joint", "robot_joint_pos": "joint",
     "robot_joint_stiffness": "joint_nosign", "robot_joint_damping": "joint_nosign",
+    "actuator_effort_limit": "joint_nosign", "actuator_velocity_limit": "joint_nosign",
+    "actuator_mass": "joint_nosign", "actuator_radius": "joint_nosign", "actuator_length": "joint_nosign",
     "robot_mass": "body_scalar", "robot_inertia": "body_inertia", "nominal_pose": "body_scalar",
     "link_lengths": "body_pair_scalar", "robot_material_properties": "material",
     "feet_lin_vel": "body_vec_w", "feet_contact_force": "body_vec_w",

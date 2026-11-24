@@ -8,11 +8,15 @@ from isaaclab_rl.rsl_rl import (
     RslRlSymmetryCfg,
 )
 
-from environments.tasks.locomotion.mdp.symmetry.brs import compute_symmetric_states as brs_compute_symmetric_states
+from environments.tasks.locomotion.mdp.symmetry.brs import (
+    compute_symmetric_states as brs_compute_symmetric_states,
+)
 from environments.tasks.locomotion.mdp.symmetry.kscale import (
     compute_symmetric_states as kscale_compute_symmetric_states,
 )
-from environments.tasks.locomotion.mdp.symmetry.tron1 import compute_symmetric_states as tron1_compute_symmetric_states
+from environments.tasks.locomotion.mdp.symmetry.tron1 import (
+    compute_symmetric_states as tron1_compute_symmetric_states,
+)
 from environments.utils.wrappers.rsl_rl.rl_mlp_cfg import (
     EncoderCfg,
     RslRlPpoAlgorithmMlpCfg,
@@ -182,6 +186,40 @@ class SFCoptMorALRunnerCfg(SFCoptBaseRunnerCfg):
         "encoderIn": ["policy"],
         "gtEncoderOut": ["morphologyObs"],
     }
+
+
+@configclass
+class SFCoptALLRunnerCfg(SFCoptRunnerCfg):
+    """SFCoptRunnerCfg for the actuator and link length search."""
+
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "morphologyObs", "actuatorObs"],
+        "critic": ["critic", "actuatorObs"],
+    }
+
+
+@configclass
+class SFCoptMorALALLRunnerCfg(SFCoptMorALRunnerCfg):
+    """SFCoptMorALRunnerCfg for the actuator and link length search."""
+
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "actuatorObs"],
+        "critic": ["critic", "actuatorObs"],
+        "encoderIn": ["policy"],
+        "gtEncoderOut": ["morphologyObs"],
+    }
+
+
+COPT_RUNNER_CFG_BY_DESIGN_SEARCH: dict[type, dict[str, type]] = {
+    SFCoptRunnerCfg: {
+        "leg_geometry": SFCoptRunnerCfg,
+        "actuator_leg_geometry": SFCoptALLRunnerCfg,
+    },
+    SFCoptMorALRunnerCfg: {
+        "leg_geometry": SFCoptMorALRunnerCfg,
+        "actuator_leg_geometry": SFCoptMorALALLRunnerCfg,
+    },
+}
 
 
 @configclass

@@ -476,6 +476,30 @@ class CoptObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
+    class ActuatorCfg(ObsGroup):
+        """P_2, the actuator of every joint in absolute SI units, its torque and speed ceilings and the mass, radius
+        and length of its housing. Read through obs_groups by the actuator search's agent configurations."""
+
+        actuator_effort_limit = ObsTerm(func=mdp.robot_actuator_property, params={"attr": "effort_limit"})
+        actuator_velocity_limit = ObsTerm(func=mdp.robot_actuator_property, params={"attr": "velocity_limit"})
+        actuator_mass = ObsTerm(
+            func=mdp.robot_actuator_property,
+            params={"attr": "housing_mass", "default": {"abad": 1.028375, "hip": 1.028375, "knee": 1.434746}},
+        )
+        actuator_radius = ObsTerm(
+            func=mdp.robot_actuator_property,
+            params={"attr": "housing_radius", "default": {"abad": 0.046, "hip": 0.046, "knee": 0.046}},
+        )
+        actuator_length = ObsTerm(
+            func=mdp.robot_actuator_property,
+            params={"attr": "housing_length", "default": {"abad": 0.04, "hip": 0.04, "knee": 0.04}},
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
     class PrivilegedDynamicsCfg(ObsGroup):
         """The dynamic state whose only reader is now being the estimator target named by obs_groups["gtEncoderOut"]."""
 
@@ -672,6 +696,7 @@ class CoptObservationsCfg:
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
     morphologyObs: MorphologyCfg = MorphologyCfg()
+    actuatorObs: ActuatorCfg = ActuatorCfg()
     privilegedDynamicsObs: PrivilegedDynamicsCfg = PrivilegedDynamicsCfg()
     # historyObs: HistoryObsCfg = HistoryObsCfg()
 

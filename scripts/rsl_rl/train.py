@@ -55,6 +55,22 @@ parser.add_argument(
     default=None,
     help="Relative path to checkpoint file.",
 )
+parser.add_argument(
+    "--init_checkpoint_path",
+    type=str,
+    default=None,
+    help="Checkpoint whose policy weights initialise a fresh run. Unlike --resume nothing else is restored, "
+    "the iteration counter, optimiser, learning rate, CMA-ES state, population and env state all start from scratch.",
+)
+parser.add_argument(
+    "--design_search",
+    type=str,
+    default=None,
+    help="The co-optimisation type, leg_geometry or actuator_leg_geometry, which selects the family's CMAESCfg "
+    "(co_optimisation.config.CMAES_CFG_BY_DESIGN_SEARCH) and the agent configuration "
+    "(COPT_RUNNER_CFG_BY_DESIGN_SEARCH of the agents modules). None takes DEFAULT_DESIGN_SEARCH on a fresh run and "
+    "the run's own on --resume, which refuses a different one.",
+)
 # The design search and the co-optimisation loop are configured by co_optimisation.config.CMAESCfg,
 # one subclass per robot, rather than by arguments. See plans/copt_training_refinement.md.
 
@@ -96,7 +112,6 @@ from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from rsl_rl_debug.runners import DebugOnPolicyRunner
 
 from co_optimisation.algorithms import CoptPPO
-from co_optimisation.config import CMAES_CFG_BY_FAMILY, CMAESCfg, without_termination
 from co_optimisation.runners import CoptOnPolicyRunner
 from co_optimisation.runners.usd_generator import (
     DEFAULT_PARAM_RANGES,
@@ -107,6 +122,18 @@ from co_optimisation.runners.usd_generator import (
 
 # Import extensions to set up environment tasks
 from environments.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg
+from co_optimisation.config import (
+    CMAES_CFG_BY_DESIGN_SEARCH,
+    DEFAULT_DESIGN_SEARCH,
+    CMAESCfg,
+    without_termination,
+)
+from environments.tasks.locomotion.agents.limx_rsl_rl_ppo_cfg import (
+    COPT_RUNNER_CFG_BY_DESIGN_SEARCH as _SF_COPT_RUNNERS,
+)
+from environments.tasks.locomotion.agents.quadruped_rsl_rl_ppo_cfg import (
+    COPT_RUNNER_CFG_BY_DESIGN_SEARCH as _QUADRUPED_COPT_RUNNERS,
+)
 from himloco.runners import HIMOnPolicyRunner
 from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
@@ -129,23 +156,84 @@ def dump_yaml(filename, data, sort_keys=False):
         yaml.dump(data, f, sort_keys=sort_keys)
 
 
-def _cmaes_cfg(family: str, agent_cfg, log_root_path: str) -> CMAESCfg:
-    """The run's co-optimisation configuration, restored from params/cmaes.pkl of a resumed run.
+_COPT_ACTOR_CRITIC = {"COPT": "CoptActorCritic", "COPT-MORAL": "CoptMorALActorCritic"}
 
-    A resumed run begun before params/cmaes.pkl existed continues as it was launched, with the
-    robot's configuration less the tolerances and the fine-tune, which those runs never had.
+# The family selects which of the vendored generator's two packages supplies the geometry, the mass model and the
+# actuator catalogue. Its own variable_params.json is the baseline, and it reproduces the donor robot. An unknown task
+# is refused here, its failure otherwise being an unresolvable articulation root deep in the importer's output.
+_FAMILY_BY_TASK = {
+    "Isaac-Quadruped-Copt": "quadruped",
+    "Isaac-Limx-SF-Copt": "biped",
+}
+
+# Every co-optimisation agent configuration a task registers, keyed by its class, to the class of each design search.
+COPT_RUNNER_CFG_BY_DESIGN_SEARCH = {**_SF_COPT_RUNNERS, **_QUADRUPED_COPT_RUNNERS}
+
+
+def _copt_family(task: str) -> str:
+    family = next((fam for key, fam in _FAMILY_BY_TASK.items() if key in task), None)
+    if family is None:
+        raise ValueError(f"Task {task!r} maps to no design generator family. Known keys: {sorted(_FAMILY_BY_TASK)}.")
+    return family
+
+
+def _resume_dir(agent_cfg, log_root_path: str) -> str | None:
+    """The run directory a resume loads from, None on a fresh run."""
+    if not agent_cfg.resume:
+        return None
+    resume_path = args_cli.checkpoint_path or get_checkpoint_path(
+        log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint
+    )
+    return os.path.dirname(resume_path)
+
+
+def _cmaes_cfg(family: str, agent_cfg, log_root_path: str) -> CMAESCfg:
+    """The run's co-optimisation configuration, the --design_search class of the family, or on a resume the run's own.
+
+    A resumed run is restored from params/cmaes.pkl and refuses a --design_search it was not launched with. A resumed
+    run begun before params/cmaes.pkl existed continues with the configuration of its design search less the
+    tolerances and the fine-tune, which those runs never had.
     """
-    if agent_cfg.resume:
-        resume_path = args_cli.checkpoint_path or get_checkpoint_path(
-            log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint
-        )
-        saved = os.path.join(os.path.dirname(resume_path), "params", "cmaes.pkl")
+    by_search = CMAES_CFG_BY_DESIGN_SEARCH[family]
+    design_search = args_cli.design_search or DEFAULT_DESIGN_SEARCH
+    if design_search not in by_search:
+        raise ValueError(f"--design_search {design_search!r} has no configuration for the {family}, "
+                         f"known {sorted(by_search)}")
+    resume_dir = _resume_dir(agent_cfg, log_root_path)
+    if resume_dir is not None:
+        saved = os.path.join(resume_dir, "params", "cmaes.pkl")
         if os.path.exists(saved):
             with open(saved, "rb") as f:
-                return pickle.load(f)
-        print(f"[WARNING] No params/cmaes.pkl beside {resume_path}, resuming without CMA-ES tolerances or fine-tune.")
-        return without_termination(CMAES_CFG_BY_FAMILY[family]())
-    return CMAES_CFG_BY_FAMILY[family]()
+                cfg = pickle.load(f)
+            if args_cli.design_search not in (None, cfg.design_search):
+                raise ValueError(f"--design_search {args_cli.design_search!r} differs from the resumed run's "
+                                 f"{cfg.design_search!r}")
+            return cfg
+        print(f"[WARNING] No params/cmaes.pkl in {resume_dir}, resuming without CMA-ES tolerances or fine-tune.")
+        return without_termination(by_search[design_search]())
+    return by_search[design_search]()
+
+
+def _copt_agent_cfg(agent_cfg, design_search: str, resume_dir: str | None):
+    """The agent configuration of *design_search*, the command line applied to it again.
+
+    The task's registered class is looked up in COPT_RUNNER_CFG_BY_DESIGN_SEARCH, a class the table does not name
+    being kept. A resume keeps the registered class with the observation groups of the run's params/agent.pkl, so
+    that the checkpoint's networks are rebuilt at the widths they were trained at.
+    """
+    if resume_dir is not None:
+        saved = os.path.join(resume_dir, "params", "agent.pkl")
+        if os.path.exists(saved):
+            with open(saved, "rb") as f:
+                agent_cfg.obs_groups = pickle.load(f).obs_groups
+        return agent_cfg
+    variants = COPT_RUNNER_CFG_BY_DESIGN_SEARCH.get(type(agent_cfg))
+    if variants is None:
+        return agent_cfg
+    if design_search not in variants:
+        raise ValueError(f"{type(agent_cfg).__name__} has no agent configuration for design search "
+                         f"{design_search!r}, known {sorted(variants)}")
+    return cli_args.update_rsl_rl_cfg(variants[design_search](), args_cli)
 
 
 # @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
@@ -162,6 +250,13 @@ def main():
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(
         args_cli.task, args_cli
     )
+
+    copt_family = cmaes_cfg = None
+    if args_cli.policy_type in _COPT_ACTOR_CRITIC:
+        copt_family = _copt_family(args_cli.task)
+        copt_log_root = os.path.abspath(os.path.join("logs", "rsl_rl", agent_cfg.experiment_name))
+        cmaes_cfg = _cmaes_cfg(copt_family, agent_cfg, copt_log_root)
+        agent_cfg = _copt_agent_cfg(agent_cfg, cmaes_cfg.design_search, _resume_dir(agent_cfg, copt_log_root))
 
     if args_cli.max_iterations is not None:
         agent_cfg.max_iterations = args_cli.max_iterations
@@ -224,27 +319,9 @@ def main():
         runner_cls = DebugOnPolicyRunner
         agent_cfg.policy.class_name = "DebugActorCritic"
     runner = None
-    _COPT_ACTOR_CRITIC = {"COPT": "CoptActorCritic", "COPT-MORAL": "CoptMorALActorCritic"}
     if args_cli.policy_type in _COPT_ACTOR_CRITIC:
 
-        # The family selects which of the vendored generator's two packages supplies
-        # the geometry, the mass model and the actuator catalogue. Its own
-        # variable_params.json is the baseline, and it reproduces the donor robot.
-        # An unknown task is refused here, its failure otherwise being an
-        # unresolvable articulation root deep in the importer's output.
-        _FAMILY_BY_TASK = {
-            "Isaac-Quadruped-Copt": "quadruped",
-            "Isaac-Limx-SF-Copt": "biped",
-        }
-        _family = next(
-            (fam for key, fam in _FAMILY_BY_TASK.items() if key in args_cli.task), None
-        )
-        if _family is None:
-            raise ValueError(
-                f"Task {args_cli.task!r} maps to no design generator family. "
-                f"Known keys: {sorted(_FAMILY_BY_TASK)}."
-            )
-        cmaes_cfg = _cmaes_cfg(_family, agent_cfg, log_root_path)
+        _family = copt_family
         _num_individuals = cmaes_cfg.num_individuals
         # ea_update_interval * num_steps_per_env (120 * 25 = 3000) should be more
         # than episode_duration / (dt * decimation) (20 / (0.005 * 4) = 1000)
@@ -357,6 +434,14 @@ def main():
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         # load previously trained model
         runner.load(resume_path)
+
+    if args_cli.init_checkpoint_path is not None:
+        if agent_cfg.resume:
+            raise ValueError("--init_checkpoint_path starts a fresh run and cannot be combined with --resume.")
+        print(f"[INFO]: Initialising policy weights from: {args_cli.init_checkpoint_path}")
+        init_state = torch.load(args_cli.init_checkpoint_path, weights_only=False, map_location=agent_cfg.device)
+        runner.alg.policy.load_state_dict(init_state["model_state_dict"], strict=True)
+        del init_state
 
     # set seed of the environment
     env.seed(agent_cfg.seed)

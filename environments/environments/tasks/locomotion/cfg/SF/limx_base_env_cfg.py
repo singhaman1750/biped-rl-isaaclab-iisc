@@ -343,6 +343,30 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
+    class ActuatorCfg(ObsGroup):
+        """P_2, the actuator of every joint in absolute SI units, its torque and speed ceilings and the mass, radius
+        and length of its housing. Read through obs_groups by the actuator search's agent configurations."""
+
+        actuator_effort_limit = ObsTerm(func=mdp.robot_actuator_property, params={"attr": "effort_limit"})
+        actuator_velocity_limit = ObsTerm(func=mdp.robot_actuator_property, params={"attr": "velocity_limit"})
+        actuator_mass = ObsTerm(
+            func=mdp.robot_actuator_property,
+            params={"attr": "housing_mass", "default": {"abad": 0.95, "hip": 1.469, "knee": 1.45, "ankle": 0.95}},
+        )
+        actuator_radius = ObsTerm(
+            func=mdp.robot_actuator_property,
+            params={"attr": "housing_radius", "default": {"abad": 0.0483, "hip": 0.0483, "knee": 0.0483, "ankle": 0.03}},
+        )
+        actuator_length = ObsTerm(
+            func=mdp.robot_actuator_property,
+            params={"attr": "housing_length", "default": {"abad": 0.0545, "hip": 0.0545, "knee": 0.0545, "ankle": 0.0545}},
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
     class PrivilegedDynamicsCfg(ObsGroup):
         """The dynamic state, formerly predictedPrivilegedObs."""
 
@@ -432,6 +456,7 @@ class ObservationsCfg:
     critic: CriticCfg = CriticCfg()
     commands: CommandsObsCfg = CommandsObsCfg()
     morphologyObs: MorphologyCfg | None = None
+    actuatorObs: ActuatorCfg | None = None
     privilegedDynamicsObs: PrivilegedDynamicsCfg | None = None
     historyObs: HistoryObsCfg | None = None
     estimatorGT: EstimatorGTCfg | None = None
@@ -1449,6 +1474,7 @@ class SFCoptEnvCfg(ManagerBasedRLEnvCfg):
         # Co-optimisation observation groups, disabled in ObservationsCfg so that
         # SFEnvCfg is unaffected.
         self.observations.morphologyObs = ObservationsCfg.MorphologyCfg()
+        self.observations.actuatorObs = ObservationsCfg.ActuatorCfg()
         self.observations.privilegedDynamicsObs = ObservationsCfg.PrivilegedDynamicsCfg()
         self.observations.historyObs = ObservationsCfg.HistoryObsCfg()
         self.observations.estimatorGT = ObservationsCfg.EstimatorGTCfg()

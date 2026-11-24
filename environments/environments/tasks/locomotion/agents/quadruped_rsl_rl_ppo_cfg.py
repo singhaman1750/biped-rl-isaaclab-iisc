@@ -102,3 +102,41 @@ class PFQuadrupedCoptMorALPPORunnerCfg(PFQuadrupedPPORunnerCfg):
         activation="elu",
         orthogonal_init=False,
     )
+
+
+@configclass
+class PFQuadrupedCoptALLPPORunnerCfg(PFQuadrupedCoptPPORunnerCfg):
+    """PFQuadrupedCoptPPORunnerCfg for the actuator and link length search, the actor reading the true actuator
+    beside the true morphology and the critic reading the actuator group."""
+
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "morphologyObs", "actuatorObs"],
+        "critic": ["critic", "actuatorObs"],
+    }
+
+
+@configclass
+class PFQuadrupedCoptMorALALLPPORunnerCfg(PFQuadrupedCoptMorALPPORunnerCfg):
+    """PFQuadrupedCoptMorALPPORunnerCfg for the actuator and link length search, the critic reading the actuator
+    group and the estimator regressing it beside the morphology."""
+
+    obs_groups: dict[str, list[str]] = {
+        "policy": ["policy", "actuatorObs"],
+        "critic": ["critic", "actuatorObs"],
+        "encoderIn": ["policy"],
+        "gtEncoderOut": ["morphologyObs"],
+    }
+
+
+# The agent configuration of each design search, keyed by the class a co-optimisation task registers. Read by
+# scripts/rsl_rl/train.py, which selects by --design_search.
+COPT_RUNNER_CFG_BY_DESIGN_SEARCH: dict[type, dict[str, type]] = {
+    PFQuadrupedCoptPPORunnerCfg: {
+        "leg_geometry": PFQuadrupedCoptPPORunnerCfg,
+        "actuator_leg_geometry": PFQuadrupedCoptALLPPORunnerCfg,
+    },
+    PFQuadrupedCoptMorALPPORunnerCfg: {
+        "leg_geometry": PFQuadrupedCoptMorALPPORunnerCfg,
+        "actuator_leg_geometry": PFQuadrupedCoptMorALALLPPORunnerCfg,
+    },
+}

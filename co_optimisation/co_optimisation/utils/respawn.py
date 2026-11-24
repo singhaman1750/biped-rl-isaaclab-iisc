@@ -256,6 +256,20 @@ _SIM_WRITE_THROUGH = {
     "velocity_limit_sim": "write_joint_velocity_limit_to_sim",
 }
 
+# Catalogue specifications the actuator model never reads, kept on it as per environment tensors for the
+# observations, mdp.robot_actuator_property, from the keys usd_generator.HOUSING_PARAM_KEYS adds. Created on
+# first write, so an actuator no design has written carries none and its observation reads the term's default.
+_RECORD_ONLY = ("housing_mass", "housing_radius", "housing_length")
+
+
+def _record_tensor(actuator, attr_name: str) -> torch.Tensor:
+    """The record attribute as a per environment tensor shaped like effort_limit, created on first use."""
+    value = getattr(actuator, attr_name, None)
+    if not isinstance(value, torch.Tensor):
+        value = torch.full_like(actuator.effort_limit, float("nan"))
+        setattr(actuator, attr_name, value)
+    return value
+
 
 def apply_actuator_params(
     env: ManagerBasedRLEnv,
@@ -301,6 +315,10 @@ def apply_actuator_params(
                     touched.add(attr_name)
                 elif attr_name in _ENVELOPE_SCALARS:
                     _promote_envelope_scalar(actuator, attr_name)[env_idx, :] = value
+                    touched.add(attr_name)
+                elif attr_name in _RECORD_ONLY:
+                    # The round robin reaches every environment, so no NaN of the initial fill survives the call.
+                    _record_tensor(actuator, attr_name)[env_idx, :] = value
                     touched.add(attr_name)
 
         if not touched:

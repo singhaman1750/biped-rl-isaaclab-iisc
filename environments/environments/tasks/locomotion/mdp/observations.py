@@ -98,6 +98,34 @@ def robot_joint_damping(
     return asset.data.default_joint_damping.to(device)
 
 
+def robot_actuator_property(
+    env: ManagerBasedEnv,
+    attr: str,
+    default: dict[str, float] | None = None,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Per joint absolute value of an actuator property, in the unit the actuator model or the catalogue states it.
+
+    Robot agnostic, the joint groups being the articulation's actuator groups. *attr* is an attribute of the
+    actuator model, effort_limit and velocity_limit being its own, housing_mass, housing_radius and housing_length
+    those co_optimisation/utils/respawn.py apply_actuator_params writes from the pick's catalogue entry. A group whose
+    actuator carries no such attribute, no design having been applied yet, reads *default*[group], the donor's
+    catalogue value, and a group *default* does not name raises rather than read a value no actuator has. See
+    /ws/plans/quadruped_copt_improvement2.md section 6.4.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    out = torch.zeros(env.num_envs, asset.num_joints, device=env.device)
+    for group, actuator in asset.actuators.items():
+        value = getattr(actuator, attr, None)
+        if isinstance(value, torch.Tensor):
+            out[:, actuator.joint_indices] = value.to(env.device)
+        elif default is not None and group in default:
+            out[:, actuator.joint_indices] = float(default[group])
+        else:
+            raise KeyError(f"actuator group {group!r} carries no {attr} and the term gives no default for it")
+    return out[:, asset_cfg.joint_ids]
+
+
 def robot_pos(
     env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
