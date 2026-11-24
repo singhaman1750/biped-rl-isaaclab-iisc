@@ -18,10 +18,20 @@ mjcf_path = os.path.join(current_dir, "../mjcf/quadruped/quadruped.xml")
 # 6.54 Hz, well inside the observability ceiling of a fifth of the 50 Hz control rate.
 # Kd gives a damping ratio of 0.62 against an effective inertia of 0.023674 kg m^2 at
 # the nominal crouch. See joint_control_analysis_quadruped.md section 5.3 throughout.
+#
+# velocity_limit_sim is the PhysX joint velocity cap, set on every group at 1.2 times
+# velocity_limit, the factor co_optimisation/utils/respawn.py VELOCITY_LIMIT_SIM_FACTOR applies
+# to every picked actuator. Unset, it resolves to the importer's FLT_MAX in deg/s, 5.94e36 rad/s,
+# leaving only the DC motor curve's braking torque against an overspeed
+# (isaaclab_diagnostics.md sections 6c, 6d and 7a). The curve clamps at
+# velocity_limit * (1 + effort_limit / saturation_effort), 34.5 rad/s here and 23.0 at the
+# knee, so the cap of 36 and 24 sits just past it, the curve governing normal running and the
+# solver only an overspeed.
 QUADRUPED_ABAD_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".._hip_joint"],
     effort_limit=23.622511,
     velocity_limit=30.0,
+    velocity_limit_sim=36.0,
     saturation_effort=158.0,
     stiffness={".*": 40.0},
     damping={".*": 1.2},
@@ -39,6 +49,7 @@ QUADRUPED_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".._thigh_joint"],
     effort_limit=23.622511,
     velocity_limit=30.0,
+    velocity_limit_sim=36.0,
     saturation_effort=158.0,
     stiffness={".*": 40.0},
     damping={".*": 1.1},
@@ -57,6 +68,7 @@ QUADRUPED_KNEE_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".._calf_joint"],
     effort_limit=35.238000,
     velocity_limit=20.0,
+    velocity_limit_sim=24.0,
     saturation_effort=236.0,
     stiffness={".*": 50.0},
     damping={".*": 0.9},

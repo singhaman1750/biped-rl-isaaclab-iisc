@@ -32,6 +32,8 @@ Were the same indices met under `PFQuadrupedCoptPPORunnerCfg` (`quadruped_rsl_rl
 
 For the `MorAL` variant, the index of `encoderOut` is also the index of the regression target, since the estimator is regressed onto `morphologyObs` (`copt_actor_critic.py:137`). Output channel `i` therefore corresponds to the morphology channel at the same index, listed in section 5.
 
+Correction of 2026-11-20. The reading of this section is superseded. A later crash of the same task, printed with the weight checks of `copt_actor_critic.py`, reported `feet_lin_vel` NaN in `critic` at 720 to 839 and in `privilegedDynamicsObs` at 36 to 47 on the step of a reset, a NaN `value`, and then every parameter of the actor, the estimator and the critic NaN after one optimiser step, `clip_grad_norm_` spreading the NaN total norm to every gradient. The `encoderOut` report of 2026-11-19 was therefore the end of that chain and not its source, an observation term being the source after all. The analysis is [isaaclab_diagnostics.md](isaaclab_diagnostics.md) section 7a.
+
 ## 3. ObservationsCfg
 
 Defined at `environments/environments/tasks/locomotion/cfg/quadruped/base_env_cfg.py:143` and used by `QuadrupedPFEnvCfg` (`base_env_cfg.py:1524`). It has three groups.

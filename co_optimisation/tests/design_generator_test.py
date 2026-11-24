@@ -677,7 +677,8 @@ def test_a_pick_does_not_change_the_baseline_gains_of_its_joint(family, out_dir)
             spec = gen._spec_from_parameters(_all_gains(family), {group: entry.name})
             act = gen._actuator_params(spec, _all_gains(family))[group]
             assert (act["stiffness"], act["damping"]) == BASELINE_GAINS[family][group], (group, entry.name)
-            assert {k: v for k, v in act.items() if k not in ("stiffness", "damping")} == {
+            assert act["velocity_limit_sim"] == U.VELOCITY_LIMIT_SIM_FACTOR * act["velocity_limit"]
+            assert {k: v for k, v in act.items() if k not in ("stiffness", "damping", "velocity_limit_sim")} == {
                 k: float(v) for k, v in entry.sim_params().items()}
 
 

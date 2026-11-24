@@ -507,6 +507,13 @@ def _document_mass(xml_text: str) -> float:
     return float(sum(float(e.get("mass", 0.0)) for e in ET.fromstring(xml_text).iter("inertial")))
 
 
+# The PhysX joint velocity cap of every pick as a multiple of its velocity_limit, which _actuator_params
+# adds to each group's parameters. The solver's cap is otherwise the configuration's for every design, so
+# a pick faster than the baseline would be truncated below its own torque speed curve. At 1.2 times the cap
+# sits just past the curve's clamp, velocity_limit * (1 + effort_limit / saturation_effort), so the curve
+# governs normal running and the solver only an overspeed.
+VELOCITY_LIMIT_SIM_FACTOR = 1.2
+
 # The per-group servo gain scales, which _actuator_params consumes rather than the specification.
 GAIN_PARAM_KEYS: tuple[str, ...] = (
     "abad_stiffness_scale", "abad_damping_scale", "hip_stiffness_scale", "hip_damping_scale",
@@ -905,6 +912,7 @@ class DesignGeneratorBase(ABC):
         out: dict[str, dict] = {}
         for group, actuator in zip(self.family.groups, spec.actuators()):
             params = actuator.sim_params()
+            params["velocity_limit_sim"] = VELOCITY_LIMIT_SIM_FACTOR * params["velocity_limit"]
             for name in GAIN_PARAM_KEYS:
                 field = SPEC_PARAM_FIELDS[name]
                 if name in (parameters or {}) and field.startswith(f"{group}_") and hasattr(spec, field):

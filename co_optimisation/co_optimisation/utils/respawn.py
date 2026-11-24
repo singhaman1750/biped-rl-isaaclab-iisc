@@ -246,10 +246,15 @@ _ENVELOPE_SCALARS = ("saturation_effort",)
 
 # Attributes the actuator model never reads, which reach the simulation only
 # through an explicit write. compute() uses stiffness, damping, effort_limit,
-# velocity_limit, saturation_effort and the friction triple, but armature is a
-# PhysX joint property that Articulation._process_actuators_cfg pushes once at
-# construction (articulation.py:1774) and nothing pushes again.
-_SIM_WRITE_THROUGH = {"armature": "write_joint_armature_to_sim"}
+# velocity_limit, saturation_effort and the friction triple, but armature and
+# velocity_limit_sim are PhysX joint properties that
+# Articulation._process_actuators_cfg pushes once at construction
+# (articulation.py:1766-1780) and nothing pushes again. The whole group is
+# written, a row no design named holding the value its configuration set.
+_SIM_WRITE_THROUGH = {
+    "armature": "write_joint_armature_to_sim",
+    "velocity_limit_sim": "write_joint_velocity_limit_to_sim",
+}
 
 
 def apply_actuator_params(
